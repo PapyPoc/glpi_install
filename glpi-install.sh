@@ -137,7 +137,7 @@ function install_packages(){
         info "Installation des extensions de php"
         apt install -y --no-install-recommends php-{mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} > /dev/null 2>&1
         info "Installation des service lamp..."
-        apt-get install -y --no-install-recommends curl tar apache2 mariadb-server perl curl jq php > /dev/null 2>&1
+        apt-get install -y --no-install-recommends sudo curl tar apache2 mariadb-server perl curl jq php > /dev/null 2>&1
         info "Activation de MariaDB"
         systemctl enable mariadb > /dev/null 2>&1
         info "Activation d'Apache"
