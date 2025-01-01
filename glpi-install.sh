@@ -85,7 +85,11 @@ function check_install(){
         sleep 2
         glpi_cli_version=$(sed -n 's/.*GLPI CLI \([^ ]*\).*/\1/p' <<< "$output")
         warn "Le site est déjà installé. Version ""$glpi_cli_version"
-        apt-get install -y curl jq
+        if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
+            apt-get install -y curl jq
+        elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+            dnf install -y curl jq
+        fi
         NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
         info "Nouvelle version trouver : GLPI version $NEW_VERSION"
         if [ "$glpi_cli_version" == "$NEW_VERSION" ]; then
