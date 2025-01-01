@@ -22,7 +22,6 @@ TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12) # Constante pour pour le MdP
 NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12) # Constante pour pour le MdP du compte NORMAL de GLPI
 CURRENT_DATE_TIME=$(date +"%d-%m-%Y_%H-%M-%S") # Constante pour la date courante
 BDD_BACKUP="bdd_glpi-${CURRENT_DATE_TIME}.sql" # Constante pour le nommage du fichier DUMP de la BDD de GLPI
-NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
 TIMEZONE=$(timedatectl | grep "Time zone" | awk '{print $3}')
 LANG=$(locale | grep LANG | cut -d= -f2 | cut -d. -f1)
 function warn(){
@@ -86,6 +85,8 @@ function check_install(){
         sleep 2
         glpi_cli_version=$(sed -n 's/.*GLPI CLI \([^ ]*\).*/\1/p' <<< "$output")
         warn "Le site est déjà installé. Version ""$glpi_cli_version"
+        apt-get install -y curl jq
+        NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
         info "Nouvelle version trouver : GLPI version $NEW_VERSION"
         if [ "$glpi_cli_version" == "$NEW_VERSION" ]; then
             info "Vous avez déjà la dernière version de GLPI. Mise à jour annuler"
@@ -137,7 +138,7 @@ function install_packages(){
         info "Installation des extensions de php"
         apt install -y --no-install-recommends php-{mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} > /dev/null 2>&1
         info "Installation des service lamp..."
-        apt-get install -y --no-install-recommends sudo curl tar apache2 mariadb-server perl curl jq php > /dev/null 2>&1
+        apt-get install -y --no-install-recommends sudo tar apache2 mariadb-server perl php > /dev/null 2>&1
         info "Activation de MariaDB"
         systemctl enable mariadb > /dev/null 2>&1
         info "Activation d'Apache"
