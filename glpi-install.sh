@@ -53,6 +53,11 @@ function check_distro(){
         if [[ "${ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
             if compatible "${VERSION_ID}" DEBIAN_VERSIONS || compatible "${VERSION_ID}" UBUNTU_VERSIONS || compatible "${VERSION_ID}" ALMA_VERSIONS || compatible "${VERSION_ID}" CENTOS_VERSIONS || compatible "${VERSION_ID}" ROCKY_VERSIONS || compatible "${VERSION_ID}" REDHAT_VERSIONS; then
                 info "La version de votre systeme d'exploitation (${ID} ${VERSION_ID}) est compatible."
+				if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
+					apt-get install -y curl jq
+				else
+					dnf install -y curl jq >
+				fi
             else
                 warn "La version de votre système d'exploitation (${ID} ${VERSION_ID}) n'est pas considérée comme compatible."
                 warn "Voulez-vous toujours forcer l'installation ? Attention, si vous choisissez de forcer le script, c'est à vos risques et périls."
@@ -84,12 +89,7 @@ function check_install(){
         output=$(php ${REP_GLPI}bin/console -V 2>&1)
         sleep 2
         glpi_cli_version=$(sed -n 's/.*GLPI CLI \([^ ]*\).*/\1/p' <<< "$output")
-        warn "Le site est déjà installé. Version ""$glpi_cli_version"
-        if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            apt-get install -y curl jq
-        elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            dnf install -y curl jq
-        fi
+        warn "Le site est déjà installé. Version $glpi_cli_version"
         NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
         info "Nouvelle version trouver : GLPI version $NEW_VERSION"
         if [ "$glpi_cli_version" == "$NEW_VERSION" ]; then
@@ -124,7 +124,7 @@ function update_distro(){
         apt-get update > /dev/null 2>&1
         info "Application des mises à jour"
         apt-get upgrade -y > /dev/null 2>&1
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+    else
         info "Recherche des mises à jour"
         dnf update -y > /dev/null 2>&1
         info "Application des mises à jour"
