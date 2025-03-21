@@ -16,6 +16,7 @@ The installer analyzes the distribution's locale information to propose the defa
 |Debian|11|✅|Apache|
 |Debian|12|✅|Apache|
 |Ubuntu|23.10|✅|Apache|
+|Ubuntu|24.04|✅|Apache|
 |Ubuntu|24.10|⚠️ A tester|Apache|
 |Alma Linux|9.5|✅|Engine X (Nginx)|
 |Centos|9|✅|Engine X (Nginx)|
