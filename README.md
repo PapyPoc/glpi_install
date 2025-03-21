@@ -11,17 +11,19 @@ The installer analyzes the distribution's locale information to propose the defa
 
 ## Distribution and Web server
 
-| OS | VERSION | COMPATIBILITY | WEB SERVER |
-|:--:|:--:|:--:|:--:|
-|Debian|11|✅|Apache|
-|Debian|12|✅|Apache|
-|Ubuntu|23.10|✅|Apache|
-|Ubuntu|24.04|✅|Apache|
-|Ubuntu|24.10|⚠️ A tester|Apache|
-|Alma Linux|9.5|✅|Engine X (Nginx)|
-|Centos|9|✅|Engine X (Nginx)|
-|Rocky Linux|9.5|✅|Engine X (Nginx)|
-|Red Hat|9.5|✅|Engine X (Nginx)|
+>[!IMPORTANT]
+>
+>| OS | VERSION | COMPATIBILITY | WEB SERVER |
+>|:--:|:--:|:--:|:--:|
+>|Debian|11|✅|Apache|
+>|Debian|12|✅|Apache|
+>|Ubuntu|23.10|✅|Apache|
+>|Ubuntu|24.04|✅|Apache|
+>|Ubuntu|24.10|⚠️ A tester|Apache|
+>|Alma Linux|9.5|✅|Engine X (Nginx)|
+>|Centos|9|✅|Engine X (Nginx)|
+>|Rocky Linux|9.5|✅|Engine X (Nginx)|
+>|Red Hat|9.5|✅|Engine X (Nginx)|
 
 The script will automate the update of the system, the installation of a web server (Apache or Nginx), a MariaDB database, and PHP, as well as their dependencies. It will perform the download and installation of the latest version of GLPI from the [official repository](https://github.com/glpi-project/glpi) and finalize by configuring the database.
 
