@@ -14,6 +14,7 @@ set -euo pipefail
     return 1
 }
 
+apt-get install -y curl jq
 # === Constantes globales exportables ===
 export NEW_VERSION; NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
 export DEBIAN_VERSIONS=("11" "12")
