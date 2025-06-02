@@ -1,10 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # File language
 # lang/fr.lang
 # shellcheck disable=SC2034
 # shellcheck disable=SC2154
 #
-
+set -euo pipefail
+#
 MSG_TITRE="Installation de GLPI version \"$NEW_VERSION"
 MSG_DIALOG_INSTALL="Installation de Dialog"
 MSG_DIALOG_ERROR="Installation de Dialog échouée"

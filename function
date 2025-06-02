@@ -1,11 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # GLPI install script
-# Author: PapyPoc & Poupix
-# Version: 1.5.0
+# Author: PapyPoc
+# Version: 1.6.0
 # Function file
 #
-
+set -euo pipefail
+#
 function warn(){ # Fonction d'alerte
     echo -e '\e[31m'"$1"'\e[0m';}
 function info(){ # Fonction d'information

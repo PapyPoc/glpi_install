@@ -1,12 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # GLPI install script
-# Author: PapyPoc & Poupix
-# Version: 1.5.0
+# Author: PapyPoc
+# Version: 1.6.0
 # Main file
 # Langage pris en compte français et anglais
 #
-
+set -euo pipefail
 # Nettoyer le terminal
 clear
 source /root/glpi_install/config # Fichier de variable
