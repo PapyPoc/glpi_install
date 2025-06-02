@@ -132,7 +132,6 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
 function check_install(){ # Vérifie si GLPI est installé ou pas
     # Vérifie si le répertoire existe
     if [ -d "$1" ]; then
-        NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
 		OUTPUT=$(php "${REP_GLPI}"bin/console -V /dev/null 2>&1)
 		GLPI_CLI_VERSION=$(sed -n 's/.*GLPI CLI \([^ ]*\).*/\1/p' <<< "${OUTPUT}")
         warn "${MSG_GLPI_INSTALLED}""${GLPI_CLI_VERSION}"
