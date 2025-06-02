@@ -239,8 +239,7 @@ function mariadb_configure(){ # Configuration de la base de donnée
     sleep 5; }
 function install_glpi(){ # Téléchargement et décompression de GLPI
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
-    # Get download link for the latest release
-    DOWNLOADLINK=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.assets[0].browser_download_url')
+    # Téléchargement de GLPI
     wget -nv -O /tmp/glpi-latest.tgz "$DOWNLOADLINK"
     tar xzf /tmp/glpi-latest.tgz -C /var/www/html/
 	sleep 5; }
@@ -301,10 +300,10 @@ EOF
         echo "ServerSignature Off" >> /etc/apache2/apache2.conf
         echo "ServerTokens Prod" >> /etc/apache2/apache2.conf
         # Activation du module rewrite d'apache
-        a2enmod rewrite
+        sudo a2enmod rewrite
         # Déactivation du site par défaut et activation site glpi
-        a2dissite 000-default.conf
-        a2ensite glpi.conf
+        sudo a2dissite 000-default.conf
+        sudo a2ensite glpi.conf
         # Restart d'apache
         systemctl restart apache2
         sudo -u www-data php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --quiet --no-interaction
