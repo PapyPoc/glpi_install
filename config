@@ -7,37 +7,33 @@
 #
 set -euo pipefail
 
-# === CONSTANTES GLOBAL ===
-readonly DEBIAN_VERSIONS=("11" "12") # Constante pour les versions de Debian acceptables
-readonly UBUNTU_VERSIONS=("23.10" "24.10") # Constante pour les versions d'Ubuntu acceptables
-readonly ALMA_VERSIONS=("9.5") # Constante pour les versions d'Almalinux acceptables
-readonly CENTOS_VERSIONS=("9") # Constante pour les versions de Centos acceptables
-readonly ROCKY_VERSIONS=("9.5") # Constante pour les versions de Rocky Linux acceptables
-readonly REDHAT_VERSIONS=("9.5") # Constante pour les versions de Red Hat acceptables
+# === Ce fichier est destiné à être sourcé et non exécuté directement ===
+# Ne pas continuer si le script est exécuté directement
+[[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
+    printf "Ce fichier doit être sourcé, pas exécuté.\n" >&2
+    return 1
+}
 
-readonly REP_SCRIPT="/root/glpi_install" # Constante pour le script d'installation de GLPI
-readonly REP_BACKUP="/root/glpi_sauve/" # Constante pour le répertoire de sauvergarde avant MàJ
-readonly REP_GLPI="/var/www/html/glpi/" # Constante pour le répertoire d'installation du site Web GLPI
-
-readonly SQLROOTPWD
-SQLROOTPWD=$(openssl rand -base64 48 | cut -c1-18) # Constante pour le MdP root de MariaDB
-readonly SQLGLPIPWD
-SQLGLPIPWD=$(openssl rand -base64 48 | cut -c1-18) # Constante pour le MdP GLPI de MariaDB
-readonly ADMINGLPIPWD
-ADMINGLPIPWD=$(openssl rand -base64 48 | cut -c1-12) # Constante pour pour le MdP du compte GLPI de GLPI
-readonly POSTGLPIPWD
-POSTGLPIPWD=$(openssl rand -base64 48 | cut -c1-12) # Constante pour pour le MdP du compte POST_ONLY de GLPI
-readonly TECHGLPIPWD
-TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12) # Constante pour pour le MdP du compte TECH de GLPI
-readonly NORMGLPIPWD
-NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12) # Constante pour pour le MdP du compte NORMAL de GLPI
-
-readonly CURRENT_DATE_TIME
-CURRENT_DATE_TIME=$(date +"%d-%m-%Y_%H-%M-%S") # Constante pour la date courante
-readonly BDD_BACKUP="bdd_glpi-${CURRENT_DATE_TIME}.sql" # Constante pour le nommage du fichier DUMP de la BDD de GLPI
-readonly LANGUAGE
-LANGUAGE=$(locale | grep LANG | cut -d= -f2 | cut -d. -f1) # Constante pour la langue d'installation du système
-readonly LANG_FILE="${REP_SCRIPT}/lang/$( [[ "${LANG}" == "fr_FR.UTF-8" ]] && echo "fr" || echo "en" ).lang"
-readonly FICHIER_MSG="/root/sauve_mdp.txt"
-readonly SUCCES_FILE="succes.log"
-readonly ERROR_FILE="error.log"
+# === Constantes globales exportables ===
+export DEBIAN_VERSIONS=("11" "12")
+export UBUNTU_VERSIONS=("23.10" "24.10")
+export ALMA_VERSIONS=("9.5")
+export CENTOS_VERSIONS=("9")
+export ROCKY_VERSIONS=("9.5")
+export REDHAT_VERSIONS=("9.5")
+export REP_SCRIPT="/root/glpi_install"
+export REP_BACKUP="/root/glpi_sauve/"
+export REP_GLPI="/var/www/html/glpi/"
+export SQLROOTPWD; SQLROOTPWD=$(openssl rand -base64 48 | cut -c1-18)
+export SQLGLPIPWD; SQLGLPIPWD=$(openssl rand -base64 48 | cut -c1-18)
+export ADMINGLPIPWD; ADMINGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+export POSTGLPIPWD; POSTGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+export TECHGLPIPWD; TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+export NORMGLPIPWD; NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+export CURRENT_DATE_TIME; CURRENT_DATE_TIME=$(date +"%d-%m-%Y_%H-%M-%S")
+export BDD_BACKUP="bdd_glpi-${CURRENT_DATE_TIME}.sql"
+export LANGUAGE; LANGUAGE=$(locale | grep LANG | cut -d= -f2 | cut -d. -f1)
+export LANG_FILE="${REP_SCRIPT}/lang/$( [[ ${LANGUAGE} == "fr_FR" ]] && echo "fr" || echo "en" ).lang"
+export FICHIER_MSG="/root/sauve_mdp.txt"
+export SUCCES_FILE="succes.log"
+export ERROR_FILE="error.log"
