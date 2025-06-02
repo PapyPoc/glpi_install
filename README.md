@@ -1,4 +1,5 @@
 # Installing and updating GLPI on Debian and Red Hat
+
  ![Image](https://glpi-project.org/wp-content/uploads/2022/01/hero-img-2.png)
 
 ## About this script
@@ -6,21 +7,24 @@
 ### Latest version of GLPI : 10.0.18
 
 This script was written to quickly and automatically install the latest version of GLPI on Ubuntu, Debian, Alma Linux, Centos, Rocky Linux and Red Hat servers.
+The installer analyzes the distribution's locale information to propose the default installation language.
 
 ## Distribution and Web server
 
-| OS | VERSION | COMPATIBILITY | WEB SERVER |
-|:--:|:--:|:--:|:--:|
-|Debian|11|✅|Apache|
-|Debian|12|✅|Apache|
-|Ubuntu|23.10|✅|Apache|
-|Ubuntu|24.10|⚠️ A tester|Apache|
-|Alma Linux|9.5|✅|Engine X (Nginx)|
-|Centos|9|✅|Engine X (Nginx)|
-|Rocky Linux|9.5|✅|Engine X (Nginx)|
-|Red Hat|9.5|✅|Engine X (Nginx)|
+>[!IMPORTANT]
+>| OS | VERSION | COMPATIBILITY | WEB SERVER |
+>|:--:|:--:|:--:|:--:|
+>|Debian|11|✅|Apache|
+>|Debian|12|✅|Apache|
+>|Ubuntu|23.10|✅|Apache|
+>|Ubuntu|24.04|✅|Apache|
+>|Ubuntu|24.10|⚠️ A tester|Apache|
+>|Alma Linux|9.5|✅|Engine X (Nginx)|
+>|Centos|9|✅|Engine X (Nginx)|
+>|Rocky Linux|9.5|✅|Engine X (Nginx)|
+>|Red Hat|9.5|✅|Engine X (Nginx)|
 
-The script will update the host system and install the Web server, MariaDB, PHP and dependencies, download and install the latest version from the [GLPI Official Repository](https://github.com/glpi-project/glpi) and configure the database for you.
+The script will automate the update of the system, the installation of a web server (Apache or Nginx), a MariaDB database, and PHP, as well as their dependencies. It will perform the download and installation of the latest version of GLPI from the [official repository](https://github.com/glpi-project/glpi) and finalize by configuring the database.
 
 Once the script has run, all you need to do is connect to GLPI.
 
@@ -63,5 +67,5 @@ GLPI is installed by running the following command in your terminal.
 For the distribution Debian and Red Hat
 
 ```bash
-git clone https://github.com/Papy-Poc/glpi_install.git -b main && chmod -R +x glpi_install && ./glpi_install/glpi-install.sh
+git clone https://github.com/Papy-Poc/glpi_install.git -b main && chmod -R +x glpi_install && ./glpi_install/glpi-install
 ```

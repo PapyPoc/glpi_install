@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#
+# GLPI install script
+# Author: PapyPoc
+# Version: 1.6.0
+# Variable file
+#
+set -euo pipefail
+
+# === Ce fichier est destiné à être sourcé et non exécuté directement ===
+# Ne pas continuer si le script est exécuté directement
+[[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
+    printf "Ce fichier doit être sourcé, pas exécuté.\n" >&2
+    return 1
+}
+
+apt-get install -y curl jq &> /dev/null
+# === Constantes globales exportables ===
+export DOWNLOADLINK; DOWNLOADLINK=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.assets[0].browser_download_url')
+export NEW_VERSION; NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
+export DEBIAN_VERSIONS=("11" "12")
+export UBUNTU_VERSIONS=("23.10" "24.10")
+export ALMA_VERSIONS=("9.5")
+export CENTOS_VERSIONS=("9")
+export ROCKY_VERSIONS=("9.5")
+export REDHAT_VERSIONS=("9.5")
+export REP_SCRIPT="/root/glpi_install"
+export REP_BACKUP="/root/glpi_sauve/"
+export REP_GLPI="/var/www/html/glpi/"
+export SQLROOTPWD; SQLROOTPWD=$(openssl rand -base64 48 | cut -c1-18)
+export SQLGLPIPWD; SQLGLPIPWD=$(openssl rand -base64 48 | cut -c1-18)
+export ADMINGLPIPWD; ADMINGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+export POSTGLPIPWD; POSTGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+export TECHGLPIPWD; TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+export NORMGLPIPWD; NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+export CURRENT_DATE_TIME; CURRENT_DATE_TIME=$(date +"%d-%m-%Y_%H-%M-%S")
+export BDD_BACKUP="bdd_glpi-${CURRENT_DATE_TIME}.sql"
+export LANGUAGE; LANGUAGE=$(locale | grep LANG | cut -d= -f2 | cut -d. -f1)
+export LANG_FILE="${REP_SCRIPT}/lang/$( [[ ${LANGUAGE} == "fr_FR" ]] && echo "fr" || echo "en" ).lang"
+export FICHIER_MSG="/root/sauve_mdp.txt"
+export SUCCES_FILE="succes.log"
+export ERROR_FILE="error.log"

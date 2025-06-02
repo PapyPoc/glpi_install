@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#
+# GLPI install script
+# Author: PapyPoc
+# Version: 1.6.0
+# Main file
+# Langage pris en compte français et anglais
+#
+set -euo pipefail
+# Nettoyer le terminal
+clear
+source /root/glpi_install/config # Fichier de variable
+source /root/glpi_install/function # Fichier de fonctions
+source /etc/os-release
+load_language # Fichier de langue
+check_root # Utilisateur root
+check_dialog # Regarde si dialog est installé
+check_distro # Regarde si la distribution est conforme
+check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas
+display_result # Affiche le résultat de l'installation
+clear
