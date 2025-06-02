@@ -550,7 +550,7 @@ function update(){ # Fonction principale pour exécuter les tâches avec barre d
         ["$MSG_T13"]="update_glpi"
         ["$MSG_T14"]="maintenance 0"
     )
-    task_order=("$MSG_T1" "$MSG_T2" "$MSG_T3" "$MSG_T4" "$MSG_T5")
+    task_order=("$MSG_T10" "$MSG_T11" "$MSG_T12" "$MSG_T13" "$MSG_T14")
     total_tasks=${#task_order[@]}
     task_index=0
     (for task_key in "${task_order[@]}"; do
