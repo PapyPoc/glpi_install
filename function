@@ -181,9 +181,9 @@ function install_packages(){ # Installation des éléments nécessaire
         info "$MSG_INSTALL_SERVICE lamp..."
         apt-get install -y --no-install-recommends wget tar apache2 mariadb-server perl php
         info "$MSG_ACTIVE_START_BDD"
-        systemctl enable mariadb && systemctl restart mariadb
+        /lib/systemd/systemd-sysv-install enable mariadb && systemctl restart mariadb
         info "$MSG_ACTIVE_START_WEB d'Apache"
-        systemctl enable apache2 && systemctl restart apache2
+        /lib/systemd/systemd-sysv-install enable apache2 && systemctl restart apache2
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         sleep 1
         dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
