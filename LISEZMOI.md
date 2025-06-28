@@ -48,7 +48,7 @@ Si vous rencontrez un problème avec GLPI et/ou avez besoin de plus d'informatio
 
 [Documentation Administrateurs de GLPI](https://glpi-install.readthedocs.io/), [Documentation Utilisateurs de GLPI](https://glpi-user-documentation.readthedocs.io/)
 
-## Comment utiliser
+## Comment utiliser 
 
 GLPI s'installe en lançant la commande suivante dans votre terminal.
 
