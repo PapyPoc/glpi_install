@@ -35,7 +35,7 @@ function run_task() { # Exécuter une tâche
     info "Tâche: $index/$total - $task_key" >> "$SUCCES_FILE"
     info "$MSG_COMMAND: $task_cmd" >> "$SUCCES_FILE"
     if ! eval "$task_cmd" >> "$SUCCES_FILE" 2>> "$ERROR_FILE"; then
-        warn "$MSG_ERROT_TASK: $task_key" 2>> "$ERROR_FILE"
+        warn "$MSG_ERROR_TASK: $task_key" 2>> "$ERROR_FILE"
         return 1
     fi
     return 0; }
@@ -106,7 +106,7 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
             if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
                 info "$MSG_DISTRO_OK"
             else
-                warn "MSG_DISTRO_NONOK"
+                warn "$MSG_DISTRO_NONOK"
                 warn "$MSG_FORCE_DISTRO"
                 info "$MSG_FORCE_DISTRO_QUESTION"
                 read -r RESPONSE
@@ -119,7 +119,7 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
                         exit 1
                         ;;
                     *)
-                        warn "MSG_INVALID_ANSWER"
+                        warn "$MSG_INVALID_ANSWER"
                         exit 1
                         ;;
                 esac
@@ -132,7 +132,7 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
 function check_install(){ # Vérifie si GLPI est installé ou pas
     # Vérifie si le répertoire existe
     if [ -d "$1" ]; then
-		OUTPUT=$(php "${REP_GLPI}"bin/console -V /dev/null 2>&1)
+		OUTPUT=$(php "${REP_GLPI}"bin/console -V 2>/dev/null)
 		GLPI_CLI_VERSION=$(sed -n 's/.*GLPI CLI \([^ ]*\).*/\1/p' <<< "${OUTPUT}")
         warn "${MSG_GLPI_INSTALLED}""${GLPI_CLI_VERSION}"
         info "${MSG_GLPI_NEW_VERSION}""${NEW_VERSION}"
@@ -144,7 +144,7 @@ function check_install(){ # Vérifie si GLPI est installé ou pas
             info "$MSG_GLPI_UPGRADE"
             read -r MaJ
             case "$MaJ" in
-                "O|o|Y|y")
+                O|o|Y|y)
                     update
                     exit 0;;
                 "N"|"n")
@@ -389,7 +389,7 @@ EOF
         chmod -R 755 "${REP_GLPI}"
         systemctl restart apache2
         # Setup Cron task
-        echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
+        echo "*/2 * * * * www-data /usr/bin/php ${REP_GLPI}front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
          # Change permissions
         chown -R nginx:nginx /etc/glpi
@@ -399,7 +399,7 @@ EOF
         chown -R nginx:nginx "${REP_GLPI}"
         chmod -R 755 "${REP_GLPI}"
         systemctl restart nginx php-fpm
-        echo "*/2 * * * * nginx /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
+        echo "*/2 * * * * nginx /usr/bin/php ${REP_GLPI}front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
 	sleep 2; }
 function maj_user_glpi(){ # MàJ des mot de passe des utilisateurs de GLPI
@@ -484,16 +484,16 @@ function maintenance(){ # Activé ou déactivé le mode maintenance (1 ou 0)
     if [ "$1" == "1" ]; then
         warn "$MSG_ACTIVE_SERVICE"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable 
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable 
         fi
     elif [ "$1" == "0" ]; then
         info "$MSG_DEACTIVE_SERVICE"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable 
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable 
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable 
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable 
         fi
     fi
 	sleep 2; }
