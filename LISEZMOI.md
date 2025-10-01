@@ -1,6 +1,6 @@
 # Installation et mise à jour de GLPI sur Débian et Red Hat
 
-  ![Image](https://glpi-project.org/wp-content/uploads/2022/01/hero-img-2.png)
+  ![Image](https://www.glpi-project.org/wp-content/uploads/2024/08/Group-34.png)
 
 ## À propos de ce script
 
