@@ -14,6 +14,7 @@ set -euo pipefail
     return 1
 }
 
+apt-get update
 apt-get install -y curl jq &> /dev/null
 # === Constantes globales exportables ===
 export DOWNLOADLINK; DOWNLOADLINK=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.assets[0].browser_download_url')
