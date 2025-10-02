@@ -12,7 +12,12 @@ function warn(){ # Fonction d'alerte
 function info(){ # Fonction d'information
     echo -e '\e[36m'"$1"'\e[0m';}
 # === Ce fichier est destiné à être sourcé et non exécuté directement ===
-# Ne pas continuer si le script est exécuté directement
+# Ne pas continuer si le script est exé    rm -Rf "${REP_GLPI}"install/install.php
+    sleep 5
+    TIMEZONE=$(timedatectl | grep "Time zone" | awk '{print $3}') # Constante pour le timezone d'installation du système
+    # Change timezone and language
+    mysql -e "INSERT INTO glpi.glpi_configs (context, name, value) VALUES ('core', 'timezone', '${TIMEZONE}');"
+    mysql -e "UPDATE glpi.glpi_configs SET value = '${LANGUAGE}' WHERE name = 'language';";rectement
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
     warn "Ce fichier doit être sourcé, pas exécuté.\n" >&2
     return 1
@@ -89,7 +94,7 @@ function display_result() { # Afficher le résultat final
         MESSAGE=""
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
-        done < "$FICHIER_MSG"
+        done < "$ERROR_FILE"
         dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_NONOK" --msgbox "$MSG_NONOK\n\n$MESSAGE" 0 0
         warn "$MSG_ERROR_FICHIER_MSG"
     fi }
@@ -296,7 +301,7 @@ EOF
         # Setup vhost
          cat > /etc/apache2/sites-available/glpi.conf << EOF
 <VirtualHost *:80>
-    ServerName glpi.lan
+    ServerName ${IPADRESS}
     DocumentRoot ${REP_GLPI}public
     <Directory ${REP_GLPI}public>
         Require all granted
@@ -340,7 +345,7 @@ EOF
         cat > /etc/nginx/conf.d/glpi.conf << EOF
 server {
     listen 80;
-    server_name glpi.localhost;
+    server_name ${IPADRESS};
     root ${REP_GLPI}public;
     location / {
         try_files \$uri /index.php\$is_args\$args;
@@ -421,14 +426,17 @@ EOF
 	sleep 2; }
 function maj_user_glpi(){ # MàJ des mot de passe des utilisateurs de GLPI
     info "${MSG_CHANGE_MDP_GLPI}"
-    # Changer le mot de passe de l'admin glpi 
-    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = SHA2('${ADMINGLPIPWD}', 256) WHERE name = 'glpi';"
-    # Changer le mot de passe de l'utilisateur post-only
-    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = SHA2('${POSTGLPIPWD}', 256) WHERE name = 'post-only';"
-    # Changer le mot de passe de l'utilisateur tech
-    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = SHA2('${TECHGLPIPWD}', 256) WHERE name = 'tech';"
-    # Changer le mot de passe de l'utilisateur normal
-    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = SHA2('${NORMGLPIPWD}', 256) WHERE name = 'normal';"
+    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
+        sudo -u www-data php "${REP_GLPI}"bin/console user:password --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console user:password --username=post-only --password="${POSTGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console user:password --username=tech --password="${TECHGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console user:password --username=normal --password="${NORMGLPIPWD}" --no-interaction
+    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+        sudo -u nginx php "${REP_GLPI}"bin/console user:password --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console user:password --username=post-only --password="${POSTGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console user:password --username=tech --password="${TECHGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console user:password --username=normal --password="${NORMGLPIPWD}" --no-interaction
+    fi
 	sleep 2; }
 function write_credentials(){ # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
@@ -522,7 +530,7 @@ function backup_glpi(){ # Sauvegarde de la base de donnée et des fichiers de GL
 	fi
 	# Sauvergarde de la bdd
 	info "${MSG_MYSQL_DUMP}"
-	PASSWORD=$(sed -n 's/.*Mot de passe root: \([^ ]*\).*/\1/p' /root/sauve_mdp.txt)
+	PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' /root/sauve_mdp.txt)
 	mysqldump -u root -p"$PASSWORD" --databases glpi > "${REP_BACKUP}${BDD_BACKUP}"
 	info "${MSG_DUMP_SUCCESS}"
 	# Sauvegarde des fichiers
