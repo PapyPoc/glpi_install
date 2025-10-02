@@ -33,7 +33,15 @@ export TECHGLPIPWD; TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 export NORMGLPIPWD; NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 export CURRENT_DATE_TIME; CURRENT_DATE_TIME=$(date +"%d-%m-%Y_%H-%M-%S")
 export BDD_BACKUP="bdd_glpi-${CURRENT_DATE_TIME}.sql"
-export LANGUAGE; LANGUAGE=$(locale | grep LANG | cut -d= -f2 | cut -d. -f1)
+export LANGUAGE; LANGUAGE=$(locale | grep -E "^LANG=" | cut -d= -f2 | cut -d. -f1)
+# Fallback si LANGUAGE est vide ou non détecté
+[[ -z "${LANGUAGE}" ]] && LANGUAGE=$(echo "${LANG:-en_US}" | cut -d. -f1)
+# Simplifier à juste la langue principale
+case "${LANGUAGE}" in
+    fr_*|fr) LANGUAGE="fr_FR" ;;
+    en_*|en) LANGUAGE="en_US" ;;
+    *) LANGUAGE="en_US" ;;
+esac
 export LANG_FILE="${REP_SCRIPT}/lang/$( [[ ${LANGUAGE} == "fr_FR" ]] && echo "fr" || echo "en" ).lang"
 export FICHIER_MSG="/root/sauve_mdp.txt"
 export SUCCES_FILE="succes.log"

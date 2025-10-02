@@ -94,10 +94,15 @@ function display_result() { # Afficher le résultat final
         warn "$MSG_ERROR_FICHIER_MSG"
     fi }
 function load_language() { # Chargement du fichier de langue
+    # Debug: afficher les variables de langue
+    info "Langue détectée: ${LANGUAGE}"
+    info "Fichier de langue: ${LANG_FILE}"
+    
     if [[ -f "${LANG_FILE}" ]]; then
         source "${LANG_FILE}"
+        info "Fichier de langue chargé avec succès"
     else
-		if [ "${LANG}" == "fr_FR.UTF-8" ]; then
+		if [[ "${LANGUAGE}" == "fr_FR" ]]; then
 			warn "Fichier de langage introuvable : $LANG_FILE" 
 			exit 1
 		else
