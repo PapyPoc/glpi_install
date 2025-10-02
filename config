@@ -23,7 +23,6 @@ export ALMA_VERSIONS=("9.5")
 export CENTOS_VERSIONS=("9")
 export ROCKY_VERSIONS=("9.5")
 export REDHAT_VERSIONS=("9.5")
-export REP_SCRIPT="/root/glpi_install"
 export REP_BACKUP="/root/glpi_sauve/"
 export REP_GLPI="/var/www/html/glpi/"
 export SQLROOTPWD; SQLROOTPWD=$(openssl rand -base64 48 | cut -c1-18)
