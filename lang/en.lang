@@ -6,14 +6,14 @@
 #
 set -euo pipefail
 #
-MSG_TITRE="GLPI Installation version $NEW_VERSION"
+MSG_TITRE="GLPI Installation"
 MSG_DIALOG_INSTALL="Installation of Dialog"
 MSG_DIALOG_ERROR="Installation of Dialog failed"
 MSG_COMMAND="Command"
 MSG_ROOT_ONLY="This script must be run as root."
 MSG_ROOT="Root Privilege"
-MSG_DISTRO_OK="The version of your distribution ($ID $VERSION_ID) is compatible."
-MSG_DISTRO_NONOK="The version of your distribution ($ID $VERSION_ID) is not considered compatible."
+MSG_DISTRO_OK="Your distribution version is compatible."
+MSG_DISTRO_NONOK="Your distribution version is not officially supported."
 MSG_FORCE_DISTRO="Do you still want to force installation? Warning: if you choose to force the script, you do so at your own risk."
 MSG_FORCE_DISTRO_QUESTION="Are you sure you want to continue? [Yes/No]"
 MSG_CONTINUING="Continue..."

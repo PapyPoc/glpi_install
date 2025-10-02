@@ -60,8 +60,13 @@ else
         exit 1
     fi
 fi
-apt-get update &> /dev/null
-apt-get install -y curl jq sudo &> /dev/null
+# Installation des outils de base après vérification de la distribution
+if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
+    apt-get update &> /dev/null
+    apt-get install -y curl jq sudo &> /dev/null
+elif [[ "${DISTRO_ID}" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
+    dnf install -y curl jq sudo &> /dev/null || yum install -y curl jq sudo &> /dev/null
+fi
 check_dialog # Regarde si dialog est installé
 check_distro # Regarde si la distribution est conforme
 check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas

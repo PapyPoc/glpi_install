@@ -6,13 +6,15 @@
 #
 set -euo pipefail
 #
-MSG_TITRE="Installation de GLPI version "${NEW_VERSION}
+MSG_TITRE="Installation de GLPI"
+MSG_ROOT="Privilège Root détecté"
 MSG_DIALOG_INSTALL="Installation de Dialog"
 MSG_DIALOG_ERROR="Installation de Dialog échouée"
 MSG_COMMAND="Commande"
 MSG_ROOT_ONLY="Ce script doit être exécuté en tant que root"
 MSG_ROOT="Privilège Root"
-MSG_DISTRO_OK="La version de votre distribution ("${ID} ${VERSION_ID}") est compatible."
+MSG_DISTRO_OK="La version de votre distribution est compatible."
+MSG_DISTRO_NONOK="La version de votre distribution n'est pas officiellement supportée."
 MSG_FORCE_DISTRO="Voulez-vous toujours forcer l'installation ? Attention, si vous choisissez de forcer le script, c'est à vos risques et périls."
 MSG_FORCE_DISTRO_QUESTION="Etes-vous sûr de vouloir continuer? [Oui/Non]"
 MSG_CONTINUING="Poursuivre..."

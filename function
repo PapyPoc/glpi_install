@@ -118,7 +118,7 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
             if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
                 info "$MSG_DISTRO_OK"
             else
-                warn "MSG_DISTRO_NONOK"
+                warn "$MSG_DISTRO_NONOK"
                 warn "$MSG_FORCE_DISTRO"
                 info "$MSG_FORCE_DISTRO_QUESTION"
                 read -r RESPONSE
@@ -144,7 +144,7 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
 function check_install(){ # Vérifie si GLPI est installé ou pas
     # Vérifie si le répertoire existe
     if [ -d "$1" ]; then
-		OUTPUT=$(php "${REP_GLPI}"bin/console -V /dev/null 2>&1)
+		OUTPUT=$(php "${REP_GLPI}bin/console" -V 2>/dev/null)
 		GLPI_CLI_VERSION=$(sed -n 's/.*GLPI CLI \([^ ]*\).*/\1/p' <<< "${OUTPUT}")
         warn "${MSG_GLPI_INSTALLED}""${GLPI_CLI_VERSION}"
         info "${MSG_GLPI_NEW_VERSION}""${NEW_VERSION}"
@@ -156,10 +156,10 @@ function check_install(){ # Vérifie si GLPI est installé ou pas
             info "$MSG_GLPI_UPGRADE"
             read -r MaJ
             case "$MaJ" in
-                "O|o|Y|y")
+                O|o|Y|y)
                     update
                     exit 0;;
-                "N"|"n")
+                N|n)
                     info "$MSG_EXIT"
                     efface_script
                     exit 0;;
@@ -277,16 +277,16 @@ EOF
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         # Add permissions
         chown -R www-data:www-data  /etc/glpi
-        chmod -R 777 /etc/glpi
+        chmod -R 755 /etc/glpi
         sleep 1
         chown -R www-data:www-data  /var/log/glpi
-        chmod -R 777 /var/log/glpi
+        chmod -R 755 /var/log/glpi
         sleep 1
         chown -R www-data:www-data /var/lib/glpi/files
-        chmod -R 777 /var/lib/glpi/files
+        chmod -R 755 /var/lib/glpi/files
         sleep 1
         chown -R www-data:www-data "${REP_GLPI}"
-        chmod -R 777 "${REP_GLPI}"
+        chmod -R 755 "${REP_GLPI}"
         sleep 1
         # Setup vhost
          cat > /etc/apache2/sites-available/glpi.conf << EOF
@@ -321,16 +321,16 @@ EOF
         sudo -u www-data php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --quiet --no-interaction
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         chown -R nginx:nginx /etc/glpi
-        chmod -R 777 /etc/glpi
+        chmod -R 755 /etc/glpi
         sleep 1
         chown -R nginx:nginx /var/log/glpi
-        chmod -R 777 /var/log/glpi
+        chmod -R 755 /var/log/glpi
         sleep 1
         chown -R nginx:nginx /var/lib/glpi
-        chmod -R 777 /var/lib/glpi
+        chmod -R 755 /var/lib/glpi
         # Add permissions
         chown -R nginx:nginx "${REP_GLPI}"
-        chmod -R 777 "${REP_GLPI}"
+        chmod -R 755 "${REP_GLPI}"
         sleep 1
         cat > /etc/nginx/conf.d/glpi.conf << EOF
 server {
@@ -390,7 +390,7 @@ EOF
     sed -i '$i \   public $date_default_timezone_set = ("'"${TIMEZONE}"'");' /etc/glpi/config/config_db.php
     # Change timezone and language
     mysql -e "INSERT INTO glpi.glpi_configs (context, name, value) VALUES ('core', 'timezone', '${TIMEZONE}');"
-    mysql -e "UPDATE glpi.glpi_configs SET value = ${LANGUAGE} WHERE name = 'language';"
+    mysql -e "UPDATE glpi.glpi_configs SET value = '${LANGUAGE}' WHERE name = 'language';"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         # Change permissions
         chown -Rc www-data:www-data /etc/glpi
@@ -417,16 +417,16 @@ EOF
 function maj_user_glpi(){ # MàJ des mot de passe des utilisateurs de GLPI
     info "${MSG_CHANGE_MDP_GLPI}"
     # Changer le mot de passe de l'admin glpi 
-    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
+    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = SHA2('${ADMINGLPIPWD}', 256) WHERE name = 'glpi';"
     # Changer le mot de passe de l'utilisateur post-only
-    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';"
+    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = SHA2('${POSTGLPIPWD}', 256) WHERE name = 'post-only';"
     # Changer le mot de passe de l'utilisateur tech
-    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';"
+    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = SHA2('${TECHGLPIPWD}', 256) WHERE name = 'tech';"
     # Changer le mot de passe de l'utilisateur normal
-    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
+    mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = SHA2('${NORMGLPIPWD}', 256) WHERE name = 'normal';"
 	sleep 2; }
 function write_credentials(){ # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
-    if [ "${LANG}" == "fr_FR.UTF-8" ]; then
+    if [[ "${LANGUAGE}" == "fr_FR" ]]; then
 		cat <<EOF > "$FICHIER_MSG"
 <==========================> Détails de l'installation de GLPI <=================================>
 GLPI Version: ${NEW_VERSION}
@@ -496,16 +496,16 @@ function maintenance(){ # Activé ou déactivé le mode maintenance (1 ou 0)
     if [ "$1" == "1" ]; then
         warn "$MSG_ACTIVE_SERVICE"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable 
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable 
         fi
     elif [ "$1" == "0" ]; then
         info "$MSG_DEACTIVE_SERVICE"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable 
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable 
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable 
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable 
         fi
     fi
 	sleep 2; }
@@ -541,14 +541,14 @@ EOF
 	info "$MSG_UPDATE_GLPI_DATABASE"
 	if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
 		chown -R www-data:www-data "${REP_GLPI}"
-		sudo www-data php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
+		sudo -u www-data php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
 	elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
 		chown -R nginx:nginx "${REP_GLPI}"
 		semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
 		semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
 		restorecon -Rv "${REP_GLPI}"
 		restorecon -Rv "${REP_GLPI}"marketplace
-		sudo nginx php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
+		sudo -u nginx php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
 	fi
 	info "$MSG_UPDATE_CLEAN"
 	rm -Rf "${REP_GLPI}"install/install.php
