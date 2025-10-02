@@ -41,8 +41,8 @@ case "${DISTRO_ID}" in # Choix du groupe admin
     centos|rhel|rocky|almalinux|fedora)
         ADMIN_GROUP="wheel";;
     *)
-        ADMIN_GROUP="sudo";;
-        info "Distribution $DISTRO_ID non reconnue, utilisation de '$ADMIN_GROUP' par défaut."
+        ADMIN_GROUP="sudo"
+        info "Distribution $DISTRO_ID non reconnue, utilisation de '$ADMIN_GROUP' par défaut.";;
 esac
 # Vérification de l'appartenance
 if id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
