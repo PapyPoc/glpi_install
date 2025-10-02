@@ -16,7 +16,6 @@ source "$REP_SCRIPT/config" # Fichier de variable
 source "$REP_SCRIPT/function" # Fichier de fonctions
 load_language # Fichier de langue
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
-
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info ${MSG_ROOT}
 else
@@ -65,7 +64,7 @@ if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
     apt-get update &> /dev/null
     apt-get install -y curl jq sudo &> /dev/null
 elif [[ "${DISTRO_ID}" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
-    dnf install -y curl jq sudo &> /dev/null || yum install -y curl jq sudo &> /dev/null
+    dnf install -y curl jq wheel &> /dev/null || yum install -y curl jq wheel &> /dev/null
 fi
 check_dialog # Regarde si dialog est installé
 check_distro # Regarde si la distribution est conforme
