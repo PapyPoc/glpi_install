@@ -2,7 +2,7 @@
 #
 # GLPI install script
 # Author: PapyPoc
-# Version: 1.6.0
+# Version: 1.7.0
 # Function file
 #
 set -euo pipefail
