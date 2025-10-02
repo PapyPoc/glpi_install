@@ -194,7 +194,7 @@ function install_packages(){ # Installation des éléments nécessaire
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
         info "$MSG_INSTALL_EXT_PHP"
-        apt-get install -y --no-install-recommends php-{mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}
+        apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}
         info "$MSG_INSTALL_SERVICE lamp..."
         apt-get install -y --no-install-recommends wget tar apache2 apache2-bin mariadb-server perl php
         info "$MSG_ACTIVE_START_BDD"
@@ -269,7 +269,7 @@ function setup_glpi(){ # Mise en place des réglage pour GLPI
     cat > /etc/glpi/config/local_define.php << EOF
 <?php
     define('GLPI_VAR_DIR', '/var/lib/glpi/files');
-    define('GLPI_LOG_DIR', '/var/log/glpi/config');
+    define('GLPI_LOG_DIR', '/var/log/glpi');
 EOF
     sleep 1
     cat > "${REP_GLPI}"inc/downstream.php << EOF
