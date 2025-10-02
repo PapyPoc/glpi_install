@@ -11,22 +11,34 @@ function warn(){ # Fonction d'alerte
     echo -e '\e[31m'"$1"'\e[0m';}
 function info(){ # Fonction d'information
     echo -e '\e[36m'"$1"'\e[0m';}
-function check_root(){ # Vérification des privilèges root
-    if [[ "$(id -u)" -ne 0 ]]; then
-		warn "$MSG_ROOT_ONLY" >&2
-		exit 0
-    else
-		info "$MSG_ROOT: OK"
-		sleep 2
-    fi }
+# === Ce fichier est destiné à être sourcé et non exécuté directement ===
+# Ne pas continuer si le script est exécuté directement
+[[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
+    warn "Ce fichier doit être sourcé, pas exécuté.\n" >&2
+    return 1
+}
 function check_dialog() { # Vérifier et installer 'dialog'
-    if ! command -v dialog &> /dev/null; then
+    if ! command -v dialog &>/dev/null; then
         info "$MSG_DIALOG_INSTALL"
-        if ! apt install -y dialog &> /dev/null; then
-            warn "$MSG_DIALOG_ERROR"
+
+        if [ -f /etc/debian_version ]; then
+            # Debian / Ubuntu
+            if ! apt-get install -y -qq dialog &>/dev/null; then
+                warn "$MSG_DIALOG_ERROR"
+                exit 1
+            fi
+        elif [ -f /etc/redhat-release ]; then
+            # RedHat / CentOS / Rocky / AlmaLinux / Fedora
+            if ! yum install -y -q dialog &>/dev/null && ! dnf install -y -q dialog &>/dev/null; then
+                warn "$MSG_DIALOG_ERROR"
+                exit 1
+            fi
+        else
+            warn "⚠️ Distribution non reconnue, impossible d’installer 'dialog'."
             exit 1
         fi
-    fi }
+    fi
+}
 function run_task() { # Exécuter une tâche
     local task_key="$1"
     local task_cmd="$2"
@@ -197,7 +209,7 @@ function install_packages(){ # Installation des éléments nécessaire
         sed -i 's/^\(;\?\)\(reboot =\).*/\2 when-needed/' /etc/dnf/automatic.conf
         sed -i 's/^\(;\?\)\(upgrade_type =\).*/\2 security/' /etc/dnf/automatic.conf
         mkdir /etc/systemd/system/dnf-automatic.timer.d
-        cat > /etc/systemd/system/dnf-automatic.timer.d/override.conf << EOF
+        tee /etc/systemd/system/dnf-automatic.timer.d/override.conf > /dev/null << 'EOF'
 [Unit]
 Description=dnf-automatic timer
 ConditionPathExists=!/run/ostree-booted

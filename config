@@ -10,12 +10,10 @@ set -euo pipefail
 # === Ce fichier est destiné à être sourcé et non exécuté directement ===
 # Ne pas continuer si le script est exécuté directement
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
-    printf "Ce fichier doit être sourcé, pas exécuté.\n" >&2
+    echo -e "Ce fichier doit être sourcé, pas exécuté.\n"
+    echo -e "This file must be sourced, not executed.\n" >&2
     return 1
 }
-
-apt-get update
-apt-get install -y curl jq &> /dev/null
 # === Constantes globales exportables ===
 export DOWNLOADLINK; DOWNLOADLINK=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.assets[0].browser_download_url')
 export NEW_VERSION; NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI

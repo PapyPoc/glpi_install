@@ -6,14 +6,62 @@
 # Main file
 # Langage pris en compte français et anglais
 #
-set -euo pipefail
+# set -euo pipefail
 # Nettoyer le terminal
 clear
-source /root/glpi_install/config # Fichier de variable
-source /root/glpi_install/function # Fichier de fonctions
-source /etc/os-release
+# Charger les fichiers de configuration et de fonctions
+    # Définir le répertoire du script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/config" # Fichier de variable
+source "$SCRIPT_DIR/function" # Fichier de fonctions
 load_language # Fichier de langue
-check_root # Utilisateur root
+ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
+
+if [ "$EUID" -eq 0 ]; then # Vérifie si root
+    info ${MSG_ROOT}
+else
+    if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
+        info "Relance du script via sudo pour l'utilisateur : ${ORIG_USER}"
+        exec sudo -- "$0" "$@"
+    else
+        warn "L'utilisateur '${ORIG_USER}' n'appartient pas au groupe 'sudo' et le script n'est pas exécuté en root."
+        exit 1
+    fi
+fi
+if [ -f /etc/os-release ]; then # Détection de la distribution
+    source /etc/os-release
+    DISTRO_ID=${ID}
+else
+    warn "Impossible de détecter la distribution (pas de /etc/os-release)"
+    exit 1
+fi
+case "${DISTRO_ID}" in # Choix du groupe admin
+    debian|ubuntu)
+        ADMIN_GROUP="sudo";;
+    centos|rhel|rocky|almalinux|fedora)
+        ADMIN_GROUP="wheel";;
+    *)
+        ADMIN_GROUP="sudo";;
+        info "Distribution ${DISTRO_ID} non reconnue, utilisation de '${ADMIN_GROUP}' par défaut."
+esac
+# Vérification de l'appartenance
+if id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
+    info "L'utilisateur ${ORIG_USER} est déjà dans le groupe ${ADMIN_GROUP}."
+else
+    info "Ajout de ${ORIG_USER} dans le groupe ${ADMIN_GROUP}..."
+    usermod -aG "${ADMIN_GROUP}" "${ORIG_USER}"
+    if [ $? -eq 0 ]; then
+        info "${ORIG_USER} ajouté avec succès au groupe ${ADMIN_GROUP}."
+        info "Déconnexion forcée dans 10 secondes..."
+        sleep 10
+        logout 2>/dev/null || kill -HUP $PPID || exit 0 # Forcer sortie immédiate
+    else
+        warn "Échec lors de l'ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}."
+        exit 1
+    fi
+fi
+apt-get update &> /dev/null
+apt-get install -y curl jq sudo &> /dev/null
 check_dialog # Regarde si dialog est installé
 check_distro # Regarde si la distribution est conforme
 check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas
