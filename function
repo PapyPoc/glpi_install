@@ -201,7 +201,7 @@ function install_packages(){ # Installation des éléments nécessaire
         info "$MSG_INSTALL_EXT_PHP"
         apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}
         info "$MSG_INSTALL_SERVICE lamp..."
-        apt-get install -y --no-install-recommends wget tar apache2 apache2-bin mariadb-server perl php
+        apt-get install -y --no-install-recommends wget tar apache2 apache2-bin mariadb-server mariadb-client perl php
         info "$MSG_ACTIVE_START_BDD"
         /lib/systemd/systemd-sysv-install enable mariadb && systemctl restart mariadb
         info "$MSG_ACTIVE_START_WEB d'Apache"
