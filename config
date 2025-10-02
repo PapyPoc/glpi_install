@@ -46,3 +46,7 @@ export LANG_FILE="${REP_SCRIPT}/lang/$( [[ ${LANGUAGE} == "fr_FR" ]] && echo "fr
 export FICHIER_MSG="/root/sauve_mdp.txt"
 export SUCCES_FILE="succes.log"
 export ERROR_FILE="error.log"
+# Détecter la commande MySQL/MariaDB
+MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
+MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
+export MYSQL_CMD MYSQLDUMP_CMD
