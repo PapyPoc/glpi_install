@@ -30,6 +30,7 @@ fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
     source /etc/os-release
     DISTRO_ID=${ID}
+    echo "Distribution détectée : $DISTRO_ID $VERSION_ID"
 else
     warn "Impossible de détecter la distribution (pas de /etc/os-release)"
     exit 1
