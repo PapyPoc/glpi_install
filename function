@@ -242,15 +242,19 @@ function mariadb_configure(){ # Configuration de la base de donnée
     sleep 1
     (echo ""; echo "y"; echo "y"; echo "$SQLROOTPWD"; echo "$SQLROOTPWD"; echo "y"; echo "y"; echo "y"; echo "y") | mysql_secure_installation
     sleep 1
-    mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';"
-    mysql -e "CREATE DATABASE glpi;" # Create a new database
-    mysql -e "CREATE USER 'glpi_user'@'localhost' IDENTIFIED BY '$SQLGLPIPWD';" # Create a new user
-    mysql -e "GRANT ALL PRIVILEGES ON glpi.* TO 'glpi_user'@'localhost';" # Grant privileges to the new user for the new database
-    mysql -e "FLUSH PRIVILEGES;" # Reload privileges
-    mysql -e "GRANT SELECT ON mysql.time_zone_name TO 'glpi_user'@'localhost'" # Donne accés à la base mysl.time_zone_name à l'utilisateur glpi_user
+    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';"
+    $MYSQL_CMD -e "CREATE DATABASE glpi;" # Create a new database
+    $MYSQL_CMD -e "CREATE USER 'glpi_user'@'localhost' IDENTIFIED BY '$SQLGLPIPWD';" # Create a new user
+    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON glpi.* TO 'glpi_user'@'localhost';" # Grant privileges to the new user for the new database
+    $MYSQL_CMD -e "FLUSH PRIVILEGES;" # Reload privileges
+    $MYSQL_CMD -e "GRANT SELECT ON mysql.time_zone_name TO 'glpi_user'@'localhost'" # Donne accés à la base mysl.time_zone_name à l'utilisateur glpi_user
     # Initialize time zones datas
     info "$MSG_TIMEZONE_CONFIG"
-    mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root -p"$SQLROOTPWD" mysql
+    mysql_tzinfo_to_sql /usr/share/zoneinfo | $MYSQL_CMD -u root -p"$SQLROOTPWD" mysql
+    TIMEZONE=$(timedatectl | grep "Time zone" | awk '{print $3}') # Constante pour le timezone d'installation du système
+    # Change timezone and language
+    $MYSQL_CMD -e "UPDATE glpi.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
+    $MYSQL_CMD -e "UPDATE glpi.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';";
     # Restart MariaDB
     systemctl restart mariadb
     sleep 5; }
@@ -422,15 +426,15 @@ EOF
 function maj_user_glpi(){ # MàJ des mot de passe des utilisateurs de GLPI
     info "${MSG_CHANGE_MDP_GLPI}"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        sudo -u www-data php "${REP_GLPI}"bin/console user:password --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
-        sudo -u www-data php "${REP_GLPI}"bin/console user:password --username=post-only --password="${POSTGLPIPWD}" --no-interaction
-        sudo -u www-data php "${REP_GLPI}"bin/console user:password --username=tech --password="${TECHGLPIPWD}" --no-interaction
-        sudo -u www-data php "${REP_GLPI}"bin/console user:password --username=normal --password="${NORMGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console user:reset_password --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console user:reset_password --username=post-only --password="${POSTGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console user:reset_password --username=tech --password="${TECHGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console user:reset_password --username=normal --password="${NORMGLPIPWD}" --no-interaction
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        sudo -u nginx php "${REP_GLPI}"bin/console user:password --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
-        sudo -u nginx php "${REP_GLPI}"bin/console user:password --username=post-only --password="${POSTGLPIPWD}" --no-interaction
-        sudo -u nginx php "${REP_GLPI}"bin/console user:password --username=tech --password="${TECHGLPIPWD}" --no-interaction
-        sudo -u nginx php "${REP_GLPI}"bin/console user:password --username=normal --password="${NORMGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console user:reset_password --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console user:reset_password --username=post-only --password="${POSTGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console user:reset_password --username=tech --password="${TECHGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console user:reset_password --username=normal --password="${NORMGLPIPWD}" --no-interaction
     fi
 	sleep 2; }
 function write_credentials(){ # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
@@ -525,8 +529,8 @@ function backup_glpi(){ # Sauvegarde de la base de donnée et des fichiers de GL
 	fi
 	# Sauvergarde de la bdd
 	info "${MSG_MYSQL_DUMP}"
-	PASSWORD=$(sed -n 's/.*Mot de passe root: \([^ ]*\).*/\1/p' /root/sauve_mdp.txt)
-	mysqldump -u root -p"$PASSWORD" --databases glpi > "${REP_BACKUP}${BDD_BACKUP}"
+	PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' /root/sauve_mdp.txt)
+	$MYSQLDUMP_CMD -u root -p"$PASSWORD" --databases glpi > "${REP_BACKUP}${BDD_BACKUP}"
 	info "${MSG_DUMP_SUCCESS}"
 	# Sauvegarde des fichiers
 	info "${MSG_SITE_COPY}"
