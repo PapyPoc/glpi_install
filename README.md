@@ -69,9 +69,11 @@ For the distribution Debian and Red Hat
 ```bash
 #!/usr/bin/env bash
 if [ -d glpi_install ]; then 
-    cd glpi_install && git pull origin dev; && cd ..;
+    cd glpi_install && git pull origin dev
+    cd ..
 else 
-    git clone https://github.com/Papy-Poc/glpi_install.git -b dev;
+    git clone https://github.com/Papy-Poc/glpi_install.git -b dev
 fi
-&& chmod -R +x ~/glpi_install && ~/glpi_install/glpi-install
+chmod -R +x ~/glpi_install
+~/glpi_install/glpi-install
 ```
