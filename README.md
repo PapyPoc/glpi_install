@@ -67,5 +67,5 @@ GLPI is installed by running the following command in your terminal.
 For the distribution Debian and Red Hat
 
 ```bash
-git clone https://github.com/Papy-Poc/glpi_install.git -b dev && chmod -R +x glpi_install && ./glpi_install/glpi-install
+if [ -d glpi_install ]; then cd glpi_install && git pull origin dev; else git clone https://github.com/Papy-Poc/glpi_install.git -b dev; fi && chmod -R +x glpi_install && ./glpi_install/glpi-install
 ```
