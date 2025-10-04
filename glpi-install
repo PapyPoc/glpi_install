@@ -2,7 +2,7 @@
 #
 # GLPI install script
 # Author: PapyPoc
-# Version: 1.7.0
+# Version: 1.8.0
 # Main file
 # Langage pris en compte français et anglais
 #
@@ -13,7 +13,6 @@ clear
     # Définir le répertoire du script
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$REP_SCRIPT/config" # Fichier de variable
-source "$REP_SCRIPT/function" # Fichier de fonctions
 load_language # Fichier de langue
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 if [ "$EUID" -eq 0 ]; then # Vérifie si root

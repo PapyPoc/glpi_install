@@ -6,11 +6,12 @@
 # Function file
 #
 set -euo pipefail
-# === Ce fichier est destiné à être sourcé et non exécuté directement ===
-[[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
-    warn "${MSG_FUNCTION_SOURCE:-This file must be sourced, not executed.}" >&2
-    return 1
-}
+# Ne pas continuer si le script est exécuté directement
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo -e "Ce fichier doit être sourcé, pas exécuté.\n" >&2
+    echo -e "This file must be sourced, not executed.\n" >&2
+    exit 1
+fi
 # Export a whitelist of variables used in language placeholders so envsubst can replace them
 export_display_env() {
     # Export a comprehensive set of variables (upper and lower case) that may be
@@ -37,6 +38,75 @@ export_display_env() {
         _val="${!v:-}"
         export "$v"="$_val"
     done
+}
+
+# Ensure required commands are present; install if missing.
+# Sets NEED_RESTART=1 if installation occurred.
+ensure_dependencies() {
+    NEED_RESTART=0
+    local missing=()
+    for cmd in curl jq openssl; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            missing+=("$cmd")
+        fi
+    done
+    if [ ${#missing[@]} -eq 0 ]; then
+        return 0
+    fi
+
+    echo "Missing dependencies: ${missing[*]}. Attempting to install..." >&2
+
+    # detect package manager and package names mapping
+    local pkgmgr install_cmd pkgs
+    pkgs="${missing[*]}"
+    if command -v apt-get >/dev/null 2>&1; then
+        pkgmgr=apt-get
+        install_cmd="apt-get update -qq && apt-get install -y -qq ${pkgs}"
+    elif command -v dnf >/dev/null 2>&1; then
+        pkgmgr=dnf
+        install_cmd="dnf install -y -q ${pkgs}"
+    elif command -v yum >/dev/null 2>&1; then
+        pkgmgr=yum
+        install_cmd="yum install -y -q ${pkgs}"
+    elif command -v apk >/dev/null 2>&1; then
+        pkgmgr=apk
+        install_cmd="apk add --no-cache ${pkgs}"
+    elif command -v pacman >/dev/null 2>&1; then
+        pkgmgr=pacman
+        install_cmd="pacman -Syu --noconfirm ${pkgs}"
+    elif command -v zypper >/dev/null 2>&1; then
+        pkgmgr=zypper
+        install_cmd="zypper install -y ${pkgs}"
+    else
+        echo "No supported package manager found to install: ${pkgs}" >&2
+        return 1
+    fi
+
+    # use sudo if needed
+    if [ "${EUID:-0}" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
+        install_cmd="sudo sh -c '${install_cmd}'"
+    fi
+
+    echo "Installing via ${pkgmgr}: ${pkgs}" >&2
+    if ! sh -c "$install_cmd"; then
+        echo "Failed to install dependencies: ${pkgs}" >&2
+        return 1
+    fi
+
+    # verify
+    local still_missing=()
+    for cmd in curl jq openssl; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            still_missing+=("$cmd")
+        fi
+    done
+    if [ ${#still_missing[@]} -gt 0 ]; then
+        echo "Commands still missing after install: ${still_missing[*]}" >&2
+        return 1
+    fi
+
+    NEED_RESTART=1
+    return 0
 }
 
 function warn(){ # Fonction d'alerte

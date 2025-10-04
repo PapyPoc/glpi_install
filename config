@@ -2,39 +2,51 @@
 #
 # GLPI install script
 # Author: PapyPoc
-# Version: 1.7.0
+# Version 1.8.0
 # Variable file
 #
 set -euo pipefail
-
-# === Ce fichier est destiné à être sourcé et non exécuté directement ===
 # Ne pas continuer si le script est exécuté directement
-[[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
-    echo -e "Ce fichier doit être sourcé, pas exécuté.\n"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo -e "Ce fichier doit être sourcé, pas exécuté.\n" >&2
     echo -e "This file must be sourced, not executed.\n" >&2
-    return 1
-}
+    exit 1
+fi
 # === Constantes globales exportables ===
-# Vérifier la disponibilité des commandes nécessaires
-if ! command -v curl &> /dev/null; then
-    echo "Erreur: curl n'est pas installé" >&2
-    return 1
+# Ensure required commands are present by delegating to ensure_dependencies()
+# Source function (where ensure_dependencies is defined) relative to this file
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "${script_dir}/function" ]; then
+    # shellcheck disable=SC1091
+    source "${script_dir}"/function
 fi
-if ! command -v jq &> /dev/null; then
-    echo "Erreur: jq n'est pas installé" >&2
-    return 1
+# Try to ensure dependencies (curl, jq, openssl) are available
+if declare -F ensure_dependencies >/dev/null 2>&1; then
+    ensure_dependencies || { echo "Failed to ensure dependencies" >&2; return 1; }
+    if [ "${NEED_RESTART:-0}" -eq 1 ]; then
+        # Restart top-level script that sourced this file
+        idx=$(( ${#BASH_SOURCE[@]} - 1 ))
+        top_script="${BASH_SOURCE[$idx]}"
+        if [ -n "$top_script" ] && [ "$top_script" != "$(basename "$SHELL")" ]; then
+            echo "Dependencies installed. Restarting $top_script..." >&2
+            if [ -x "$top_script" ]; then
+                exec "$top_script"
+            else
+                exec "$SHELL" -lc "bash '$(printf '%q' "$top_script")'"
+            fi
+        else
+            echo "Dependencies installed. Please re-run your installer." >&2
+            return 0
+        fi
+    fi
+else
+    echo "Warning: ensure_dependencies not available; skipping automatic install check." >&2
 fi
-if ! command -v openssl &> /dev/null; then
-    echo "Erreur: openssl n'est pas installé" >&2
-    return 1
-fi
-
 export DOWNLOADLINK; DOWNLOADLINK=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.assets[0].browser_download_url')
 if [ -z "$DOWNLOADLINK" ] || [ "$DOWNLOADLINK" = "null" ]; then
     echo "Erreur: Impossible de récupérer le lien de téléchargement GLPI" >&2
     return 1
 fi
-
 export NEW_VERSION; NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name')
 if [ -z "$NEW_VERSION" ] || [ "$NEW_VERSION" = "null" ]; then
     echo "Erreur: Impossible de récupérer la version GLPI" >&2
