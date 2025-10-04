@@ -120,6 +120,8 @@ function load_language() { # Chargement du fichier de langue (parse .ini safely)
     fi
 
     if [[ -f "$LANG_FILE" ]]; then
+        info "$MSG_LANGUAGE_DETECTED" >> "$SUCCES_FILE"
+        info "$MSG_LANG_FILE" >> "$SUCCES_FILE"
         # Read file line by line, handle CRLF, comments, sections and quoted values
     while IFS= read -r line || [ -n "$line" ]; do
             # strip CR if present (Windows-format files)
@@ -131,7 +133,7 @@ function load_language() { # Chargement du fichier de langue (parse .ini safely)
                 continue
             fi
             case "$trimmed" in
-                \#* | \;*)
+                "#"* | ";"*)
                     continue
                     ;;
             esac
