@@ -493,25 +493,14 @@ EOF
 	sleep 2; }
 function maj_user_glpi(){ # MàJ des mot de passe des utilisateurs de GLPI
     info "${MSG_CHANGE_MDP_GLPI}"
-    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        # Changer le mot de passe de l'admin glpi 
-        mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
-        # Changer le mot de passe de l'utilisateur post-only
-        mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';"
-        # Changer le mot de passe de l'utilisateur tech
-        mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';"
-        # Changer le mot de passe de l'utilisateur normal
-        mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        # Changer le mot de passe de l'admin glpi 
-        mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
-        # Changer le mot de passe de l'utilisateur post-only
-        mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';"
-        # Changer le mot de passe de l'utilisateur tech
-        mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';"
-        # Changer le mot de passe de l'utilisateur normal
-        mysql -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
-    fi
+    # Changer le mot de passe de l'admin glpi
+    $MYSQL_CMD -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
+    # Changer le mot de passe de l'utilisateur post-only
+    $MYSQL_CMD -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';"
+    # Changer le mot de passe de l'utilisateur tech
+    $MYSQL_CMD -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';"
+    # Changer le mot de passe de l'utilisateur normal
+    $MYSQL_CMD -u glpi_user -p"${SQLGLPIPWD}" -e "USE glpi; UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
 	sleep 2; }
 function write_credentials(){ # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
