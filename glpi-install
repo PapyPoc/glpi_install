@@ -68,6 +68,10 @@ if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
         warn "Échec de l'installation des outils de base"
         exit 1
     fi
+    if ! apt autoremove &> /dev/null; then
+        warn "Échec de l'exécution de 'apt autoremove'"
+        exit 1
+    fi
 elif [[ "${DISTRO_ID}" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
     if ! dnf install -y curl jq wheel &> /dev/null && ! yum install -y curl jq wheel &> /dev/null; then
         warn "Échec de l'installation des outils de base"
