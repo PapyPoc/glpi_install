@@ -311,9 +311,9 @@ function mariadb_configure(){ # Configuration de la base de donnée
     mysql_tzinfo_to_sql /usr/share/zoneinfo | $MYSQL_CMD -u root -p"$SQLROOTPWD" mysql
     TIMEZONE=$(timedatectl | grep "Time zone" | awk '{print $3}') # Constante pour le timezone d'installation du système
     # Change timezone and language
-    $MYSQL_CMD -e "UPDATE glpi.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
-    $MYSQL_CMD -e "UPDATE glpi.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';";
-    $MYSQL_CMD -e "UPDATE glpi.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';";
+    $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "UPDATE glpi.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
+    $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "UPDATE glpi.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';";
+    $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "UPDATE glpi.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';";
     # Restart MariaDB
     systemctl restart mariadb
     sleep 5; }
@@ -345,16 +345,20 @@ EOF
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         # Add permissions
         chown -R www-data:www-data  /etc/glpi
-        chmod -R 755 /etc/glpi
+        find /etc/glpi -type f -exec chmod 644 {} \;
+        find /etc/glpi -type d -exec chmod 755 {} \;
         sleep 1
         chown -R www-data:www-data  /var/log/glpi
-        chmod -R 755 /var/log/glpi
+        find /var/log/glpi -type f -exec chmod 644 {} \;
+        find /var/log/glpi -type d -exec chmod 755 {} \;
         sleep 1
         chown -R www-data:www-data /var/lib/glpi/files
-        chmod -R 755 /var/lib/glpi/files
+        find /var/lib/glpi/files -type f -exec chmod 644 {} \;
+        find /var/lib/glpi/files -type d -exec chmod 755 {} \;
         sleep 1
         chown -R www-data:www-data "${REP_GLPI}"
-        chmod -R 755 "${REP_GLPI}"
+        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
         sleep 1
         # Setup vhost
          cat > /etc/apache2/sites-available/glpi.conf << EOF
@@ -389,16 +393,20 @@ EOF
         sudo -u www-data php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         chown -R nginx:nginx /etc/glpi
-        chmod -R 755 /etc/glpi
+        find /etc/glpi -type f -exec chmod 644 {} \;
+        find /etc/glpi -type d -exec chmod 755 {} \;
         sleep 1
         chown -R nginx:nginx /var/log/glpi
-        chmod -R 755 /var/log/glpi
+        find /var/log/glpi -type f -exec chmod 644 {} \;
+        find /var/log/glpi -type d -exec chmod 755 {} \;
         sleep 1
         chown -R nginx:nginx /var/lib/glpi
-        chmod -R 755 /var/lib/glpi
+        find /var/lib/glpi -type f -exec chmod 644 {} \;
+        find /var/lib/glpi -type d -exec chmod 755 {} \;
         # Add permissions
         chown -R nginx:nginx "${REP_GLPI}"
-        chmod -R 755 "${REP_GLPI}"
+        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
         sleep 1
         cat > /etc/nginx/conf.d/glpi.conf << EOF
 server {
@@ -453,31 +461,31 @@ EOF
     fi
     sleep 5
     rm -Rf "${REP_GLPI}"install/install.php
-    sleep 5
-    TIMEZONE=$(timedatectl | grep "Time zone" | awk '{print $3}') # Constante pour le timezone d'installation du système
-    sed -i '$i \   public $date_default_timezone_set = ("'"${TIMEZONE}"'");' /etc/glpi/config/config_db.php
-    # Change timezone and language
-    mysql -e "INSERT INTO glpi.glpi_configs (context, name, value) VALUES ('core', 'timezone', '${TIMEZONE}');"
-    mysql -e "UPDATE glpi.glpi_configs SET value = '${LANGUAGE}' WHERE name = 'language';"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         # Change permissions
         chown -Rc www-data:www-data /etc/glpi
-        chmod -R 755 /etc/glpi
+        find /etc/glpi -type f -exec chmod 644 {} \;
+        find /etc/glpi -type d -exec chmod 755 {} \;
         chown -Rc www-data:www-data /var/log/glpi
-        chmod -R 755 /var/log/glpi
+        find /var/log/glpi -type f -exec chmod 644 {} \;
+        find /var/log/glpi -type d -exec chmod 755 {} \;
         chown -Rc www-data:www-data "${REP_GLPI}"
-        chmod -R 755 "${REP_GLPI}"
+        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
         systemctl restart apache2
         # Setup Cron task
         echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
          # Change permissions
         chown -R nginx:nginx /etc/glpi
-        chmod -R 755 /etc/glpi
+        find /etc/glpi -type f -exec chmod 644 {} \;
+        find /etc/glpi -type d -exec chmod 755 {} \;
         chown -R nginx:nginx /var/log/glpi
-        chmod -R 755 /var/log/glpi
+        find /var/log/glpi -type f -exec chmod 644 {} \;
+        find /var/log/glpi -type d -exec chmod 755 {} \;
         chown -R nginx:nginx "${REP_GLPI}"
-        chmod -R 755 "${REP_GLPI}"
+        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
         systemctl restart nginx php-fpm
         echo "*/2 * * * * nginx /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
