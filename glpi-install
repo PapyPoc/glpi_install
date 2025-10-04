@@ -12,10 +12,10 @@ clear
 # Charger les fichiers de configuration et de fonctions
     # Définir le répertoire du script
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+load_language # Fichier de langue
 source "$REP_SCRIPT/config" # Fichier de variable
 source "$REP_SCRIPT/function" # Fichier de fonctions
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
-load_language # Fichier de langue
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"
 else
