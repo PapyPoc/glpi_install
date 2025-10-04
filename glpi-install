@@ -32,7 +32,7 @@ if [ -f /etc/os-release ]; then # Détection de la distribution
     DISTRO_ID=${ID}
     info "Distribution détectée : $DISTRO_ID $VERSION_ID"
 else
-    warn "Impossible de détecter la distribution (pas de /etc/os-release)"
+    warn "$MSG_DISTRO_NONOK"
     exit 1
 fi
 case "${DISTRO_ID}" in # Choix du groupe admin
@@ -45,9 +45,7 @@ case "${DISTRO_ID}" in # Choix du groupe admin
         info "Distribution $DISTRO_ID non reconnue, utilisation de '$ADMIN_GROUP' par défaut.";;
 esac
 # Vérification de l'appartenance
-if id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
-    info "L'utilisateur ${ORIG_USER} est déjà dans le groupe ${ADMIN_GROUP}."
-else
+if ! id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
     info "Ajout de ${ORIG_USER} dans le groupe ${ADMIN_GROUP}..."
     usermod -aG "${ADMIN_GROUP}" "${ORIG_USER}"
     if [ $? -eq 0 ]; then
