@@ -141,6 +141,8 @@ function load_language() { # Chargement du fichier de langue (parse .ini safely)
         LANGUAGE="en_US"
     fi
     if [[ -f $LANG_FILE ]]; then
+        # Ensure environment variables used in messages are exported for envsubst
+        export_display_env
         # Read file line by line, handle CRLF, comments, sections and quoted values
         while IFS= read -r line || [ -n "$line" ]; do
             # strip CR if present (Windows-format files)
@@ -170,8 +172,17 @@ function load_language() { # Chargement du fichier de langue (parse .ini safely)
                 elif [[ $value =~ ^\"(.*)\"$ ]]; then
                     value="${BASH_REMATCH[1]}"
                 fi
-                # assign safely to a variable named by $key (no expansion of value)
-                printf -v "$key" '%s' "$value"
+                # Expand placeholders inside the value using envsubst (preferred) or eval fallback
+                local expanded_value
+                if command -v envsubst >/dev/null 2>&1; then
+                    # envsubst reads from the environment, so ensure variables are exported
+                    expanded_value=$( ( set +u; printf '%s' "$value" | envsubst ) )
+                else
+                    # fallback: perform parameter expansion safely (allow unset vars)
+                    expanded_value=$( ( set +u; eval "printf '%s' \"$value\"" ) )
+                fi
+                # assign safely to a variable named by $key
+                printf -v "$key" '%s' "$expanded_value"
             fi
         done < "$LANG_FILE"
         info "$MSG_LANG_LOADED"
