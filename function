@@ -6,6 +6,11 @@
 # Function file
 #
 set -euo pipefail
+# If REP_SCRIPT is not set (we may be sourcing this file directly for tests),
+# default it to the current working directory so references like $REP_SCRIPT/lang work.
+if [ -z "${REP_SCRIPT:-}" ]; then
+    REP_SCRIPT="$(pwd)"
+fi
 #
 function warn(){ # Fonction d'alerte
     local msg="$1"
