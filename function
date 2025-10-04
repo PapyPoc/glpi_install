@@ -45,6 +45,7 @@ function run_task() { # Exécuter une tâche
     local total="$4"
     info "Tâche: $index/$total - $task_key" >> "$SUCCES_FILE"
     info "$MSG_COMMAND: $task_cmd" >> "$SUCCES_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): $task_cmd" >> "$LOG_FILE"
     if ! eval "$task_cmd" >> "$SUCCES_FILE" 2>> "$ERROR_FILE"; then
         warn "$MSG_ERROR_TASK: $task_key" 2>> "$ERROR_FILE"
         return 1

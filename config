@@ -66,9 +66,10 @@ case "${LANGUAGE}" in
     *) LANGUAGE="en_US" ;;
 esac
 export LANG_FILE="${REP_SCRIPT}/lang/$( [[ ${LANGUAGE} == "fr_FR" ]] && echo "fr" || echo "en" ).lang"
-export FICHIER_MSG="/root/sauve_mdp.txt"
-export SUCCES_FILE="succes.log"
-export ERROR_FILE="error.log"
+export FICHIER_MSG="${REP_SCRIPT}/sauve_mdp.txt"
+export SUCCES_FILE="${REP_SCRIPT}/succes.log"
+export ERROR_FILE="${REP_SCRIPT}/error.log"
+export LOG_FILE="${REP_SCRIPT}/glpi_install.log"
 # Détecter la commande MySQL/MariaDB
 MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
 MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
