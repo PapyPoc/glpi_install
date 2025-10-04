@@ -20,7 +20,7 @@ if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"
 else
     if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
-        info "Relance du script via sudo pour l'utilisateur : ${ORIG_USER}"
+        info "$MSG_RELAUNCH_SUDO"
         exec sudo -- "$0" "$@"
     else
         warn "L'utilisateur '${ORIG_USER}' n'appartient pas au groupe 'sudo' et le script n'est pas exécuté en root."
@@ -30,7 +30,7 @@ fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
     source /etc/os-release
     DISTRO_ID=${ID}
-    info "Distribution détectée : $DISTRO_ID $VERSION_ID"
+    info "$MSG_DISTRO_DETECTED"
 else
     warn "$MSG_DISTRO_NONOK"
     exit 1
@@ -42,17 +42,17 @@ case "${DISTRO_ID}" in # Choix du groupe admin
         ADMIN_GROUP="wheel";;
     *)
         ADMIN_GROUP="sudo"
-        info "Distribution $DISTRO_ID non reconnue, utilisation de '$ADMIN_GROUP' par défaut.";;
+        info "$MSG_DISTRO_UNKNOWN";
 esac
 # Vérification de l'appartenance
 if ! id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
-    info "Ajout de ${ORIG_USER} dans le groupe ${ADMIN_GROUP}..."
+    info "$MSG_ADD_USER_GROUP"
     usermod -aG "${ADMIN_GROUP}" "${ORIG_USER}"
     if [ $? -eq 0 ]; then
-        info "${ORIG_USER} ajouté avec succès au groupe ${ADMIN_GROUP}."
-        info "Veuillez vous déconnecter et vous reconnecter pour que les changements prennent effet."
+        info "$MSG_USER_ADDED_SUCCESS"
+        info "$MSG_RECONNECT"
     else
-        warn "Échec lors de l'ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}."
+        warn "$MSG_ADD_USER_FAILED"
         exit 1
     fi
 fi
