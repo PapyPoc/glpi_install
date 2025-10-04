@@ -16,18 +16,20 @@ export_display_env() {
     # Export a comprehensive set of variables (upper and lower case) that may be
     # referenced as placeholders in language files. Values default to empty if unset.
     local vars=(
-        ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
-        ERROR_FILE SUCCES_FILE LOG_FILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS
-        DOWNLOADLINK DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD
-        TECHGLPIPWD NORMGLPIPWD REP_BACKUP BDD_BACKUP REP_SCRIPT
+        ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID ID NAME PRETTY_NAME MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
+        ERROR_FILE SUCCES_FILE LOG_FILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS INTERFACE DOWNLOADLINK
+        DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
+        REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT GLPI_CLI_VERSION PHPVERSION
+        DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
     )
 
-    # export lowercase variants too (some messages used lowercase names)
+    # export lowercase variants too (some messages or templates may use lowercase names)
     local lvars=(
-        orig_user admin_group distro_id version_id msg_nonok new_version rep_glpi fichier_msg
-        error_file succes_file log_file task_index task_key language timezone ipadress
-        downloadlink db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd
-        techglpipwd normglpipwd rep_backup bdd_backup rep_script
+        orig_user admin_group distro_id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
+        error_file succes_file log_file task_index task_key language timezone ipadress interface downloadlink
+        db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd
+        rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output glpi_cli_version phpversion
+        debian_versions ubuntu_versions alma_versions centos_versions rocky_versions redhat_versions
     )
 
     local v _val
@@ -288,10 +290,10 @@ function check_install(){ # Vérifie si GLPI est installé ou pas
     fi }
 function update_distro(){ # Mise à jour de la distribution
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        info "$MSG_UPGADE_DISTRI"
+        info "$MSG_UPGRADE_DISTRO"
         apt-get update && apt-get upgrade -y
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        info "$MSG_UPGADE_DISTRI"
+        info "$MSG_UPGRADE_DISTRO"
         dnf update -y && dnf upgrade -y
 	fi }
 function network_info(){ # Adresse IP de la machine
