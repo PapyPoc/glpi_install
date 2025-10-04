@@ -14,8 +14,8 @@ clear
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$REP_SCRIPT/config" # Fichier de variable
 source "$REP_SCRIPT/function" # Fichier de fonctions
-load_language # Fichier de langue
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
+load_language # Fichier de langue
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"
 else
@@ -59,7 +59,7 @@ fi
 # Installation des outils de base après vérification de la distribution
 if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
     if ! apt-get update &> /dev/null; then
-        warn "Échec de la mise à jour des paquets"
+        warn "$MSG_UPDATE_FAILED"
         exit 1
     fi
     if ! apt-get install -y curl jq sudo &> /dev/null; then

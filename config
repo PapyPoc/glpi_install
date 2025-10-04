@@ -54,6 +54,8 @@ export ADMINGLPIPWD; ADMINGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 export POSTGLPIPWD; POSTGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 export TECHGLPIPWD; TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 export NORMGLPIPWD; NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+export DB_NAME="glpi"
+export DB_USER="glpi_user"
 export CURRENT_DATE_TIME; CURRENT_DATE_TIME=$(date +"%d-%m-%Y_%H-%M-%S")
 export BDD_BACKUP="bdd_glpi-${CURRENT_DATE_TIME}.sql"
 export LANGUAGE; LANGUAGE=$(locale | grep -E "^LANG=" | cut -d= -f2 | cut -d. -f1)
@@ -66,10 +68,10 @@ case "${LANGUAGE}" in
     *) LANGUAGE="en_US" ;;
 esac
 export LANG_FILE="${REP_SCRIPT}/lang/$( [[ ${LANGUAGE} == "fr_FR" ]] && echo "fr" || echo "en" ).lang"
-export FICHIER_MSG="$HOME/sauve_mdp.txt"
-export SUCCES_FILE="$HOME/succes.log"
-export ERROR_FILE="$HOME/error.log"
-export LOG_FILE="$HOME/glpi_install.log"
+export FICHIER_MSG="${REP_SCRIPT}/sauve_mdp.txt"
+export SUCCES_FILE="${REP_SCRIPT}/succes.log"
+export ERROR_FILE="${REP_SCRIPT}/error.log"
+export LOG_FILE="${REP_SCRIPT}/glpi_install.log"
 # Détecter la commande MySQL/MariaDB
 MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
 MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
