@@ -101,21 +101,9 @@ function display_result() { # Afficher le résultat final
         warn "$MSG_ERROR_FICHIER_MSG"
     fi }
 function load_language() { # Chargement du fichier de langue
-    # Debug: afficher les variables de langue
-    info "$MSG_LANGUAGE_DETECTED"
-    info "$MSG_LANG_FILE"
-    
     if [[ -f "${LANG_FILE}" ]]; then
         source "${LANG_FILE}"
         info "$MSG_LANG_LOADED"
-    else
-		if [[ "${LANGUAGE}" == "fr_FR" ]]; then
-			warn "$MSG_LANG_NOT_FOUND" 
-			exit 1
-		else
-			warn "$MSG_LANG_NOT_FOUND_EN" 
-			exit 1
-		fi
     fi }
 function compatible() {
     local version="$1"
