@@ -125,21 +125,26 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
             else
                 warn "$MSG_DISTRO_NONOK"
                 warn "$MSG_FORCE_DISTRO"
-                info "$MSG_FORCE_DISTRO_QUESTION"
-                read -r RESPONSE
-                case $RESPONSE in
-                    O|o|Y|y)
-                        info "$MSG_CONTINUING"
-                        ;;
-                    N|n)
-                        info "$MSG_EXITING"
-                        exit 1
-                        ;;
-                    *)
-                        warn "MSG_INVALID_ANSWER"
-                        exit 1
-                        ;;
-                esac
+                if [ -t 0 ]; then
+                    info "$MSG_FORCE_DISTRO_QUESTION"
+                    read -r RESPONSE
+                    case $RESPONSE in
+                        O|o|Y|y)
+                            info "$MSG_CONTINUING"
+                            ;;
+                        N|n)
+                            info "$MSG_EXITING"
+                            exit 1
+                            ;;
+                        *)
+                            warn "MSG_INVALID_ANSWER"
+                            exit 1
+                            ;;
+                    esac
+                else
+                    warn "Script exécuté en mode non-interactif. Impossible de demander confirmation pour la distribution non supportée."
+                    exit 1
+                fi
             fi
         fi
     else
@@ -159,20 +164,27 @@ function check_install(){ # Vérifie si GLPI est installé ou pas
             exit 0;
         else
             info "$MSG_GLPI_UPGRADE"
-            read -r MaJ
-            case "$MaJ" in
-                O|o|Y|y)
-                    update
-                    exit 0;;
-                N|n)
-                    info "$MSG_EXIT"
-                    efface_script
-                    exit 0;;
-                *)
-                    warn "$MSG_ERROR_EXIT"
-                    efface_script
-                    exit 0;;
-            esac
+            if [ -t 0 ]; then
+                read -r MaJ
+                case "$MaJ" in
+                    O|o|Y|y)
+                        update
+                        exit 0;;
+                    N|n)
+                        info "$MSG_EXIT"
+                        efface_script
+                        exit 0;;
+                    *)
+                        warn "$MSG_ERROR_EXIT"
+                        efface_script
+                        exit 0;;
+                esac
+            else
+                warn "Script exécuté en mode non-interactif. Mise à jour automatique annulée."
+                info "$MSG_EXIT"
+                efface_script
+                exit 0
+            fi
         fi
     else
         warn "$MSG_GLPI_NEW"
