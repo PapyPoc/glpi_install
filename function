@@ -121,12 +121,20 @@ function load_language() { # Chargement du fichier de langue (parse .ini safely)
 
     if [[ -f "$LANG_FILE" ]]; then
         # Read file line by line, handle CRLF, comments, sections and quoted values
-        while IFS= read -r line || [[ -n $line ]]; do
+    while IFS= read -r line || [ -n "$line" ]; do
             # strip CR if present (Windows-format files)
             line="${line%%$'\r'}"
             # skip empty lines and comments
-            [[ $line =~ ^[[:space:]]*$ ]] && continue
-            [[ $line =~ ^[[:space:]]*[#;] ]] && continue
+            # trim leading whitespace
+            trimmed="${line#${line%%[![:space:]]*}}"
+            if [ -z "$trimmed" ]; then
+                continue
+            fi
+            case "$trimmed" in
+                \#* | \;*)
+                    continue
+                    ;;
+            esac
             # skip section headers
             [[ $line =~ ^[[:space:]]*\[.*\] ]] && continue
 
