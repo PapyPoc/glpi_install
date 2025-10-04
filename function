@@ -494,15 +494,15 @@ EOF
 function maj_user_glpi(){ # MàJ des mot de passe des utilisateurs de GLPI
     info "${MSG_CHANGE_MDP_GLPI}"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        sudo -u www-data php "${REP_GLPI}"bin/console user:reset_password --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
-        sudo -u www-data php "${REP_GLPI}"bin/console user:reset_password --username=post-only --password="${POSTGLPIPWD}" --no-interaction
-        sudo -u www-data php "${REP_GLPI}"bin/console user:reset_password --username=tech --password="${TECHGLPIPWD}" --no-interaction
-        sudo -u www-data php "${REP_GLPI}"bin/console user:reset_password --username=normal --password="${NORMGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console --username=post-only --password="${POSTGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console --username=tech --password="${TECHGLPIPWD}" --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console --username=normal --password="${NORMGLPIPWD}" --no-interaction
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        sudo -u nginx php "${REP_GLPI}"bin/console user:reset_password --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
-        sudo -u nginx php "${REP_GLPI}"bin/console user:reset_password --username=post-only --password="${POSTGLPIPWD}" --no-interaction
-        sudo -u nginx php "${REP_GLPI}"bin/console user:reset_password --username=tech --password="${TECHGLPIPWD}" --no-interaction
-        sudo -u nginx php "${REP_GLPI}"bin/console user:reset_password --username=normal --password="${NORMGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console --username=glpi --password="${ADMINGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console --username=post-only --password="${POSTGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console --username=tech --password="${TECHGLPIPWD}" --no-interaction
+        sudo -u nginx php "${REP_GLPI}"bin/console --username=normal --password="${NORMGLPIPWD}" --no-interaction
     fi
 	sleep 2; }
 function write_credentials(){ # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
