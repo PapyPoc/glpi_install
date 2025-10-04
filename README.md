@@ -69,7 +69,9 @@ For the distribution Debian and Red Hat
 ```bash
 #!/usr/bin/env bash
 if [ -d glpi_install ]; then 
-    cd glpi_install && git pull origin dev
+    cd glpi_install
+    git reset --hard
+    git pull origin dev
     cd ..
 else 
     git clone https://github.com/Papy-Poc/glpi_install.git -b dev
