@@ -13,9 +13,8 @@ set -euo pipefail
 }
 # Export a whitelist of variables used in language placeholders so envsubst can replace them
 export_display_env() {
-    # Add any variables you expect in language files here
-    # Export both uppercase and lowercase variants used in language files.
-    for v in ORIG_USER orig_user ADMIN_GROUP admin_group DISTRO_ID distro_id VERSION_ID version_id NEW_VERSION new_version REP_GLPI rep_glpi FICHIER_MSG fichier_msg ERROR_FILE error_file SUCCES_FILE succes_file LOG_FILE log_file TASK_INDEX task_index TASK_KEY task_key LANGUAGE language; do
+    # Export uppercase variants used in language files.
+    for v in ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID NEW_VERSION REP_GLPI FICHIER_MSG ERROR_FILE SUCCES_FILE LOG_FILE TASK_INDEX TASK_KEY LANGUAGE; do
         # Export the variable name with current value or empty string to ensure envsubst can see it
         eval export "$v=\"\${${v}:-}\""
     done
