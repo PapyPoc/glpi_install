@@ -101,10 +101,27 @@ function display_result() { # Afficher le résultat final
         warn "$MSG_ERROR_FICHIER_MSG"
     fi }
 function load_language() { # Chargement du fichier de langue
-    if [[ -f "${LANG_FILE}" ]]; then
-        source "${LANG_FILE}"
+    local lang=${LANG:-en_US.UTF-8}
+    if [[ $lang =~ ^fr ]]; then
+        LANG_FILE="$REP_SCRIPT/lang/fr.ini"
+        LANGUAGE="fr"
+    else
+        LANG_FILE="$REP_SCRIPT/lang/en.ini"
+        LANGUAGE="en"
+    fi
+    if [[ -f "$LANG_FILE" ]]; then
+        while IFS= read -r line; do
+            [[ $line =~ ^\[.*\]$ ]] && continue
+            [[ $line =~ ^([^=]+)=(.*)$ ]] || continue
+            local key=${BASH_REMATCH[1]}
+            local value=${BASH_REMATCH[2]}
+            declare -g "$key=$value"
+        done < "$LANG_FILE"
         info "$MSG_LANG_LOADED"
-    fi }
+    else
+        echo "Language file not found: $LANG_FILE"
+    fi
+}
 function compatible() {
     local version="$1"
     local -n versions_array="$2"
