@@ -11,7 +11,6 @@ function warn(){ # Fonction d'alerte
     echo -e '\e[31m'"$1"'\e[0m';}
 function info(){ # Fonction d'information
     echo -e '\e[36m'"$1"'\e[0m';}
-# === Ce fichier est destiné à être sourcé et non exécuté directement ===
 # Ne pas continuer si le script est exécuté directement
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
     warn "Ce fichier doit être sourcé, pas exécuté.\n" >&2
@@ -21,13 +20,13 @@ function check_dialog() { # Vérifier et installer 'dialog'
     if ! command -v dialog &>/dev/null; then
         info "$MSG_DIALOG_INSTALL"
 
-        if [ -f /etc/debian_version ]; then
+        if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
             # Debian / Ubuntu
-            if ! apt-get install -y -qq dialog &>/dev/null; then
+            if ! apt-get update &>/dev/null || ! apt-get install -y -qq dialog &>/dev/null; then
                 warn "$MSG_DIALOG_ERROR"
                 exit 1
             fi
-        elif [ -f /etc/redhat-release ]; then
+        elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
             # RedHat / CentOS / Rocky / AlmaLinux / Fedora
             if ! yum install -y -q dialog &>/dev/null && ! dnf install -y -q dialog &>/dev/null; then
                 warn "$MSG_DIALOG_ERROR"
@@ -206,26 +205,59 @@ function install_packages(){ # Installation des éléments nécessaire
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
         info "$MSG_INSTALL_EXT_PHP"
-        apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}
+        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} &>/dev/null; then
+            warn "Échec de l'installation des extensions PHP"
+            exit 1
+        fi
         info "$MSG_INSTALL_SERVICE lamp..."
-        apt-get install -y --no-install-recommends wget tar apache2 apache2-bin mariadb-server mariadb-client perl php
+        if ! apt-get install -y --no-install-recommends wget tar apache2 apache2-bin mariadb-server mariadb-client perl php &>/dev/null; then
+            warn "Échec de l'installation des services LAMP"
+            exit 1
+        fi
         info "$MSG_ACTIVE_START_BDD"
-        /lib/systemd/systemd-sysv-install enable mariadb && systemctl restart mariadb
+        if ! /lib/systemd/systemd-sysv-install enable mariadb &>/dev/null || ! systemctl restart mariadb; then
+            warn "Échec du démarrage de MariaDB"
+            exit 1
+        fi
         info "$MSG_ACTIVE_START_WEB d'Apache"
-        /lib/systemd/systemd-sysv-install enable apache2 && systemctl restart apache2
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+        if ! /lib/systemd/systemd-sysv-install enable apache2 &>/dev/null || ! systemctl restart apache2; then
+            warn "Échec du démarrage d'Apache"
+            exit 1
+        fi
+    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
         sleep 1
-        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-        dnf module reset -y php nginx mariadb
-        dnf module install -y php:8.2
-        dnf module install -y nginx:1.24
-        dnf module install -y mariadb:10.11
+        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm &>/dev/null; then
+            warn "Échec de l'installation du dépôt EPEL"
+            exit 1
+        fi
+        if ! dnf module reset -y php nginx mariadb &>/dev/null; then
+            warn "Échec de la réinitialisation des modules"
+            exit 1
+        fi
+        if ! dnf module install -y php:8.2 &>/dev/null; then
+            warn "Échec de l'installation de PHP 8.2"
+            exit 1
+        fi
+        if ! dnf module install -y nginx:1.24 &>/dev/null; then
+            warn "Échec de l'installation de Nginx"
+            exit 1
+        fi
+        if ! dnf module install -y mariadb:10.11 &>/dev/null; then
+            warn "Échec de l'installation de MariaDB"
+            exit 1
+        fi
         info "Activation des mises à jour automatique"
-        dnf install dnf-automatic -y
+        if ! dnf install dnf-automatic -y &>/dev/null; then
+            warn "Échec de l'installation de dnf-automatic"
+            exit 1
+        fi
         sed -i 's/^\(;\?\)\(apply_updates =\).*/\2 yes/' /etc/dnf/automatic.conf
         sed -i 's/^\(;\?\)\(reboot =\).*/\2 when-needed/' /etc/dnf/automatic.conf
         sed -i 's/^\(;\?\)\(upgrade_type =\).*/\2 security/' /etc/dnf/automatic.conf
-        mkdir /etc/systemd/system/dnf-automatic.timer.d
+        if ! mkdir /etc/systemd/system/dnf-automatic.timer.d 2>/dev/null; then
+            warn "Échec de la création du répertoire dnf-automatic.timer.d"
+            exit 1
+        fi
         tee /etc/systemd/system/dnf-automatic.timer.d/override.conf > /dev/null << 'EOF'
 [Unit]
 Description=dnf-automatic timer
@@ -237,17 +269,31 @@ OnCalendar=*-*-* 6:00
 RandomizedDelaySec=60m
 Persistent=true
 EOF
-        systemctl enable --now dnf-automatic.timer
+        if ! systemctl enable --now dnf-automatic.timer &>/dev/null; then
+            warn "Échec de l'activation de dnf-automatic.timer"
+            exit 1
+        fi
         info "$MSG_INSTALL_EXT_PHP"
-        dnf install -y php-{mysqlnd,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,zip,bz2}
+        if ! dnf install -y php-{mysqlnd,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,zip,bz2} &>/dev/null; then
+            warn "Échec de l'installation des extensions PHP"
+            exit 1
+        fi
         info "$MSG_INSTALL_SERVICE lamp..."
-        dnf install -y crontabs logrotate cronie tar nginx mariadb-server perl curl jq php epel-release
+        if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server perl curl jq php epel-release &>/dev/null; then
+            warn "Échec de l'installation des services LAMP"
+            exit 1
+        fi
         sed -i 's/^\(;\?\)\(user =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         sed -i 's/^\(;\?\)\(group =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         info "$MSG_ACTIVE_START_WEB MariaDB, d'ENGINE X et de PHP-FPM"
-        systemctl enable --now mariadb nginx php-fpm
-        firewall-cmd --permanent --zone=public --add-service=http
-        firewall-cmd --reload
+        if ! systemctl enable --now mariadb nginx php-fpm &>/dev/null; then
+            warn "Échec du démarrage des services"
+            exit 1
+        fi
+        if ! firewall-cmd --permanent --zone=public --add-service=http &>/dev/null || ! firewall-cmd --reload &>/dev/null; then
+            warn "Échec de la configuration du firewall"
+            exit 1
+        fi
     fi }
 function mariadb_configure(){ # Configuration de la base de donnée
     info "$MSG_BDD_CONFIG"
@@ -339,7 +385,7 @@ EOF
         sudo a2ensite glpi.conf
         # Restart d'apache
         systemctl restart apache2
-        sudo -u www-data php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --quiet --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         chown -R nginx:nginx /etc/glpi
         chmod -R 755 /etc/glpi
@@ -402,7 +448,7 @@ EOF
         restorecon -R "${REP_GLPI}"marketplace
         # Restart de Nginx et php-fpm
         systemctl restart nginx php-fpm
-        sudo -u nginx php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --quiet --no-interaction 
+        sudo -u nginx php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction 
     fi
     sleep 5
     rm -Rf "${REP_GLPI}"install/install.php

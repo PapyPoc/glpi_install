@@ -30,7 +30,7 @@ fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
     source /etc/os-release
     DISTRO_ID=${ID}
-    echo "Distribution détectée : $DISTRO_ID $VERSION_ID"
+    info "Distribution détectée : $DISTRO_ID $VERSION_ID"
 else
     warn "Impossible de détecter la distribution (pas de /etc/os-release)"
     exit 1
@@ -60,13 +60,21 @@ else
 fi
 # Installation des outils de base après vérification de la distribution
 if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
-    apt-get update &> /dev/null
-    apt-get install -y curl jq sudo &> /dev/null
+    if ! apt-get update &> /dev/null; then
+        warn "Échec de la mise à jour des paquets"
+        exit 1
+    fi
+    if ! apt-get install -y curl jq sudo &> /dev/null; then
+        warn "Échec de l'installation des outils de base"
+        exit 1
+    fi
 elif [[ "${DISTRO_ID}" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
-    dnf install -y curl jq wheel &> /dev/null || yum install -y curl jq wheel &> /dev/null
+    if ! dnf install -y curl jq wheel &> /dev/null && ! yum install -y curl jq wheel &> /dev/null; then
+        warn "Échec de l'installation des outils de base"
+        exit 1
+    fi
 fi
 check_dialog # Regarde si dialog est installé
 check_distro # Regarde si la distribution est conforme
 check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas
 display_result # Affiche le résultat de l'installation
-clear

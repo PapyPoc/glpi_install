@@ -15,8 +15,31 @@ set -euo pipefail
     return 1
 }
 # === Constantes globales exportables ===
+# Vérifier la disponibilité des commandes nécessaires
+if ! command -v curl &> /dev/null; then
+    echo "Erreur: curl n'est pas installé" >&2
+    return 1
+fi
+if ! command -v jq &> /dev/null; then
+    echo "Erreur: jq n'est pas installé" >&2
+    return 1
+fi
+if ! command -v openssl &> /dev/null; then
+    echo "Erreur: openssl n'est pas installé" >&2
+    return 1
+fi
+
 export DOWNLOADLINK; DOWNLOADLINK=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.assets[0].browser_download_url')
-export NEW_VERSION; NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
+if [ -z "$DOWNLOADLINK" ] || [ "$DOWNLOADLINK" = "null" ]; then
+    echo "Erreur: Impossible de récupérer le lien de téléchargement GLPI" >&2
+    return 1
+fi
+
+export NEW_VERSION; NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name')
+if [ -z "$NEW_VERSION" ] || [ "$NEW_VERSION" = "null" ]; then
+    echo "Erreur: Impossible de récupérer la version GLPI" >&2
+    return 1
+fi
 export DEBIAN_VERSIONS=("11" "12")
 export UBUNTU_VERSIONS=("23.10" "24.10")
 export ALMA_VERSIONS=("9.5")
