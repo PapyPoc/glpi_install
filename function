@@ -16,7 +16,7 @@ export_display_env() {
     # Export a comprehensive set of variables (upper and lower case) that may be
     # referenced as placeholders in language files. Values default to empty if unset.
     local vars=(
-        ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID NEW_VERSION REP_GLPI FICHIER_MSG
+        ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
         ERROR_FILE SUCCES_FILE LOG_FILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS
         DOWNLOADLINK DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD
         TECHGLPIPWD NORMGLPIPWD REP_BACKUP BDD_BACKUP REP_SCRIPT
@@ -24,7 +24,7 @@ export_display_env() {
 
     # export lowercase variants too (some messages used lowercase names)
     local lvars=(
-        orig_user admin_group distro_id version_id new_version rep_glpi fichier_msg
+        orig_user admin_group distro_id version_id msg_nonok new_version rep_glpi fichier_msg
         error_file succes_file log_file task_index task_key language timezone ipadress
         downloadlink db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd
         techglpipwd normglpipwd rep_backup bdd_backup rep_script
