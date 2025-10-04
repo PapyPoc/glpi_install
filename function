@@ -13,10 +13,27 @@ set -euo pipefail
 }
 # Export a whitelist of variables used in language placeholders so envsubst can replace them
 export_display_env() {
-    # Export uppercase variants used in language files.
-    for v in ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID NEW_VERSION REP_GLPI FICHIER_MSG ERROR_FILE SUCCES_FILE LOG_FILE TASK_INDEX TASK_KEY LANGUAGE; do
-        # Export the variable name with current value or empty string to ensure envsubst can see it
-        eval export "$v=\"\${${v}:-}\""
+    # Export a comprehensive set of variables (upper and lower case) that may be
+    # referenced as placeholders in language files. Values default to empty if unset.
+    local vars=(
+        ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID NEW_VERSION REP_GLPI FICHIER_MSG
+        ERROR_FILE SUCCES_FILE LOG_FILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS
+        DOWNLOADLINK DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD
+        TECHGLPIPWD NORMGLPIPWD REP_BACKUP BDD_BACKUP REP_SCRIPT
+    )
+
+    # export lowercase variants too (some messages used lowercase names)
+    local lvars=(
+        orig_user admin_group distro_id version_id new_version rep_glpi fichier_msg
+        error_file succes_file log_file task_index task_key language timezone ipadress
+        downloadlink db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd
+        techglpipwd normglpipwd rep_backup bdd_backup rep_script
+    )
+
+    local v _val
+    for v in "${vars[@]}" "${lvars[@]}"; do
+        _val="${!v:-}"
+        export "$v"="$_val"
     done
 }
 
