@@ -1,4 +1,4 @@
-#!/usr/bin/env bash te
+#!/usr/bin/env bash
 #
 # GLPI install script
 # Author: PapyPoc
@@ -8,12 +8,21 @@
 set -euo pipefail
 #
 function warn(){ # Fonction d'alerte
-    echo -e '\e[31m'"$1"'\e[0m';}
+    local msg="$1"
+    # Expand placeholders safely in a subshell so 'set -u' doesn't abort on undefined vars
+    local expanded
+    expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
+    echo -e '\e[31m'"$expanded"'\e[0m'
+}
 function info(){ # Fonction d'information
-    echo -e '\e[36m'"$1"'\e[0m';}
+    local msg="$1"
+    local expanded
+    expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
+    echo -e '\e[36m'"$expanded"'\e[0m'
+}
 # Ne pas continuer si le script est exécuté directement
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
-    warn "$MSG_FUNCTION_SOURCE" >&2
+    warn "${MSG_FUNCTION_SOURCE:-This file must be sourced, not executed.}" >&2
     return 1
 }
 function check_dialog() { # Vérifier et installer 'dialog'
@@ -100,26 +109,46 @@ function display_result() { # Afficher le résultat final
         dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_NONOK" --msgbox "$MSG_NONOK\n\n$MESSAGE" 0 0
         warn "$MSG_ERROR_FICHIER_MSG"
     fi }
-function load_language() { # Chargement du fichier de langue
-    local lang=${LANG:-en_US.UTF-8}
-    if [[ $lang =~ ^fr ]]; then
+function load_language() { # Chargement du fichier de langue (parse .ini safely)
+    local syslang="${LC_ALL:-${LANG:-}}"
+    if [[ $syslang =~ ^fr ]]; then
         LANG_FILE="$REP_SCRIPT/lang/fr.ini"
-        LANGUAGE="fr"
+        LANGUAGE="fr_FR"
     else
         LANG_FILE="$REP_SCRIPT/lang/en.ini"
-        LANGUAGE="en"
+        LANGUAGE="en_US"
     fi
+
     if [[ -f "$LANG_FILE" ]]; then
-        while IFS= read -r line; do
-            [[ $line =~ ^\[.*\]$ ]] && continue
-            [[ $line =~ ^([^=]+)=(.*)$ ]] || continue
-            local key=${BASH_REMATCH[1]}
-            local value=${BASH_REMATCH[2]}
-            declare -g "$key=$value"
+        # Read file line by line, handle CRLF, comments, sections and quoted values
+        while IFS= read -r line || [[ -n $line ]]; do
+            # strip CR if present (Windows-format files)
+            line="${line%%$'\r'}"
+            # skip empty lines and comments
+            [[ $line =~ ^[[:space:]]*$ ]] && continue
+            [[ $line =~ ^[[:space:]]*[#;] ]] && continue
+            # skip section headers
+            [[ $line =~ ^[[:space:]]*\[.*\] ]] && continue
+
+            if [[ $line =~ ^[[:space:]]*([^=[:space:]]+)[[:space:]]*=(.*)$ ]]; then
+                local key="${BASH_REMATCH[1]}"
+                local value="${BASH_REMATCH[2]}"
+                # trim leading/trailing whitespace from value
+                value="${value#${value%%[![:space:]]*}}"
+                value="${value%${value##*[![:space:]]}}"
+                # remove surrounding single or double quotes if present
+                if [[ $value =~ ^\'(.*)\'$ ]]; then
+                    value="${BASH_REMATCH[1]}"
+                elif [[ $value =~ ^\"(.*)\"$ ]]; then
+                    value="${BASH_REMATCH[1]}"
+                fi
+                # assign safely to a variable named by $key (no expansion of value)
+                printf -v "$key" '%s' "$value"
+            fi
         done < "$LANG_FILE"
         info "$MSG_LANG_LOADED"
     else
-        echo "Language file not found: $LANG_FILE"
+        warn "Language file not found: $LANG_FILE"
     fi
 }
 function compatible() {
@@ -310,23 +339,27 @@ EOF
     fi }
 function mariadb_configure(){ # Configuration de la base de donnée
     info "$MSG_BDD_CONFIG"
+    # Détecter la commande MySQL/MariaDB
+    MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
+    MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
+    export MYSQL_CMD MYSQLDUMP_CMD
     sleep 1
+    # Sécurise l'installation de MariaDB
     $MYSQL_CMD -e "ALTER USER 'root'@'localhost' IDENTIFIED BY $SQLROOTPWD;" # Change le mot de passe root
     $MYSQL_CMD -e "DELETE FROM mysql.user WHERE User='';"; # Supprime les utilisateurs anonymes
     $MYSQL_CMD -e "DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';"; # Supprime les accès root distants
     $MYSQL_CMD -e "DROP DATABASE IF EXISTS test;"; # Supprime la base de test
     $MYSQL_CMD -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';"; # Supprime les accès à la base de test
-    $MYSQL_CMD -e "FLUSH PRIVILEGES;"; # Recharge les privilèges
+    # Création de la base de données et de l'utilisateur GLPI
     $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';" # Root peut se connecter depuis localhost
     $MYSQL_CMD -e "CREATE DATABASE $DB_NAME;" # Create a new database
     $MYSQL_CMD -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$SQLGLPIPWD';" # Create a new user
     $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';" # Grant privileges to the new user for the new database
-    $MYSQL_CMD -e "FLUSH PRIVILEGES;" # Reload privileges
     $MYSQL_CMD -e "GRANT SELECT ON mysql.time_zone_name TO '$DB_USER'@'localhost'" # Donne accés à la base mysl.time_zone_name à l'utilisateur glpi_user
+    $MYSQL_CMD -e "FLUSH PRIVILEGES;" # Recharge les privilèges
     # Initialize time zones data
     info "$MSG_TIMEZONE_CONFIG"
     mysql_tzinfo_to_sql /usr/share/zoneinfo | $MYSQL_CMD -u root -p"$SQLROOTPWD" mysql
-    TIMEZONE=$(timedatectl | grep "Time zone" | awk '{print $3}') # Constante pour le timezone d'installation du système
     # Change timezone and language
     $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "UPDATE $DB_NAME.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
     $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "UPDATE $DB_NAME.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';";

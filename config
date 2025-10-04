@@ -58,21 +58,7 @@ export DB_NAME="glpi"
 export DB_USER="glpi_user"
 export CURRENT_DATE_TIME; CURRENT_DATE_TIME=$(date +"%d-%m-%Y_%H-%M-%S")
 export BDD_BACKUP="bdd_glpi-${CURRENT_DATE_TIME}.sql"
-export LANGUAGE; LANGUAGE=$(locale | grep -E "^LANG=" | cut -d= -f2 | cut -d. -f1)
-# Fallback si LANGUAGE est vide ou non détecté
-[[ -z "${LANGUAGE}" ]] && LANGUAGE=$(echo "${LANG:-en_US}" | cut -d. -f1)
-# Simplifier à juste la langue principale
-case "${LANGUAGE}" in
-    fr_*|fr) LANGUAGE="fr_FR" ;;
-    en_*|en) LANGUAGE="en_US" ;;
-    *) LANGUAGE="en_US" ;;
-esac
-export LANG_FILE="${REP_SCRIPT}/lang/$( [[ ${LANGUAGE} == "fr_FR" ]] && echo "fr" || echo "en" ).lang"
 export FICHIER_MSG="${REP_SCRIPT}/sauve_mdp.txt"
 export SUCCES_FILE="${REP_SCRIPT}/succes.log"
 export ERROR_FILE="${REP_SCRIPT}/error.log"
 export LOG_FILE="${REP_SCRIPT}/glpi_install.log"
-# Détecter la commande MySQL/MariaDB
-MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
-MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
-export MYSQL_CMD MYSQLDUMP_CMD

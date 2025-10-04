@@ -62,16 +62,16 @@ if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
         exit 1
     fi
     if ! apt-get install -y curl jq sudo &> /dev/null; then
-        warn "Échec de l'installation des outils de base"
+        warn "$MSG_INSTALL_TOOLS_FAILED"
         exit 1
     fi
-    if ! apt autoremove &> /dev/null; then
-        warn "Échec de l'exécution de 'apt autoremove'"
+    if ! apt-get autoremove -y &> /dev/null; then
+        warn "$MSG_AUTOREMOVE_FAILED"
         exit 1
     fi
 elif [[ "${DISTRO_ID}" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
-    if ! dnf install -y curl jq wheel &> /dev/null && ! yum install -y curl jq wheel &> /dev/null; then
-        warn "Échec de l'installation des outils de base"
+    if ! dnf install -y curl jq sudo &> /dev/null && ! yum install -y curl jq sudo &> /dev/null; then
+        warn "$MSG_INSTALL_TOOLS_FAILED"
         exit 1
     fi
 fi
