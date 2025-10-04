@@ -92,16 +92,21 @@ function run_task() { # Exécuter une tâche
     local task_cmd="$2"
     local index="$3"
     local total="$4"
-    info "Tâche: $index/$total - $task_key" >> "$SUCCES_FILE"
-    info "$MSG_COMMAND: $task_cmd" >> "$SUCCES_FILE"
+    # Log task start in LOG_FILE
+    info "Tâche: $index/$total - $task_key"
+    info "$MSG_COMMAND: $task_cmd"
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" >> "${LOG_FILE:-/var/log/glpi_install.log}"
     local output
     output=$(eval "$task_cmd" 2>&1)
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
-        echo "$output" >> "$SUCCES_FILE"
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): $task_cmd" >> "$LOG_FILE"
-        echo "$output" >> "$LOG_FILE"
+        # Log success to LOG_FILE
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" >> "${LOG_FILE:-/var/log/glpi_install.log}"
+        echo "$output" >> "${LOG_FILE:-/var/log/glpi_install.log}"
     else
+        # Ensure ERROR_FILE is present and append details
+        : "${ERROR_FILE:=$(mktemp /tmp/glpi_error.XXXXXX)}"
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd (exit $exit_code)" >> "$ERROR_FILE"
         echo "$output" >> "$ERROR_FILE"
         warn "$MSG_ERROR_TASK: $task_key" 2>> "$ERROR_FILE"
         return 1
@@ -402,25 +407,25 @@ function mariadb_configure(){ # Configuration de la base de donnée
     export MYSQL_CMD MYSQLDUMP_CMD
     sleep 1
     # Sécurise l'installation de MariaDB
-    $MYSQL_CMD -e "ALTER USER 'root'@'localhost' IDENTIFIED BY $SQLROOTPWD;" # Change le mot de passe root
-    $MYSQL_CMD -e "DELETE FROM mysql.user WHERE User='';"; # Supprime les utilisateurs anonymes
-    $MYSQL_CMD -e "DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';"; # Supprime les accès root distants
-    $MYSQL_CMD -e "DROP DATABASE IF EXISTS test;"; # Supprime la base de test
-    $MYSQL_CMD -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';"; # Supprime les accès à la base de test
+    ${MYSQL_CMD:-mysql} -e "ALTER USER 'root'@'localhost' IDENTIFIED BY $SQLROOTPWD;" # Change le mot de passe root
+    ${MYSQL_CMD:-mysql} -e "DELETE FROM mysql.user WHERE User='';"; # Supprime les utilisateurs anonymes
+    ${MYSQL_CMD:-mysql} -e "DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';"; # Supprime les accès root distants
+    ${MYSQL_CMD:-mysql} -e "DROP DATABASE IF EXISTS test;"; # Supprime la base de test
+    ${MYSQL_CMD:-mysql} -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';"; # Supprime les accès à la base de test
     # Création de la base de données et de l'utilisateur GLPI
-    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';" # Root peut se connecter depuis localhost
-    $MYSQL_CMD -e "CREATE DATABASE $DB_NAME;" # Create a new database
-    $MYSQL_CMD -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$SQLGLPIPWD';" # Create a new user
-    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';" # Grant privileges to the new user for the new database
-    $MYSQL_CMD -e "GRANT SELECT ON mysql.time_zone_name TO '$DB_USER'@'localhost'" # Donne accés à la base mysl.time_zone_name à l'utilisateur glpi_user
-    $MYSQL_CMD -e "FLUSH PRIVILEGES;" # Recharge les privilèges
+    ${MYSQL_CMD:-mysql} -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';" # Root peut se connecter depuis localhost
+    ${MYSQL_CMD:-mysql} -e "CREATE DATABASE $DB_NAME;" # Create a new database
+    ${MYSQL_CMD:-mysql} -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$SQLGLPIPWD';" # Create a new user
+    ${MYSQL_CMD:-mysql} -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';" # Grant privileges to the new user for the new database
+    ${MYSQL_CMD:-mysql} -e "GRANT SELECT ON mysql.time_zone_name TO '$DB_USER'@'localhost'" # Donne accés à la base mysl.time_zone_name à l'utilisateur glpi_user
+    ${MYSQL_CMD:-mysql} -e "FLUSH PRIVILEGES;" # Recharge les privilèges
     # Initialize time zones data
     info "$MSG_TIMEZONE_CONFIG"
-    mysql_tzinfo_to_sql /usr/share/zoneinfo | $MYSQL_CMD -u root -p"$SQLROOTPWD" mysql
+    mysql_tzinfo_to_sql /usr/share/zoneinfo | ${MYSQL_CMD:-mysql} -u root -p"$SQLROOTPWD" mysql
     # Change timezone and language
-    $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "UPDATE $DB_NAME.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
-    $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "UPDATE $DB_NAME.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';";
-    $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "UPDATE $DB_NAME.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';";
+    ${MYSQL_CMD:-mysql} -u root -p"$SQLROOTPWD" -e "UPDATE $DB_NAME.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
+    ${MYSQL_CMD:-mysql} -u root -p"$SQLROOTPWD" -e "UPDATE $DB_NAME.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';";
+    ${MYSQL_CMD:-mysql} -u root -p"$SQLROOTPWD" -e "UPDATE $DB_NAME.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';";
     # Restart MariaDB
     systemctl restart mariadb
     sleep 5; }
@@ -600,13 +605,13 @@ EOF
 function maj_user_glpi(){ # MàJ des mot de passe des utilisateurs de GLPI
     info "${MSG_CHANGE_MDP_GLPI}"
     # Changer le mot de passe de l'admin glpi
-    $MYSQL_CMD -u $DB_USER -p"${SQLGLPIPWD}" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
+    ${MYSQL_CMD:-mysql} -u $DB_USER -p"${SQLGLPIPWD}" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
     # Changer le mot de passe de l'utilisateur post-only
-    $MYSQL_CMD -u $DB_USER -p"${SQLGLPIPWD}" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';"
+    ${MYSQL_CMD:-mysql} -u $DB_USER -p"${SQLGLPIPWD}" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';"
     # Changer le mot de passe de l'utilisateur tech
-    $MYSQL_CMD -u $DB_USER -p"${SQLGLPIPWD}" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';"
+    ${MYSQL_CMD:-mysql} -u $DB_USER -p"${SQLGLPIPWD}" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';"
     # Changer le mot de passe de l'utilisateur normal
-    $MYSQL_CMD -u $DB_USER -p"${SQLGLPIPWD}" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
+    ${MYSQL_CMD:-mysql} -u $DB_USER -p"${SQLGLPIPWD}" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
 	sleep 2; }
 function write_credentials(){ # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
@@ -700,8 +705,8 @@ function backup_glpi(){ # Sauvegarde de la base de donnée et des fichiers de GL
 	fi
 	# Sauvergarde de la bdd
 	info "${MSG_MYSQL_DUMP}"
-	PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' /root/sauve_mdp.txt)
-	$MYSQLDUMP_CMD -u root -p"$PASSWORD" --databases $DB_NAME > "${REP_BACKUP}${BDD_BACKUP}"
+    PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' /root/sauve_mdp.txt)
+    ${MYSQLDUMP_CMD:-mysqldump} -u root -p"$PASSWORD" --databases $DB_NAME > "${REP_BACKUP}${BDD_BACKUP}"
 	info "${MSG_DUMP_SUCCESS}"
 	# Sauvegarde des fichiers
 	info "${MSG_SITE_COPY}"
