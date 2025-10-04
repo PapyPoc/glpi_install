@@ -15,7 +15,6 @@ REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$REP_SCRIPT/config" # Fichier de variable
 source "$REP_SCRIPT/function" # Fichier de fonctions
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
-load_language # Fichier de langue
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"
 else
@@ -35,6 +34,7 @@ else
     warn "$MSG_DISTRO_NONOK"
     exit 1
 fi
+load_language # Fichier de langue
 case "${DISTRO_ID}" in # Choix du groupe admin
     debian|ubuntu)
         ADMIN_GROUP="sudo";;
