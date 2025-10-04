@@ -17,7 +17,7 @@ source "$REP_SCRIPT/function" # Fichier de fonctions
 load_language # Fichier de langue
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
-    info ${MSG_ROOT}
+
 else
     if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
         info "Relance du script via sudo pour l'utilisateur : ${ORIG_USER}"
