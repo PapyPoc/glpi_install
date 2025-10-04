@@ -73,5 +73,5 @@ if [ -d glpi_install ]; then
 else 
     git clone https://github.com/Papy-Poc/glpi_install.git -b dev;
 fi
-&& chmod -R +x glpi_install && ./glpi_install/glpi-install
+&& chmod -R +x ~/glpi_install && ~/glpi_install/glpi-install
 ```
