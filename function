@@ -6,12 +6,11 @@
 # Function file
 #
 set -euo pipefail
-# If REP_SCRIPT is not set (we may be sourcing this file directly for tests),
-# default it to the current working directory so references like $REP_SCRIPT/lang work.
-if [ -z "${REP_SCRIPT:-}" ]; then
-    REP_SCRIPT="$(pwd)"
-fi
-
+# === Ce fichier est destiné à être sourcé et non exécuté directement ===
+[[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
+    warn "${MSG_FUNCTION_SOURCE:-This file must be sourced, not executed.}" >&2
+    return 1
+}
 # Export a whitelist of variables used in language placeholders so envsubst can replace them
 export_display_env() {
     # Add any variables you expect in language files here
@@ -46,11 +45,7 @@ function info(){ # Fonction d'information
     fi
     echo -e '\e[36m'"$expanded"'\e[0m'
 }
-# Ne pas continuer si le script est exécuté directement
-[[ "${BASH_SOURCE[0]}" == "${0}" ]] && {
-    warn "${MSG_FUNCTION_SOURCE:-This file must be sourced, not executed.}" >&2
-    return 1
-}
+
 function check_dialog() { # Vérifier et installer 'dialog'
     if ! command -v dialog &>/dev/null; then
         info "$MSG_DIALOG_INSTALL"
@@ -73,6 +68,7 @@ function check_dialog() { # Vérifier et installer 'dialog'
         fi
     fi
 }
+
 function run_task() { # Exécuter une tâche
     local task_key="$1"
     local task_cmd="$2"
@@ -125,8 +121,8 @@ function display_result() { # Afficher le résultat final
             MESSAGE+="${ligne}\n"
         done < $FICHIER_MSG
         dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_OK" --msgbox "$MESSAGE" 0 0
-		rm -f $SUCCES_FILE 2>> $ERROR_FILE
-		efface_script
+		# rm -f $SUCCES_FILE 2>> $ERROR_FILE
+		# efface_script
     else
         MESSAGE=""
         while IFS= read -r ligne; do
