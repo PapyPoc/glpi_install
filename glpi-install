@@ -52,9 +52,7 @@ else
     usermod -aG "${ADMIN_GROUP}" "${ORIG_USER}"
     if [ $? -eq 0 ]; then
         info "${ORIG_USER} ajouté avec succès au groupe ${ADMIN_GROUP}."
-        info "Déconnexion forcée dans 10 secondes..."
-        sleep 10
-        logout 2>/dev/null || kill -HUP $PPID || exit 0 # Forcer sortie immédiate
+        info "Veuillez vous déconnecter et vous reconnecter pour que les changements prennent effet."
     else
         warn "Échec lors de l'ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}."
         exit 1
