@@ -6,7 +6,6 @@
 # Function file
 #
 set -Eeuo pipefail
-trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR >> "$LOGFILE"
 # Ne pas continuer si le script est exécuté directement
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo -e "Ce fichier doit être sourcé, pas exécuté.\n" >&2
@@ -164,6 +163,7 @@ function run_task() {
     info "Tâche: $index/$total - $task_key"
     info "$MSG_COMMAND: $task_cmd"
     echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" >> "${LOGFILE}"
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR >> "$LOGFILE"
     local output
     output=$(eval "$task_cmd" 2>&1)
     local exit_code=$?
