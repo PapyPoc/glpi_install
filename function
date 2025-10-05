@@ -379,6 +379,7 @@ function update_distro(){
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         info "$MSG_UPGRADE_DISTRO"
         timedatectl set-ntp true # Synchronise l'heure
+        sleep 5
         apt-get update && apt-get upgrade -y
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         info "$MSG_UPGRADE_DISTRO"
