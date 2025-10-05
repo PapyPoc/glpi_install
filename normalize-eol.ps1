@@ -25,17 +25,48 @@ Usage:
 [CmdletBinding()]
 param(
     [switch]$DryRun,
+    [switch]$Apply,
     [switch]$SetGitExecutable,
     [string]$BackupSuffix = '.bak'
 )
 
 function Write-Log { param([string]$m) Write-Host $m }
 
-# Le script applique par défaut; si -DryRun fourni, il simule
-$Apply = -not $DryRun
+# Déterminer mode d'exécution :
+# - Si l'utilisateur passe explicitement -Apply ou -DryRun, respecter.
+# - Si aucun des deux n'est fourni, appliquer par défaut (Apply = $true).
+if ($DryRun -and $Apply) {
+    Write-Error "Ne pouvez pas fournir à la fois -DryRun et -Apply."
+    exit 2
+}
+if ($PSBoundParameters.ContainsKey('Apply')) { 
+    $FinalApply = $Apply.IsPresent
+} elseif ($PSBoundParameters.ContainsKey('DryRun')) {
+    $FinalApply = -not $DryRun.IsPresent
+} else {
+    # Aucun switch fourni -> appliquer par défaut
+    $FinalApply = $true
+}
 
-# Vérifier qu'on est dans un dépôt git
-try { git rev-parse --git-dir >/dev/null 2>&1 } catch { Write-Error 'Ce script doit être exécuté depuis la racine d\''un dépôt git.'; exit 2 }
+# Backwards-compatible alias in local variable
+$Apply = $FinalApply
+
+# Vérifier qu'on est dans un dépôt git et que l'on se situe à la racine du dépôt
+# Utiliser des invocations PowerShell-safe et comparer les chemins résolus (Windows-friendly)
+$gitTop = & git rev-parse --show-toplevel 2>$null
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitTop)) {
+    Write-Error "Ce script doit être exécuté depuis la racine d'un dépôt git (introuvable)."
+    exit 2
+}
+$gitTop = $gitTop.Trim()
+$cwd = (Get-Item -Path .).FullName
+# Normaliser les séparateurs et comparer en insensible à la casse
+$norm = { param($p) (Resolve-Path -LiteralPath $p).ProviderPath.TrimEnd('\') }
+try { $gitTopNorm = & $norm $gitTop; $cwdNorm = & $norm $cwd } catch { $gitTopNorm = $gitTop; $cwdNorm = $cwd }
+if (-not ($gitTopNorm.Equals($cwdNorm, [System.StringComparison]::InvariantCultureIgnoreCase))) {
+    Write-Error "Ce script doit être exécuté depuis la racine d'un dépôt git. Chemin courant : $cwdNorm ; racine git détectée : $gitTopNorm"
+    exit 2
+}
 
 # Récupérer la liste des fichiers suivis par git
 $filesRaw = git ls-files -z
@@ -44,6 +75,7 @@ $files = $filesRaw -split "\0" | Where-Object { $_ -ne '' }
 
 $changed = New-Object System.Collections.Generic.List[string]
 $chmodMarked = New-Object System.Collections.Generic.List[string]
+$createdBackups = New-Object System.Collections.Generic.List[string]
 
 foreach ($f in $files) {
     if (-not (Test-Path -LiteralPath $f -PathType Leaf -ErrorAction SilentlyContinue)) { continue }
@@ -62,7 +94,9 @@ foreach ($f in $files) {
 
     # Créer la sauvegarde
     $backup = "$f$BackupSuffix"
+    $backupExisted = Test-Path -LiteralPath $backup
     try { Copy-Item -LiteralPath $f -Destination $backup -Force } catch { Write-Warning "Impossible de créer la sauvegarde $backup" }
+    if (-not $backupExisted) { $createdBackups.Add($backup) }
 
     # Convertir CRLF -> LF
     $out = New-Object System.Collections.Generic.List[byte]
@@ -86,7 +120,17 @@ foreach ($f in $files) {
     }
 }
 
-if (-not $Apply) { Write-Log 'Dry-run complete. Rerun without -DryRun to apply.' } else { Write-Log "Applied normalization: $($changed.Count) files modified, $($chmodMarked.Count) files marked +x in git index." }
+if (-not $Apply) { 
+    Write-Log 'Dry-run complete. Rerun without -DryRun to apply.' 
+} else { 
+    Write-Log "Applied normalization: $($changed.Count) files modified, $($chmodMarked.Count) files marked +x in git index." 
+    # Supprimer les sauvegardes .bak créées par ce script
+    if ($createdBackups.Count -gt 0) {
+        foreach ($b in $createdBackups) {
+            try { Remove-Item -LiteralPath $b -Force -ErrorAction Stop; Write-Log "Removed backup: $b" } catch { Write-Warning "Failed to remove backup $b : $_" }
+        }
+    }
+}
 
 exit 0
 
