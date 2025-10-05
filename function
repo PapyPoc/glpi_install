@@ -474,8 +474,6 @@ function mariadb_configure(){ # Configuration de la base de donnée
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
     export MYSQL_CMD MYSQLDUMP_CMD
     sleep 1
-    # Helper: run a SQL statement as root non-interactively.
-    # Strategy: try direct socket auth, then sudo socket auth, then password auth using $SQLROOTPWD.
     run_root_sql() {
         local sql="$1"
         # 1) If running as root, try socket-based auth quietly
@@ -501,23 +499,24 @@ function mariadb_configure(){ # Configuration de la base de donnée
     run_root_sql_stdin() {
         # Try socket (root), sudo+socket, then password-based
         if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
-            "$MYSQL_CMD" --protocol=socket -u root "$@"
+            "$MYSQL_CMD" --protocol=socket -u root
             return $?
         fi
         if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
-            sudo -- "$MYSQL_CMD" --protocol=socket -u root "$@"
+            sudo -- "$MYSQL_CMD" --protocol=socket -u root
             return $?
         fi
         if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "SELECT 1;"; then
-            "$MYSQL_CMD" -u root -p"$SQLROOTPWD" "$@"
+            "$MYSQL_CMD" -u root -p"$SQLROOTPWD"
             return $?
         fi
         warn "Cannot connect to MariaDB as root non-interactively for stdin-based import.";
         return 1
     }
     # Sécurise l'installation de MariaDB
-    run_root_sql_stdin "ALTER USER 'root'@'localhost' IDENTIFIED BY ${SQLROOTPWD};" || return 1
+    echo "ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';" >> "${LOGFILE}"
     echo "$SQLROOTPWD" >> "${LOGFILE}"
+    run_root_sql "ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';" || return 1
     run_root_sql "FLUSH PRIVILEGES;" || return 1
     run_root_sql "DELETE FROM mysql.user WHERE User='';" || return 1
     run_root_sql "DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';" || return 1
@@ -532,7 +531,7 @@ function mariadb_configure(){ # Configuration de la base de donnée
     run_root_sql "FLUSH PRIVILEGES;" || return 1
     # Initialize time zones data
     info "$MSG_TIMEZONE_CONFIG"
-    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | run_root_sql_stdin mysql; then
+    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | run_root_sql_stdin; then
         warn "$MSG_ERROR_TASK: timezone import failed"
         return 1
     fi

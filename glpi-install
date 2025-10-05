@@ -29,7 +29,7 @@ fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
     source /etc/os-release
     DISTRO_ID=${ID}
-    info "$MSG_DISTRO_DETECTED $DISTRO_ID ${VERSION_ID}"
+    info "$MSG_DISTRO_DETECTED$DISTRO_ID ${VERSION_ID}"
 else
     warn "$MSG_DISTRO_NONOK"
     exit 1
