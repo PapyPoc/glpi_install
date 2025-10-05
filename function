@@ -525,9 +525,7 @@ function mariadb_configure(){
         warn "Cannot connect to MariaDB as root non-interactively. Please check root authentication (unix_socket), sudo availability, or set/confirm root password.";
         return 1
     }
-    # Helper: run a command that reads SQL from stdin as root (used for tz import)
     run_root_sql_stdin() {
-    # Essayer socket (root), sudo+socket, puis authentification par mot de passe
         if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
             "$MYSQL_CMD" --protocol=socket -u root
             return $?
