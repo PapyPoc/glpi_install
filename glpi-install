@@ -14,7 +14,6 @@ clear
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$REP_SCRIPT/config" # Fichier de variable
 load_language # Fichier de langue
-timedatectl set-ntp true # Synchronise l'heure
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"

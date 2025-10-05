@@ -5,14 +5,15 @@
 # Version: 1.8.0
 # Function file
 #
-set -euo pipefail
+set -Eeuo pipefail
+trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR >> "$LOG_FILE"
 # Ne pas continuer si le script est exécuté directement
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo -e "Ce fichier doit être sourcé, pas exécuté.\n" >&2
     echo -e "This file must be sourced, not executed.\n" >&2
     exit 1
 fi
-# Export a whitelist of variables used in language placeholders so envsubst can replace them
+# Exporter une liste blanche de variables utilisées dans les fichiers de langue pour que envsubst puisse les remplacer
 export_display_env() {
     # Export a comprehensive set of variables (upper and lower case) that may be
     # referenced as placeholders in language files. Values default to empty if unset.
@@ -37,9 +38,9 @@ export_display_env() {
     for v in "${vars[@]}" "${lvars[@]}"; do
         _val="${!v:-}"
         export "$v"="$_val"
-    done }
-# Ensure required commands are present; install if missing.
-# Sets NEED_RESTART=1 if installation occurred.
+    done
+}
+# S'assurer que les commandes requises sont présentes ; les installer si elles manquent.
 ensure_dependencies() {
     NEED_RESTART=0
     local missing=()
@@ -106,7 +107,8 @@ ensure_dependencies() {
     export NEED_RESTART
     return 0
 }
-function warn(){ # Fonction d'alerte
+# Affichage d'alerte
+function warn(){ 
     local msg="$1"
     export_display_env
     local expanded
@@ -118,7 +120,8 @@ function warn(){ # Fonction d'alerte
     fi
     echo -e '\e[31m'"$expanded"'\e[0m' # Red color
 }
-function info(){ # Fonction d'information
+# Affichage d'information 
+function info(){
     local msg="$1"
     export_display_env
     local expanded
@@ -129,7 +132,8 @@ function info(){ # Fonction d'information
     fi
     echo -e '\e[36m'"$expanded"'\e[0m' # Cyan color
 }
-function check_dialog() { # Vérifier et installer 'dialog'
+# Vérifier et installer 'dialog'
+function check_dialog() {
     if ! command -v dialog &>/dev/null; then
         info "$MSG_DIALOG_INSTALL"
 
@@ -151,7 +155,8 @@ function check_dialog() { # Vérifier et installer 'dialog'
         fi
     fi
 }
-function run_task() { # Exécuter une tâche
+# Exécuter une tâche et gérer les erreurs et les logs
+function run_task() {
     local task_key="$1"
     local task_cmd="$2"
     local index="$3"
@@ -174,7 +179,8 @@ function run_task() { # Exécuter une tâche
     fi
     return 0;
 }
-function glpi_install() { # Exécuter les tâches avec barre de progression
+# Exécuter les tâches avec barre de progression
+function glpi_install() {
     declare -A tasks=(
 		["$MSG_T01"]="update_distro"
         ["$MSG_T02"]="install_packages"
@@ -198,8 +204,10 @@ function glpi_install() { # Exécuter les tâches avec barre de progression
         echo "XXX"
         run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks" || break
         sleep 1
-    done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120; }
-function display_result() { # Afficher le résultat final
+    done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
+}
+# Afficher le résultat final
+function display_result() {
 	if [[ -f "$FICHIER_MSG" ]]; then
         MESSAGE=""
         while IFS= read -r ligne; do
@@ -214,8 +222,10 @@ function display_result() { # Afficher le résultat final
         done < "$ERRORFILE"
         dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_NONOK" --msgbox "$MSG_NONOK\n\n$MESSAGE" 0 0
         warn "$MSG_ERROR_FICHIER_MSG"
-    fi }
-function load_language() { # Chargement du fichier de langue (parse .ini safely)
+    fi
+}
+# Chargement du fichier de langue
+function load_language() {
     local syslang="${LC_ALL:-${LANG:-}}"
     if [[ $syslang =~ ^fr ]]; then
         LANG_FILE="$REP_SCRIPT/lang/fr.ini"
@@ -272,12 +282,16 @@ function load_language() { # Chargement du fichier de langue (parse .ini safely)
         info "$MSG_LANG_LOADED ($LANGUAGE)"
     else
         warn "Language file not found: $LANG_FILE"
-    fi }
+    fi
+}
+# Vérifie si la version est compatible
 function compatible() {
     local version="$1"
     local -n versions_array="$2"
-    [[ ${versions_array[*]} =~ ${version} ]] }
-function check_distro(){ # Vérifie si la distribution est pris en compte pour l'installation de GLPI
+    [[ ${versions_array[*]} =~ ${version} ]]
+}
+# Vérifie si la distribution est prise en compte pour l'installation de GLPI
+function check_distro(){
     # Vérifie si le fichier os-release existe
     if [ -f /etc/os-release ]; then
     # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
@@ -312,8 +326,10 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
     else
         warn "$MSG_DISTRO_INVALID"
         exit 1
-    fi }
-function check_install(){ # Vérifie si GLPI est installé ou pas
+    fi
+}
+# Vérifie si GLPI est installé ou pas
+function check_install(){
     # Vérifie si le répertoire existe
     if [ -d "$1" ]; then
 		OUTPUT=$(php "${REP_GLPI}bin/console" -V 2>/dev/null)
@@ -351,20 +367,28 @@ function check_install(){ # Vérifie si GLPI est installé ou pas
     else
         warn "$MSG_GLPI_NEW"
         glpi_install
-    fi }
-function update_distro(){ # Mise à jour de la distribution
+    fi
+}
+# Mise à jour de la distribution
+function update_distro(){
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         info "$MSG_UPGRADE_DISTRO"
+        timedatectl set-ntp true # Synchronise l'heure
         apt-get update && apt-get upgrade -y
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         info "$MSG_UPGRADE_DISTRO"
-        dnf update -y && dnf upgrade -y
-	fi }
-function network_info(){ # Adresse IP de la machine
+        chronyc makestep # Synchronise l'heure
+        yum update -y && yum upgrade -y
+	fi
+}
+# Adresse IP de la machine
+function network_info(){
     INTERFACE=$(ip route | awk 'NR==1 {print $5}')
     IPADRESS=$(ip addr show "$INTERFACE" | grep inet | awk '{ print $2; }' | sed 's/\/.*$//' | head -n 1)
-	sleep 2; }
-function install_packages(){ # Installation des éléments nécessaire
+	sleep 2;
+}
+# Installation des éléments nécessaire
+function install_packages(){
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
         info "$MSG_INSTALL_EXT_PHP"
@@ -465,9 +489,9 @@ EOF
             warn "$MSG_FIREWALL_FAILED"
             exit 1
         fi
-    fi
-}
-function mariadb_configure(){ # Configuration de la base de donnée
+    fi }
+# Configuration de la base de données MariaDB
+function mariadb_configure(){
     info "$MSG_BDD_CONFIG"
     # Détecter la commande MySQL/MariaDB
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
@@ -541,16 +565,16 @@ function mariadb_configure(){ # Configuration de la base de donnée
     run_root_sql "UPDATE $DB_NAME.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';" || return 1
     # Restart MariaDB
     systemctl restart mariadb
-    sleep 5;
-}
-function install_glpi(){ # Téléchargement et décompression de GLPI
+    sleep 5; }
+# Téléchargement et décompression de GLPI
+function install_glpi(){ 
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
     # Téléchargement de GLPI
     wget -nv -O /tmp/glpi-latest.tgz "$DOWNLOADLINK"
     tar xzf /tmp/glpi-latest.tgz -C /var/www/html/
-	sleep 5;
-}
-function setup_glpi(){ # Mise en place des réglage pour GLPI
+	sleep 5; }
+# Mise en place des réglage pour GLPI
+function setup_glpi(){
     info "$MSG_CONFIG_GLPI"
     mkdir -p /var/log/glpi
     mkdir -p /etc/glpi/config
@@ -716,9 +740,9 @@ EOF
         systemctl restart nginx php-fpm
         echo "*/2 * * * * nginx /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
-	sleep 2;
-}
-function maj_user_glpi(){ # MàJ des mot de passe des utilisateurs de GLPI
+	sleep 2; }
+# Mise à jour des mot de passe des utilisateurs de GLPI
+function maj_user_glpi(){ 
     info "${MSG_CHANGE_MDP_GLPI}"
     # Changer le mot de passe de l'admin glpi
     ${MYSQL_CMD} -u "$DB_USER" -p"$SQLGLPIPWD" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
@@ -728,9 +752,9 @@ function maj_user_glpi(){ # MàJ des mot de passe des utilisateurs de GLPI
     ${MYSQL_CMD} -u "$DB_USER" -p"$SQLGLPIPWD" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';"
     # Changer le mot de passe de l'utilisateur normal
     ${MYSQL_CMD} -u "$DB_USER" -p"$SQLGLPIPWD" -e "USE $DB_NAME; UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
-	sleep 2;
-}
-function write_credentials(){ # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
+	sleep 2; }
+# Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
+function write_credentials(){ 
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
 		cat <<EOF > "$FICHIER_MSG"
 <==========================> Détails de l'installation de GLPI <=================================>
@@ -789,7 +813,8 @@ EOF
     warn "$MSG_FILE_MSG"
     echo ""	
 	sleep 2; }
-function efface_script(){ # Efface le dossier du script
+# Efface le dossier du script
+function efface_script(){ 
     # Vérifie si le répertoire existe
 	warn "$MSG_DELETE_DIR"
     if [ -e "$REP_SCRIPT" ]; then
@@ -797,7 +822,8 @@ function efface_script(){ # Efface le dossier du script
             warn "$MSG_DIR_DELETE"
             rm -Rf "$REP_SCRIPT"
     fi }
-function maintenance(){ # Activé ou déactivé le mode maintenance (1 ou 0)
+# Activé ou déactivé le mode maintenance (1 ou 0)
+function maintenance(){
     if [ "$1" == "1" ]; then
         warn "$MSG_ACTIVE_SERVICE"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
