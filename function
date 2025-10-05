@@ -565,7 +565,8 @@ SQL
     fi
     # Initialiser les données des fuseaux horaires
     info "$MSG_TIMEZONE_CONFIG"
-    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | run_root_sql_stdin mysql; then
+    # mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root -p"$SQLROOTPWD" mysql
+    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root -p${SQLROOTPWD} mysql; then
         warn "$MSG_ERROR_TASK: timezone import failed"
         return 1
     fi
