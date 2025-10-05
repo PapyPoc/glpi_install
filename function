@@ -14,8 +14,9 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 # Exporter une liste blanche de variables utilisées dans les fichiers de langue pour que envsubst puisse les remplacer
 export_display_env() {
-    # Export a comprehensive set of variables (upper and lower case) that may be
-    # referenced as placeholders in language files. Values default to empty if unset.
+    # Exporter un ensemble complet de variables (majuscules et minuscules)
+    # pouvant être référencées comme espaces réservés dans les fichiers de langue.
+    # Les valeurs par défaut sont vides si elles ne sont pas définies.
     local vars=(
         ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID ID NAME PRETTY_NAME MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
         ERRORFILE LOGFILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS INTERFACE DOWNLOADLINK
@@ -24,7 +25,8 @@ export_display_env() {
         DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
     )
 
-    # export lowercase variants too (some messages or templates may use lowercase names)
+    # exporter aussi les variantes en minuscules (certains messages ou modèles
+    # peuvent utiliser des noms en minuscules)
     local lvars=(
         orig_user admin_group distro_id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
         error_file log_file task_index task_key language timezone ipadress interface downloadlink
@@ -54,7 +56,7 @@ ensure_dependencies() {
 
     echo "Missing dependencies: ${missing[*]}. Attempting to install..." >&2
 
-    # detect package manager and package names mapping
+    # détecter le gestionnaire de paquets et construire la commande d'installation
     local pkgmgr install_cmd pkgs
     pkgs="${missing[*]}"
     if command -v apt-get >/dev/null 2>&1; then
@@ -80,7 +82,7 @@ ensure_dependencies() {
         return 1
     fi
 
-    # use sudo if needed
+    # utiliser sudo si nécessaire
     if [ "${EUID:-0}" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
         install_cmd="sudo sh -c '${install_cmd}'"
     fi
@@ -91,7 +93,7 @@ ensure_dependencies() {
         return 1
     fi
 
-    # verify
+    # vérification
     local still_missing=()
     for cmd in curl jq openssl; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -117,7 +119,7 @@ function warn(){
         # fallback to eval if envsubst not available
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e '\e[31m'"$expanded"'\e[0m' # Red color
+    echo -e '\e[31m'"$expanded"'\e[0m' # Couleur rouge
 }
 # Affichage d'information 
 function info(){
@@ -129,7 +131,7 @@ function info(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e '\e[36m'"$expanded"'\e[0m' # Cyan color
+    echo -e '\e[36m'"$expanded"'\e[0m' # Couleur cyan
 }
 # Vérifier et installer 'dialog'
 function check_dialog() {
@@ -237,12 +239,13 @@ function load_language() {
     if [[ -f $LANG_FILE ]]; then
         # Ensure environment variables used in messages are exported for envsubst
         export_display_env
-        # Read file line by line, handle CRLF, comments, sections and quoted values
+    # Lire le fichier ligne par ligne, gérer CRLF, commentaires, sections
+    # et valeurs entre guillemets
         while IFS= read -r line || [ -n "$line" ]; do
-            # strip CR if present (Windows-format files)
+            # supprimer CR si présent (fichiers format Windows)
             line="${line%%$'\r'}"
             # skip empty lines and comments
-            # trim leading whitespace
+            # supprimer les espaces de tête
             trimmed="${line#${line%%[![:space:]]*}}"
             if [ -z "$trimmed" ]; then
                 continue
@@ -252,7 +255,7 @@ function load_language() {
                     continue
                     ;;
             esac
-            # skip section headers
+            # ignorer les entêtes de section
             [[ $line =~ ^[[:space:]]*\[.*\] ]] && continue
             if [[ $line =~ ^[[:space:]]*([^=[:space:]]+)[[:space:]]*=(.*)$ ]]; then
                 local key="${BASH_REMATCH[1]}"
@@ -266,16 +269,18 @@ function load_language() {
                 elif [[ $value =~ ^\"(.*)\"$ ]]; then
                     value="${BASH_REMATCH[1]}"
                 fi
-                # Expand placeholders inside the value using envsubst (preferred) or eval fallback
+                # Développer les espaces réservés dans la valeur avec envsubst
+                # (préféré) ou utiliser eval en secours
                 local expanded_value
                 if command -v envsubst >/dev/null 2>&1; then
                     # envsubst reads from the environment, so ensure variables are exported
                     expanded_value=$( ( set +u; printf '%s' "$value" | envsubst ) )
                 else
-                    # fallback: perform parameter expansion safely (allow unset vars)
+                    # fallback : effectuer l'expansion de paramètres en toute sécurité
+                    # (autoriser les variables non définies)
                     expanded_value=$( ( set +u; eval "printf '%s' \"$value\"" ) )
                 fi
-                # assign safely to a variable named by $key
+                # affecter en toute sécurité à une variable nommée par $key
                 printf -v "$key" '%s' "$expanded_value"
             fi
         done < "$LANG_FILE"
@@ -511,17 +516,17 @@ function mariadb_configure(){
             return $?
         fi
         # 3) Try password-based auth if a root password was provided
-        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "SELECT 1;"; then
-            "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "$sql" 2>/dev/null
+        # shellcheck disable=SC2086
+        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p${SQLROOTPWD} -e "SELECT 1;"; then
+            "$MYSQL_CMD" -u root -p${SQLROOTPWD} -e "$sql" 2>/dev/null
             return $?
         fi
         warn "Cannot connect to MariaDB as root non-interactively. Please check root authentication (unix_socket), sudo availability, or set/confirm root password.";
         return 1
     }
-
     # Helper: run a command that reads SQL from stdin as root (used for tz import)
     run_root_sql_stdin() {
-        # Try socket (root), sudo+socket, then password-based
+    # Essayer socket (root), sudo+socket, puis authentification par mot de passe
         if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
             "$MYSQL_CMD" --protocol=socket -u root
             return $?
@@ -530,8 +535,9 @@ function mariadb_configure(){
             sudo -- "$MYSQL_CMD" --protocol=socket -u root
             return $?
         fi
-        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "SELECT 1;"; then
-            "$MYSQL_CMD" -u root -p"$SQLROOTPWD"
+        # shellcheck disable=SC2086
+        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p${SQLROOTPWD} -e "SELECT 1;"; then
+            "$MYSQL_CMD" -u root -p${SQLROOTPWD}
             return $?
         fi
         warn "Cannot connect to MariaDB as root non-interactively for stdin-based import.";
@@ -540,8 +546,7 @@ function mariadb_configure(){
     # Sécurise l'installation de MariaDB
     echo "ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';" >> "${LOGFILE}"
     echo "$SQLROOTPWD" >> "${LOGFILE}"
-    run_root_sql "ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';" || return 1
-    run_root_sql "FLUSH PRIVILEGES;" || return 1
+    run_root_sql "ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}'; FLUSH PRIVILEGES;" || return 1
     run_root_sql "DELETE FROM mysql.user WHERE User='';" || return 1
     run_root_sql "DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';" || return 1
     run_root_sql "DROP DATABASE IF EXISTS test;" || return 1
@@ -553,13 +558,13 @@ function mariadb_configure(){
     run_root_sql "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '$DB_USER'@'localhost';" || return 1
     run_root_sql "GRANT SELECT ON mysql.time_zone_name TO '$DB_USER'@'localhost'" || return 1
     run_root_sql "FLUSH PRIVILEGES;" || return 1
-    # Initialize time zones data
+    # Initialiser les données des fuseaux horaires
     info "$MSG_TIMEZONE_CONFIG"
     if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | run_root_sql_stdin; then
         warn "$MSG_ERROR_TASK: timezone import failed"
         return 1
     fi
-    # Change timezone and language
+    # Modifier le fuseau horaire et la langue
     run_root_sql "UPDATE $DB_NAME.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';" || return 1
     run_root_sql "UPDATE $DB_NAME.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';" || return 1
     run_root_sql "UPDATE $DB_NAME.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';" || return 1
