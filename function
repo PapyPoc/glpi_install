@@ -119,7 +119,7 @@ function warn(){
         # fallback to eval if envsubst not available
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e '\e[31m'"$expanded"'\e[0m' # Couleur rouge
+    echo -e "${ROUGE}${expanded}${NC}" # Couleur rouge
 }
 # Affichage d'information 
 function info(){
@@ -131,7 +131,7 @@ function info(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e '\e[36m'"$expanded"'\e[0m' # Couleur cyan
+    echo -e "${CYAN}${expanded}${NC}" # Couleur cyan
 }
 # Vérifier et installer 'dialog'
 function check_dialog() {
@@ -518,9 +518,22 @@ function mariadb_configure(){
         fi
         # 3) Try password-based auth if a root password was provided
         # shellcheck disable=SC2086
-        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p${SQLROOTPWD} -e "SELECT 1;"; then
-            "$MYSQL_CMD" -u root -p${SQLROOTPWD} -e "$sql" 2>/dev/null
+        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "SELECT 1;"; then
+            "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "$sql" 2>/dev/null
             return $?
+        fi
+        # If running interactively, offer a one-time prompt for the root password and retry
+        if [ -t 0 ]; then
+            read -rsp $'Cannot connect as root non-interactively. If you know the MariaDB root password, enter it now (input hidden, empty to skip): ' __pw
+            echo
+            if [ -n "${__pw}" ]; then
+                SQLROOTPWD="${__pw}"
+                export SQLROOTPWD
+                if "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "SELECT 1;" >/dev/null 2>&1; then
+                    "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "$sql" 2>/dev/null
+                    return $?
+                fi
+            fi
         fi
         warn "Cannot connect to MariaDB as root non-interactively. Please check root authentication (unix_socket), sudo availability, or set/confirm root password.";
         return 1
@@ -535,9 +548,22 @@ function mariadb_configure(){
             return $?
         fi
         # shellcheck disable=SC2086
-        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p${SQLROOTPWD} -e "SELECT 1;"; then
-            "$MYSQL_CMD" -u root -p${SQLROOTPWD}
+        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "SELECT 1;"; then
+            "$MYSQL_CMD" -u root --password="${SQLROOTPWD}"
             return $?
+        fi
+        # Interactive one-time prompt to accept a root password for stdin-based imports
+        if [ -t 0 ]; then
+            read -rsp $'Cannot connect as root non-interactively. If you know the MariaDB root password, enter it now (input hidden, empty to skip): ' __pw
+            echo
+            if [ -n "${__pw}" ]; then
+                SQLROOTPWD="${__pw}"
+                export SQLROOTPWD
+                if "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "SELECT 1;" >/dev/null 2>&1; then
+                    "$MYSQL_CMD" -u root --password="${SQLROOTPWD}"
+                    return $?
+                fi
+            fi
         fi
         warn "Cannot connect to MariaDB as root non-interactively for stdin-based import.";
         return 1
@@ -545,7 +571,7 @@ function mariadb_configure(){
     # Sécurise l'installation de MariaDB — exécuter un bloc SQL en une seule connexion
     # (exécute ALTER USER, suppression d'utilisateurs anonymes, suppression de la db test,
     # création de la base et de l'utilisateur GLPI, et assignation des privilèges)
-    echo "$SQLROOTPWD" >> "${LOGFILE}"
+    # Do NOT log the root password.
     if ! cat <<SQL | run_root_sql_stdin
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
 DELETE FROM mysql.user WHERE User='';
@@ -565,8 +591,8 @@ SQL
     fi
     # Initialiser les données des fuseaux horaires
     info "$MSG_TIMEZONE_CONFIG"
-    # mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root -p"$SQLROOTPWD" mysql
-    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root -p${SQLROOTPWD} mysql; then
+    # Import timezone data using the same auth fallbacks as run_root_sql_stdin
+    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | run_root_sql_stdin; then
         warn "$MSG_ERROR_TASK: timezone import failed"
         return 1
     fi
