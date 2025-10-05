@@ -544,21 +544,27 @@ function mariadb_configure(){
         warn "Cannot connect to MariaDB as root non-interactively for stdin-based import.";
         return 1
     }
-    # Sécurise l'installation de MariaDB
-    echo "ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';" >> "${LOGFILE}"
+    # Sécurise l'installation de MariaDB — exécuter un bloc SQL en une seule connexion
+    # (exécute ALTER USER, suppression d'utilisateurs anonymes, suppression de la db test,
+    # création de la base et de l'utilisateur GLPI, et assignation des privilèges)
     echo "$SQLROOTPWD" >> "${LOGFILE}"
-    run_root_sql "ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}'; FLUSH PRIVILEGES;" || return 1
-    run_root_sql "DELETE FROM mysql.user WHERE User='';" || return 1
-    run_root_sql "DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';" || return 1
-    run_root_sql "DROP DATABASE IF EXISTS test;" || return 1
-    run_root_sql "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';" || return 1
-    # Création de la base de données et de l'utilisateur GLPI
-    run_root_sql "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';" || return 1
-    run_root_sql "CREATE DATABASE ${DB_NAME};" || return 1
-    run_root_sql "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$SQLGLPIPWD';" || return 1
-    run_root_sql "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '$DB_USER'@'localhost';" || return 1
-    run_root_sql "GRANT SELECT ON mysql.time_zone_name TO '$DB_USER'@'localhost'" || return 1
-    run_root_sql "FLUSH PRIVILEGES;" || return 1
+    if ! cat <<SQL | run_root_sql_stdin
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
+DELETE FROM mysql.user WHERE User='';
+DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
+DROP DATABASE IF EXISTS test;
+DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+    then
+        warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
+        return 1
+    fi
     # Initialiser les données des fuseaux horaires
     info "$MSG_TIMEZONE_CONFIG"
     if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | run_root_sql_stdin; then
