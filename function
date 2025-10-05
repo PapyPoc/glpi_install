@@ -269,7 +269,7 @@ function load_language() { # Chargement du fichier de langue (parse .ini safely)
                 printf -v "$key" '%s' "$expanded_value"
             fi
         done < "$LANG_FILE"
-        info "$MSG_LANG_LOADED"
+        info "$MSG_LANG_LOADED ($LANGUAGE)"
     else
         warn "Language file not found: $LANG_FILE"
     fi }

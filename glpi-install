@@ -19,6 +19,7 @@ if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"
 else
     if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
+        info "Taper le MDP de ${ORIG_USER} pour passer en root"
         exec sudo -- "$0" "$@"
     else
         warn "${MSG_USER_NOT_SUDO}"
