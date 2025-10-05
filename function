@@ -37,9 +37,7 @@ export_display_env() {
     for v in "${vars[@]}" "${lvars[@]}"; do
         _val="${!v:-}"
         export "$v"="$_val"
-    done
-}
-
+    done }
 # Ensure required commands are present; install if missing.
 # Sets NEED_RESTART=1 if installation occurred.
 ensure_dependencies() {
@@ -104,11 +102,9 @@ ensure_dependencies() {
         echo "Commands still missing after install: ${still_missing[*]}" >&2
         return 1
     fi
-
     NEED_RESTART=1
-    return 0
-}
-
+    export NEED_RESTART
+    return 0 }
 function warn(){ # Fonction d'alerte
     local msg="$1"
     export_display_env
@@ -119,9 +115,7 @@ function warn(){ # Fonction d'alerte
         # fallback to eval if envsubst not available
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e '\e[31m'"$expanded"'\e[0m'
-}
-
+    echo -e '\e[31m'"$expanded"'\e[0m' # Red color}
 function info(){ # Fonction d'information
     local msg="$1"
     export_display_env
@@ -131,9 +125,7 @@ function info(){ # Fonction d'information
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e '\e[36m'"$expanded"'\e[0m'
-}
-
+    echo -e '\e[36m'"$expanded"'\e[0m' # Cyan color}
 function check_dialog() { # Vérifier et installer 'dialog'
     if ! command -v dialog &>/dev/null; then
         info "$MSG_DIALOG_INSTALL"
@@ -154,9 +146,7 @@ function check_dialog() { # Vérifier et installer 'dialog'
             warn "$MSG_DIALOG_DISTRO_UNKNOWN"
             exit 1
         fi
-    fi
-}
-
+    fi }
 function run_task() { # Exécuter une tâche
     local task_key="$1"
     local task_cmd="$2"
@@ -176,7 +166,7 @@ function run_task() { # Exécuter une tâche
     else
         # Ensure ERROR_FILE is present and append details
         : "${ERROR_FILE:=$(mktemp /tmp/glpi_error.XXXXXX)}"
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd (exit $exit_code)" >> "$ERROR_FILE"
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd" >> "$ERROR_FILE"
         echo "$output" >> "$ERROR_FILE"
         warn "$MSG_ERROR_TASK: $task_key" 2>> "$ERROR_FILE"
         return 1
@@ -281,13 +271,11 @@ function load_language() { # Chargement du fichier de langue (parse .ini safely)
         info "$MSG_LANG_LOADED"
     else
         warn "Language file not found: $LANG_FILE"
-    fi
-}
+    fi }
 function compatible() {
     local version="$1"
     local -n versions_array="$2"
-    [[ ${versions_array[*]} =~ ${version} ]]
-}
+    [[ ${versions_array[*]} =~ ${version} ]] }
 function check_distro(){ # Vérifie si la distribution est pris en compte pour l'installation de GLPI
     # Vérifie si le fichier os-release existe
     if [ -f /etc/os-release ]; then
@@ -383,7 +371,7 @@ function install_packages(){ # Installation des éléments nécessaire
             warn "$MSG_PHP_EXT_FAILED"
             exit 1
         fi
-        info "$MSG_INSTALL_SERVICE lamp..."
+        info "$MSG_INSTALL_SERVICE"
         if ! apt-get install -y --no-install-recommends wget tar apache2 apache2-bin mariadb-server mariadb-client perl php &>/dev/null; then
             warn "$MSG_LAMP_FAILED"
             exit 1
@@ -393,7 +381,7 @@ function install_packages(){ # Installation des éléments nécessaire
             warn "$MSG_MARIADB_START_FAILED"
             exit 1
         fi
-        info "$MSG_ACTIVE_START_WEB d'Apache"
+        info "$MSG_ACTIVE_START_WEB"
         if ! /lib/systemd/systemd-sysv-install enable apache2 &>/dev/null || ! systemctl restart apache2; then
             warn "$MSG_APACHE_START_FAILED"
             exit 1
@@ -477,16 +465,16 @@ function mariadb_configure(){ # Configuration de la base de donnée
     export MYSQL_CMD MYSQLDUMP_CMD
     sleep 1
     # Sécurise l'installation de MariaDB
-    ${MYSQL_CMD:-mysql} -e "ALTER USER 'root'@'localhost' IDENTIFIED BY $SQLROOTPWD;" # Change le mot de passe root
+    ${MYSQL_CMD:-mysql} -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$SQLROOTPWD';" # Change le mot de passe root
     ${MYSQL_CMD:-mysql} -e "DELETE FROM mysql.user WHERE User='';"; # Supprime les utilisateurs anonymes
     ${MYSQL_CMD:-mysql} -e "DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';"; # Supprime les accès root distants
     ${MYSQL_CMD:-mysql} -e "DROP DATABASE IF EXISTS test;"; # Supprime la base de test
     ${MYSQL_CMD:-mysql} -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';"; # Supprime les accès à la base de test
     # Création de la base de données et de l'utilisateur GLPI
     ${MYSQL_CMD:-mysql} -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';" # Root peut se connecter depuis localhost
-    ${MYSQL_CMD:-mysql} -e "CREATE DATABASE $DB_NAME;" # Create a new database
+    ${MYSQL_CMD:-mysql} -e "CREATE DATABASE '$DB_NAME';" # Create a new database
     ${MYSQL_CMD:-mysql} -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$SQLGLPIPWD';" # Create a new user
-    ${MYSQL_CMD:-mysql} -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';" # Grant privileges to the new user for the new database
+    ${MYSQL_CMD:-mysql} -e "GRANT ALL PRIVILEGES ON '$DB_NAME.*' TO '$DB_USER'@'localhost';" # Grant privileges to the new user for the new database
     ${MYSQL_CMD:-mysql} -e "GRANT SELECT ON mysql.time_zone_name TO '$DB_USER'@'localhost'" # Donne accés à la base mysl.time_zone_name à l'utilisateur glpi_user
     ${MYSQL_CMD:-mysql} -e "FLUSH PRIVILEGES;" # Recharge les privilèges
     # Initialize time zones data
