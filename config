@@ -42,35 +42,40 @@ if declare -F ensure_dependencies >/dev/null 2>&1; then
 else
     echo "Warning: ensure_dependencies not available; skipping automatic install check." >&2
 fi
-export DOWNLOADLINK; DOWNLOADLINK=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.assets[0].browser_download_url')
+DOWNLOADLINK=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.assets[0].browser_download_url')
 if [ -z "$DOWNLOADLINK" ] || [ "$DOWNLOADLINK" = "null" ]; then
     echo "Erreur: Impossible de récupérer le lien de téléchargement GLPI" >&2
     return 1
 fi
-export NEW_VERSION; NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name')
+NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name')
 if [ -z "$NEW_VERSION" ] || [ "$NEW_VERSION" = "null" ]; then
     echo "Erreur: Impossible de récupérer la version GLPI" >&2
     return 1
 fi
-export DEBIAN_VERSIONS=("11" "12")
-export UBUNTU_VERSIONS=("23.10" "24.10")
-export ALMA_VERSIONS=("9.5")
-export CENTOS_VERSIONS=("9")
-export ROCKY_VERSIONS=("9.5")
-export REDHAT_VERSIONS=("9.5")
-export REP_BACKUP="/root/glpi_sauve/"
-export REP_GLPI="/var/www/html/glpi/"
-export SQLROOTPWD; SQLROOTPWD=$(openssl rand -base64 48 | cut -c1-18)
-export SQLGLPIPWD; SQLGLPIPWD=$(openssl rand -base64 48 | cut -c1-18)
-export ADMINGLPIPWD; ADMINGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
-export POSTGLPIPWD; POSTGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
-export TECHGLPIPWD; TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
-export NORMGLPIPWD; NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
-export DB_NAME="glpi"
-export DB_USER="glpi_user"
-export BDD_BACKUP
+DEBIAN_VERSIONS=("11" "12")
+UBUNTU_VERSIONS=("23.10" "24.10")
+ALMA_VERSIONS=("9.5")
+CENTOS_VERSIONS=("9")
+ROCKY_VERSIONS=("9.5")
+REDHAT_VERSIONS=("9.5")
+REP_BACKUP="/root/glpi_sauve/"
+REP_GLPI="/var/www/html/glpi/"
+SQLROOTPWD=$(openssl rand -base64 48 | cut -c1-18)
+SQLGLPIPWD=$(openssl rand -base64 48 | cut -c1-18)
+ADMINGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+POSTGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
+DB_NAME="glpi"
+DB_USER="glpi_user"
 BDD_BACKUP="bdd_glpi-$(date +"%d-%m-%Y_%H-%M-%S").sql"
-export FICHIER_MSG="${REP_SCRIPT}/sauve_mdp.txt"
-export SUCCES_FILE="${REP_SCRIPT}/succes.log"
-export ERROR_FILE="${REP_SCRIPT}/error.log"
-export LOG_FILE="${REP_SCRIPT}/glpi_install.log"
+FICHIER_MSG="${HOME}/sauve_mdp.txt"
+SUCCES_FILE="${HOME}/succes.log"
+ERROR_FILE="${HOME}/error.log"
+LOG_FILE="${HOME}/glpi_install.log"
+export DOWNLOADLINK NEW_VERSION
+export DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS
+export REP_BACKUP REP_GLPI
+export SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
+export DB_NAME DB_USER BDD_BACKUP
+export FICHIER_MSG SUCCES_FILE ERROR_FILE LOG_FILE
