@@ -471,17 +471,17 @@ function mariadb_configure(){ # Configuration de la base de donnée
         run_root_sql() {
             local sql="$1"
             # 1) If running as root, try socket-based auth quietly
-            if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;" >/dev/null 2>&1; then
+            if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
                 "$MYSQL_CMD" --protocol=socket -u root -e "$sql" 2>/dev/null
                 return $?
             fi
             # 2) Try running mysql under sudo (execute the mysql binary as root)
-            if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;" >/dev/null 2>&1; then
+            if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
                 sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "$sql" 2>/dev/null
                 return $?
             fi
             # 3) Try password-based auth if a root password was provided
-            if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "SELECT 1;" >/dev/null 2>&1; then
+            if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "SELECT 1;"; then
                 "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "$sql" 2>/dev/null
                 return $?
             fi
@@ -492,15 +492,15 @@ function mariadb_configure(){ # Configuration de la base de donnée
         # Helper: run a command that reads SQL from stdin as root (used for tz import)
         run_root_sql_stdin() {
             # Try socket (root), sudo+socket, then password-based
-            if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;" >/dev/null 2>&1; then
+            if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
                 "$MYSQL_CMD" --protocol=socket -u root "$@"
                 return $?
             fi
-            if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;" >/dev/null 2>&1; then
+            if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
                 sudo -- "$MYSQL_CMD" --protocol=socket -u root "$@"
                 return $?
             fi
-            if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "SELECT 1;" >/dev/null 2>&1; then
+            if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "SELECT 1;"; then
                 "$MYSQL_CMD" -u root -p"$SQLROOTPWD" "$@"
                 return $?
             fi
