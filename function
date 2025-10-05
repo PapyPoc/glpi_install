@@ -470,38 +470,38 @@ function mariadb_configure(){ # Configuration de la base de donnée
         # Strategy: try direct socket auth, then sudo socket auth, then password auth using $SQLROOTPWD.
         run_root_sql() {
             local sql="$1"
-            # Try socket/no-password
-            if $MYSQL_CMD -u root -e "SELECT 1;"; then
-                $MYSQL_CMD -u root -e "$sql"
+            # 1) If running as root, try socket-based auth quietly
+            if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;" >/dev/null 2>&1; then
+                "$MYSQL_CMD" --protocol=socket -u root -e "$sql" 2>/dev/null
                 return $?
             fi
-            # Try sudo (unix_socket as root)
-            if command -v sudo >/dev/null 2>&1 && sudo "$MYSQL_CMD" -u root -e "SELECT 1;"; then
-                sudo "$MYSQL_CMD" -u root -e "$sql"
+            # 2) Try running mysql under sudo (execute the mysql binary as root)
+            if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;" >/dev/null 2>&1; then
+                sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "$sql" 2>/dev/null
                 return $?
             fi
-            # Try with generated/root password if available
-            if [ -n "${SQLROOTPWD:-}" ] && $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "SELECT 1;"; then
-                $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "$sql"
+            # 3) Try password-based auth if a root password was provided
+            if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "SELECT 1;" >/dev/null 2>&1; then
+                "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "$sql" 2>/dev/null
                 return $?
             fi
-            warn "Cannot connect to MariaDB as root non-interactively. Please check root authentication (unix_socket) or set/confirm root password.";
+            warn "Cannot connect to MariaDB as root non-interactively. Please check root authentication (unix_socket), sudo availability, or set/confirm root password.";
             return 1
         }
 
         # Helper: run a command that reads SQL from stdin as root (used for tz import)
         run_root_sql_stdin() {
-            # build the best prefix to run mysql as root
-            if $MYSQL_CMD -u root -e "SELECT 1;" >/dev/null 2>&1; then
-                $MYSQL_CMD -u root "$@"
+            # Try socket (root), sudo+socket, then password-based
+            if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;" >/dev/null 2>&1; then
+                "$MYSQL_CMD" --protocol=socket -u root "$@"
                 return $?
             fi
-            if command -v sudo >/dev/null 2>&1 && sudo $MYSQL_CMD -u root -e "SELECT 1;"; then
-                sudo $MYSQL_CMD -u root "$@"
+            if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;" >/dev/null 2>&1; then
+                sudo -- "$MYSQL_CMD" --protocol=socket -u root "$@"
                 return $?
             fi
-            if [ -n "${SQLROOTPWD:-}" ] && $MYSQL_CMD -u root -p"$SQLROOTPWD" -e "SELECT 1;"; then
-                $MYSQL_CMD -u root -p"$SQLROOTPWD" "$@"
+            if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root -p"$SQLROOTPWD" -e "SELECT 1;" >/dev/null 2>&1; then
+                "$MYSQL_CMD" -u root -p"$SQLROOTPWD" "$@"
                 return $?
             fi
             warn "Cannot connect to MariaDB as root non-interactively for stdin-based import.";
@@ -516,9 +516,9 @@ function mariadb_configure(){ # Configuration de la base de donnée
         run_root_sql "DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';" || return 1
         # Création de la base de données et de l'utilisateur GLPI
         run_root_sql "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';" || return 1
-        run_root_sql "CREATE DATABASE $DB_NAME;" || return 1
+        run_root_sql "CREATE DATABASE ${DB_NAME};" || return 1
         run_root_sql "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$SQLGLPIPWD';" || return 1
-        run_root_sql "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';" || return 1
+        run_root_sql "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '$DB_USER'@'localhost';" || return 1
         run_root_sql "GRANT SELECT ON mysql.time_zone_name TO '$DB_USER'@'localhost'" || return 1
         run_root_sql "FLUSH PRIVILEGES;" || return 1
         # Initialize time zones data
