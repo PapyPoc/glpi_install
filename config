@@ -69,13 +69,13 @@ NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 DB_NAME="glpi"
 DB_USER="glpi_user"
 BDD_BACKUP="bdd_glpi-$(date +"%d-%m-%Y_%H-%M-%S").sql"
+# Message/log files placed in the user's home directory.
 FICHIER_MSG="${HOME}/sauve_mdp.txt"
-SUCCES_FILE="${HOME}/succes.log"
-ERROR_FILE="${HOME}/error.log"
-LOG_FILE="${HOME}/glpi_install.log"
+ERRORFILE="${HOME}/error.log"
+LOGFILE="${HOME}/glpi_install.log"
 export DOWNLOADLINK NEW_VERSION
 export DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS
 export REP_BACKUP REP_GLPI
 export SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
 export DB_NAME DB_USER BDD_BACKUP
-export FICHIER_MSG SUCCES_FILE ERROR_FILE LOG_FILE
+export FICHIER_MSG ERRORFILE LOGFILE
