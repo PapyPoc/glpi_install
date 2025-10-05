@@ -104,7 +104,8 @@ ensure_dependencies() {
     fi
     NEED_RESTART=1
     export NEED_RESTART
-    return 0 }
+    return 0
+}
 function warn(){ # Fonction d'alerte
     local msg="$1"
     export_display_env
@@ -115,7 +116,8 @@ function warn(){ # Fonction d'alerte
         # fallback to eval if envsubst not available
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e '\e[31m'"$expanded"'\e[0m' # Red color}
+    echo -e '\e[31m'"$expanded"'\e[0m' # Red color
+}
 function info(){ # Fonction d'information
     local msg="$1"
     export_display_env
@@ -125,7 +127,8 @@ function info(){ # Fonction d'information
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e '\e[36m'"$expanded"'\e[0m' # Cyan color}
+    echo -e '\e[36m'"$expanded"'\e[0m' # Cyan color
+}
 function check_dialog() { # Vérifier et installer 'dialog'
     if ! command -v dialog &>/dev/null; then
         info "$MSG_DIALOG_INSTALL"
@@ -146,7 +149,8 @@ function check_dialog() { # Vérifier et installer 'dialog'
             warn "$MSG_DIALOG_DISTRO_UNKNOWN"
             exit 1
         fi
-    fi }
+    fi
+}
 function run_task() { # Exécuter une tâche
     local task_key="$1"
     local task_cmd="$2"
@@ -799,7 +803,9 @@ EOF
 	info "$MSG_UPDATE_CLEAN"
 	rm -Rf "${REP_GLPI}"install/install.php
 	rm -Rf "$REP_BACKUP"backup_glpi
-	sleep 2; }
+	sleep 2;
+}
+
 function update(){ # Fonction principale pour exécuter les tâches avec barre de progression
     declare -A tasks=(
 		["$MSG_T10"]="maintenance 1"
