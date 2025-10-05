@@ -507,7 +507,7 @@ function mariadb_configure(){ # Configuration de la base de donnée
             warn "Cannot connect to MariaDB as root non-interactively for stdin-based import.";
             return 1
         }
-
+        echo "$SQLROOTPWD"
         # Sécurise l'installation de MariaDB
         run_root_sql "ALTER USER 'root'@'localhost' IDENTIFIED BY '$SQLROOTPWD';" || return 1
         run_root_sql "DELETE FROM mysql.user WHERE User='';" || return 1
