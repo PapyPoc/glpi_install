@@ -6,7 +6,7 @@
 # Function file
 #
 set -Eeuo pipefail
-trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR >> "$LOG_FILE"
+trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR >> "$LOGFILE"
 # Ne pas continuer si le script est exécuté directement
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo -e "Ce fichier doit être sourcé, pas exécuté.\n" >&2
