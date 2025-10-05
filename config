@@ -86,7 +86,7 @@ INVOKING_HOME="${INVOKING_HOME:-${HOME:-/root}}"
 # Message/log files placed in the invoking user's home directory.
 FICHIER_MSG="${INVOKING_HOME}/sauve_mdp.txt"
 ERROR_FILE="${INVOKING_HOME}/error.log"
-LOG_FILE="${INVOKING_HOME}/glpi_install.log"
+LOG_FILE="${INVOKING_HOME}/install.log"
 # Backwards-compatible aliases
 ERRORFILE="$ERROR_FILE"
 LOGFILE="$LOG_FILE"
