@@ -85,11 +85,8 @@ fi
 INVOKING_HOME="${INVOKING_HOME:-${HOME:-/root}}"
 # Message/log files placed in the invoking user's home directory.
 FICHIER_MSG="${INVOKING_HOME}/sauve_mdp.txt"
-ERROR_FILE="${INVOKING_HOME}/error.log"
-LOG_FILE="${INVOKING_HOME}/install.log"
-# Backwards-compatible aliases
-ERRORFILE="$ERROR_FILE"
-LOGFILE="$LOG_FILE"
+ERRORFILE="${INVOKING_HOME}/error.log"
+LOGFILE="${INVOKING_HOME}/install.log"
 export DOWNLOADLINK NEW_VERSION
 export DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS
 export REP_BACKUP REP_GLPI
