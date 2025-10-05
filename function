@@ -504,126 +504,35 @@ function mariadb_configure(){
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
     export MYSQL_CMD MYSQLDUMP_CMD
     sleep 1
-    run_root_sql() {
-        local sql="$1"
-        # 1) If running as root, try socket-based auth quietly
-        if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
-            "$MYSQL_CMD" --protocol=socket -u root -e "$sql" 2>/dev/null
-            return $?
-        fi
-        # 2) Try running mysql under sudo (execute the mysql binary as root)
-        if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
-            sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "$sql" 2>/dev/null
-            return $?
-        fi
-        # 3) Try password-based auth if a root password was provided
-        # shellcheck disable=SC2086
-        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "SELECT 1;"; then
-            "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "$sql" 2>/dev/null
-            return $?
-        fi
-        # If running interactively, offer a one-time prompt for the root password and retry
-        if [ -t 0 ]; then
-            read -rsp $'Cannot connect as root non-interactively. If you know the MariaDB root password, enter it now (input hidden, empty to skip): ' __pw
-            echo
-            if [ -n "${__pw}" ]; then
-                SQLROOTPWD="${__pw}"
-                export SQLROOTPWD
-                if "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "SELECT 1;" >/dev/null 2>&1; then
-                    "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "$sql" 2>/dev/null
-                    return $?
-                fi
-            fi
-        fi
-        warn "Cannot connect to MariaDB as root non-interactively. Please check root authentication (unix_socket), sudo availability, or set/confirm root password.";
-        return 1
-    }
-    echo "${SQLROOTPWD}"
-    run_root_sql_stdin() {
-        local db="${1:-}"
-        # helper to append database argument if provided
-        if [ -n "$db" ]; then
-            local dbarg="$db"
-        else
-            local dbarg=""
-        fi
-        if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
-            if [ -n "$dbarg" ]; then
-                "$MYSQL_CMD" --protocol=socket -u root "$dbarg"
-            else
-                "$MYSQL_CMD" --protocol=socket -u root
-            fi
-            return $?
-        fi
-        if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
-            if [ -n "$dbarg" ]; then
-                sudo -- "$MYSQL_CMD" --protocol=socket -u root "$dbarg"
-            else
-                sudo -- "$MYSQL_CMD" --protocol=socket -u root
-            fi
-            return $?
-        fi
-        # shellcheck disable=SC2086
-        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root --password=${SQLROOTPWD} -e "SELECT 1;"; then
-            if [ -n "$dbarg" ]; then
-                "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" "$dbarg"
-            else
-                "$MYSQL_CMD" -u root --password="${SQLROOTPWD}"
-            fi
-            return $?
-        fi
-        # Interactive one-time prompt to accept a root password for stdin-based imports
-        if [ -t 0 ]; then
-            read -rsp $'Cannot connect as root non-interactively. If you know the MariaDB root password, enter it now (input hidden, empty to skip): ' __pw
-            echo
-            if [ -n "${__pw}" ]; then
-                SQLROOTPWD="${__pw}"
-                export SQLROOTPWD
-                if "$MYSQL_CMD" -u root --password=${SQLROOTPWD} -e "SELECT 1;" >/dev/null 2>&1; then
-                    if [ -n "$dbarg" ]; then
-                        "$MYSQL_CMD" -u root --password=${SQLROOTPWD} "$dbarg"
-                    else
-                        "$MYSQL_CMD" -u root --password=${SQLROOTPWD}
-                    fi
-                    return $?
-                fi
-            fi
-        fi
-        warn "Cannot connect to MariaDB as root non-interactively for stdin-based import.";
-        return 1
-    }
     # Sécurise l'installation de MariaDB — exécuter un bloc SQL en une seule connexion
     # (exécute ALTER USER, suppression d'utilisateurs anonymes, suppression de la db test,
     # création de la base et de l'utilisateur GLPI, et assignation des privilèges)
-    # Do NOT log the root password.
-    if ! cat <<SQL | run_root_sql_stdin
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
-DELETE FROM mysql.user WHERE User='';
-DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
-DROP DATABASE IF EXISTS test;
-DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
-GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';
-CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
-CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
-GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
-GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
-FLUSH PRIVILEGES;
-SQL
-    then
+    if ! MYSQL_PWD="${SQLROOTPWD}" ${MYSQL_CMD} -u root mysql --batch --silent -e "
+    ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
+    DELETE FROM mysql.user WHERE User='';
+    DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
+    DROP DATABASE IF EXISTS test;
+    DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
+    GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';
+    CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;
+    CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
+    GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '${DB_USER}'@'localhost';
+    GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
+    FLUSH PRIVILEGES;"; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
     # Initialiser les données des fuseaux horaires
     info "$MSG_TIMEZONE_CONFIG"
-    # Import timezone data using the same auth fallbacks as run_root_sql_stdin (target 'mysql' database)
-    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | run_root_sql_stdin mysql; then
+    # Import timezone data using direct mysql invocation (target 'mysql' database)
+    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD="${SQLROOTPWD}" ${MYSQL_CMD} -u root mysql; then
         warn "$MSG_ERROR_TASK: timezone import failed"
         return 1
     fi
     # Modifier le fuseau horaire et la langue
-    run_root_sql "UPDATE $DB_NAME.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';" || return 1
-    run_root_sql "UPDATE $DB_NAME.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';" || return 1
-    run_root_sql "UPDATE $DB_NAME.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';" || return 1
+    if ! MYSQL_PWD="${SQLROOTPWD}" ${MYSQL_CMD} -u root -e "UPDATE $DB_NAME.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"; then return 1; fi
+    if ! MYSQL_PWD="${SQLROOTPWD}" ${MYSQL_CMD} -u root -e "UPDATE $DB_NAME.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"; then return 1; fi
+    if ! MYSQL_PWD="${SQLROOTPWD}" ${MYSQL_CMD} -u root -e "UPDATE $DB_NAME.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"; then return 1; fi
     # Restart MariaDB
     systemctl restart mariadb
     sleep 5; }

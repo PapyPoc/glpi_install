@@ -12,6 +12,20 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo -e "This file must be sourced, not executed.\n" >&2
     exit 1
 fi
+# Determine the home directory of the user who invoked the installer (supports sudo).
+if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+    INVOKING_USER="$SUDO_USER"
+else
+    INVOKING_USER="${LOGNAME:-${USER:-$(logname 2>/dev/null || echo root)}}"
+fi
+INVOKING_HOME=""
+if command -v getent >/dev/null 2>&1; then
+    INVOKING_HOME=$(getent passwd "$INVOKING_USER" | cut -d: -f6 || true)
+fi
+if [ -z "$INVOKING_HOME" ]; then
+    INVOKING_HOME=$(eval echo "~$INVOKING_USER" 2>/dev/null || true)
+fi
+INVOKING_HOME="${INVOKING_HOME:-${HOME:-/root}}"
 # === Constantes globales exportables ===
 # Ensure required commands are present by delegating to ensure_dependencies()
 # Source function (where ensure_dependencies is defined) relative to this file
@@ -72,20 +86,6 @@ NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 DB_NAME="glpi"
 DB_USER="glpi_user"
 BDD_BACKUP="bdd_glpi-$(date +"%d-%m-%Y_%H-%M-%S").sql"
-# Determine the home directory of the user who invoked the installer (supports sudo).
-if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
-    INVOKING_USER="$SUDO_USER"
-else
-    INVOKING_USER="${LOGNAME:-${USER:-$(logname 2>/dev/null || echo root)}}"
-fi
-INVOKING_HOME=""
-if command -v getent >/dev/null 2>&1; then
-    INVOKING_HOME=$(getent passwd "$INVOKING_USER" | cut -d: -f6 || true)
-fi
-if [ -z "$INVOKING_HOME" ]; then
-    INVOKING_HOME=$(eval echo "~$INVOKING_USER" 2>/dev/null || true)
-fi
-INVOKING_HOME="${INVOKING_HOME:-${HOME:-/root}}"
 # Message/log files placed in the invoking user's home directory.
 FICHIER_MSG="${INVOKING_HOME}/sauve_mdp.txt"
 ERRORFILE="${INVOKING_HOME}/error.log"
