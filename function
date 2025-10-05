@@ -516,8 +516,8 @@ function mariadb_configure(){ # Configuration de la base de donnée
         return 1
     }
     # Sécurise l'installation de MariaDB
-    run_root_sql "ALTER USER 'root'@'localhost' IDENTIFIED BY ${SQLROOTPWD};" || return 1
-    echo "$SQLROOTPWD"
+    run_root_sql_stdin "ALTER USER 'root'@'localhost' IDENTIFIED BY ${SQLROOTPWD};" || return 1
+    echo "$SQLROOTPWD" >> "${LOGFILE}"
     run_root_sql "FLUSH PRIVILEGES;" || return 1
     run_root_sql "DELETE FROM mysql.user WHERE User='';" || return 1
     run_root_sql "DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';" || return 1
