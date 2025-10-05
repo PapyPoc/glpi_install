@@ -185,7 +185,7 @@ function glpi_install() { # Exécuter les tâches avec barre de progression
         ["$MSG_T07"]="maj_user_glpi"
 		["$MSG_T08"]="write_credentials"
 	)
-    task_order=("$MSG_T1" "$MSG_T2" "$MSG_T3" "$MSG_T4" "$MSG_T5" "$MSG_T6" "$MSG_T7" "$MSG_T8")
+    task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
     total_tasks=${#task_order[@]}
     task_index=0
     NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
