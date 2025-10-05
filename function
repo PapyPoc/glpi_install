@@ -538,18 +538,38 @@ function mariadb_configure(){
         warn "Cannot connect to MariaDB as root non-interactively. Please check root authentication (unix_socket), sudo availability, or set/confirm root password.";
         return 1
     }
+    echo "${SQLROOTPWD}"
     run_root_sql_stdin() {
+        local db="${1:-}"
+        # helper to append database argument if provided
+        if [ -n "$db" ]; then
+            local dbarg="$db"
+        else
+            local dbarg=""
+        fi
         if [ "${EUID:-$(id -u)}" -eq 0 ] && "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
-            "$MYSQL_CMD" --protocol=socket -u root
+            if [ -n "$dbarg" ]; then
+                "$MYSQL_CMD" --protocol=socket -u root "$dbarg"
+            else
+                "$MYSQL_CMD" --protocol=socket -u root
+            fi
             return $?
         fi
         if command -v sudo >/dev/null 2>&1 && sudo -- "$MYSQL_CMD" --protocol=socket -u root -e "SELECT 1;"; then
-            sudo -- "$MYSQL_CMD" --protocol=socket -u root
+            if [ -n "$dbarg" ]; then
+                sudo -- "$MYSQL_CMD" --protocol=socket -u root "$dbarg"
+            else
+                sudo -- "$MYSQL_CMD" --protocol=socket -u root
+            fi
             return $?
         fi
         # shellcheck disable=SC2086
-        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "SELECT 1;"; then
-            "$MYSQL_CMD" -u root --password="${SQLROOTPWD}"
+        if [ -n "${SQLROOTPWD:-}" ] && "$MYSQL_CMD" -u root --password=${SQLROOTPWD} -e "SELECT 1;"; then
+            if [ -n "$dbarg" ]; then
+                "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" "$dbarg"
+            else
+                "$MYSQL_CMD" -u root --password="${SQLROOTPWD}"
+            fi
             return $?
         fi
         # Interactive one-time prompt to accept a root password for stdin-based imports
@@ -559,8 +579,12 @@ function mariadb_configure(){
             if [ -n "${__pw}" ]; then
                 SQLROOTPWD="${__pw}"
                 export SQLROOTPWD
-                if "$MYSQL_CMD" -u root --password="${SQLROOTPWD}" -e "SELECT 1;" >/dev/null 2>&1; then
-                    "$MYSQL_CMD" -u root --password="${SQLROOTPWD}"
+                if "$MYSQL_CMD" -u root --password=${SQLROOTPWD} -e "SELECT 1;" >/dev/null 2>&1; then
+                    if [ -n "$dbarg" ]; then
+                        "$MYSQL_CMD" -u root --password=${SQLROOTPWD} "$dbarg"
+                    else
+                        "$MYSQL_CMD" -u root --password=${SQLROOTPWD}
+                    fi
                     return $?
                 fi
             fi
@@ -591,8 +615,8 @@ SQL
     fi
     # Initialiser les données des fuseaux horaires
     info "$MSG_TIMEZONE_CONFIG"
-    # Import timezone data using the same auth fallbacks as run_root_sql_stdin
-    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | run_root_sql_stdin; then
+    # Import timezone data using the same auth fallbacks as run_root_sql_stdin (target 'mysql' database)
+    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | run_root_sql_stdin mysql; then
         warn "$MSG_ERROR_TASK: timezone import failed"
         return 1
     fi
