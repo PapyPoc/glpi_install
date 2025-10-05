@@ -369,49 +369,49 @@ function install_packages(){ # Installation des éléments nécessaire
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
         info "$MSG_INSTALL_EXT_PHP"
-        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} &>/dev/null; then
+        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
             warn "$MSG_PHP_EXT_FAILED"
             exit 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! apt-get install -y --no-install-recommends wget tar apache2 apache2-bin mariadb-server mariadb-client perl php &>/dev/null; then
+        if ! apt-get install -y --no-install-recommends wget tar apache2 apache2-bin mariadb-server mariadb-client perl php; then
             warn "$MSG_LAMP_FAILED"
             exit 1
         fi
         info "$MSG_ACTIVE_START_BDD"
-        if ! /lib/systemd/systemd-sysv-install enable mariadb &>/dev/null || ! systemctl restart mariadb; then
+        if ! /lib/systemd/systemd-sysv-install enable mariadb || ! systemctl restart mariadb; then
             warn "$MSG_MARIADB_START_FAILED"
             exit 1
         fi
         info "$MSG_ACTIVE_START_WEB"
-        if ! /lib/systemd/systemd-sysv-install enable apache2 &>/dev/null || ! systemctl restart apache2; then
+        if ! /lib/systemd/systemd-sysv-install enable apache2 || ! systemctl restart apache2; then
             warn "$MSG_APACHE_START_FAILED"
             exit 1
         fi
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
         sleep 1
-        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm &>/dev/null; then
+        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm; then
             warn "$MSG_EPEL_FAILED"
             exit 1
         fi
-        if ! dnf module reset -y php nginx mariadb &>/dev/null; then
+        if ! dnf module reset -y php nginx mariadb; then
             warn "$MSG_MODULES_RESET_FAILED"
             exit 1
         fi
-        if ! dnf module install -y php:8.2 &>/dev/null; then
+        if ! dnf module install -y php:8.2; then
             warn "$MSG_PHP_INSTALL_FAILED"
             exit 1
         fi
-        if ! dnf module install -y nginx:1.24 &>/dev/null; then
+        if ! dnf module install -y nginx:1.24; then
             warn "$MSG_NGINX_INSTALL_FAILED"
             exit 1
         fi
-        if ! dnf module install -y mariadb:10.11 &>/dev/null; then
+        if ! dnf module install -y mariadb:10.11; then
             warn "$MSG_MARIADB_INSTALL_FAILED"
             exit 1
         fi
         info "$MSG_AUTO_UPDATES"
-        if ! dnf install dnf-automatic -y &>/dev/null; then
+        if ! dnf install dnf-automatic -y; then
             warn "$MSG_DNF_AUTO_FAILED"
             exit 1
         fi
@@ -433,28 +433,28 @@ OnCalendar=*-*-* 6:00
 RandomizedDelaySec=60m
 Persistent=true
 EOF
-        if ! systemctl enable --now dnf-automatic.timer &>/dev/null; then
+        if ! systemctl enable --now dnf-automatic.timer; then
             warn "$MSG_DNF_AUTO_ACTIVATE_FAILED"
             exit 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
-        if ! dnf install -y php-{mysqlnd,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,zip,bz2} &>/dev/null; then
+        if ! dnf install -y php-{mysqlnd,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,zip,bz2}; then
             warn "$MSG_PHP_EXT_FAILED"
             exit 1
         fi
         info "$MSG_INSTALL_SERVICE lamp..."
-        if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release &>/dev/null; then
+        if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release; then
             warn "$MSG_LAMP_FAILED"
             exit 1
         fi
         sed -i 's/^\(;\?\)\(user =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         sed -i 's/^\(;\?\)\(group =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         info "$MSG_ACTIVE_START_WEB MariaDB, d'ENGINE X et de PHP-FPM"
-        if ! systemctl enable --now mariadb nginx php-fpm &>/dev/null; then
+        if ! systemctl enable --now mariadb nginx php-fpm; then
             warn "$MSG_SERVICES_START_FAILED"
             exit 1
         fi
-        if ! firewall-cmd --permanent --zone=public --add-service=http &>/dev/null || ! firewall-cmd --reload &>/dev/null; then
+        if ! firewall-cmd --permanent --zone=public --add-service=http || ! firewall-cmd --reload; then
             warn "$MSG_FIREWALL_FAILED"
             exit 1
         fi
