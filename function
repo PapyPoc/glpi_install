@@ -18,7 +18,7 @@ export_display_env() {
     # referenced as placeholders in language files. Values default to empty if unset.
     local vars=(
         ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID ID NAME PRETTY_NAME MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
-        ERROR_FILE SUCCES_FILE LOG_FILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS INTERFACE DOWNLOADLINK
+        ERROR_FILE LOG_FILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS INTERFACE DOWNLOADLINK
         DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
         REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT GLPI_CLI_VERSION PHPVERSION
         DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
@@ -27,7 +27,7 @@ export_display_env() {
     # export lowercase variants too (some messages or templates may use lowercase names)
     local lvars=(
         orig_user admin_group distro_id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
-        error_file succes_file log_file task_index task_key language timezone ipadress interface downloadlink
+        error_file log_file task_index task_key language timezone ipadress interface downloadlink
         db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd
         rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output glpi_cli_version phpversion
         debian_versions ubuntu_versions alma_versions centos_versions rocky_versions redhat_versions
@@ -200,19 +200,18 @@ function glpi_install() { # Exécuter les tâches avec barre de progression
         sleep 1
     done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120; }
 function display_result() { # Afficher le résultat final
-	if [[ -f $FICHIER_MSG ]]; then
+	if [[ -f "$FICHIER_MSG" ]]; then
         MESSAGE=""
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
-        done < $FICHIER_MSG
+        done < "$FICHIER_MSG"
         dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_OK" --msgbox "$MESSAGE" 0 0
-		# rm -f $SUCCES_FILE 2>> $ERROR_FILE
 		# efface_script
     else
         MESSAGE=""
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
-        done < "$ERROR_FILE"
+        done < "$ERRORFILE"
         dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_NONOK" --msgbox "$MSG_NONOK\n\n$MESSAGE" 0 0
         warn "$MSG_ERROR_FICHIER_MSG"
     fi }

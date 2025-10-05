@@ -69,10 +69,27 @@ NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 DB_NAME="glpi"
 DB_USER="glpi_user"
 BDD_BACKUP="bdd_glpi-$(date +"%d-%m-%Y_%H-%M-%S").sql"
-# Message/log files placed in the user's home directory.
-FICHIER_MSG="${HOME}/sauve_mdp.txt"
-ERRORFILE="${HOME}/error.log"
-LOGFILE="${HOME}/glpi_install.log"
+# Determine the home directory of the user who invoked the installer (supports sudo).
+if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+    INVOKING_USER="$SUDO_USER"
+else
+    INVOKING_USER="${LOGNAME:-${USER:-$(logname 2>/dev/null || echo root)}}"
+fi
+INVOKING_HOME=""
+if command -v getent >/dev/null 2>&1; then
+    INVOKING_HOME=$(getent passwd "$INVOKING_USER" | cut -d: -f6 || true)
+fi
+if [ -z "$INVOKING_HOME" ]; then
+    INVOKING_HOME=$(eval echo "~$INVOKING_USER" 2>/dev/null || true)
+fi
+INVOKING_HOME="${INVOKING_HOME:-${HOME:-/root}}"
+# Message/log files placed in the invoking user's home directory.
+FICHIER_MSG="${INVOKING_HOME}/sauve_mdp.txt"
+ERROR_FILE="${INVOKING_HOME}/error.log"
+LOG_FILE="${INVOKING_HOME}/glpi_install.log"
+# Backwards-compatible aliases
+ERRORFILE="$ERROR_FILE"
+LOGFILE="$LOG_FILE"
 export DOWNLOADLINK NEW_VERSION
 export DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS
 export REP_BACKUP REP_GLPI
