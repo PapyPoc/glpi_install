@@ -66,9 +66,9 @@ if [ -z "$NEW_VERSION" ] || [ "$NEW_VERSION" = "null" ]; then
     echo "Erreur: Impossible de récupérer la version GLPI" >&2
     return 1
 fi
-ROUGE='\033[0;31m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+ROUGE='\033[0;31m' # Red
+CYAN='\033[0;36m' # Cyan
+NC='\033[0m' # No Color
 DEBIAN_VERSIONS=("11" "12")
 UBUNTU_VERSIONS=("23.10" "24.10")
 ALMA_VERSIONS=("9.5")

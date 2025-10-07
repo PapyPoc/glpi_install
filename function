@@ -341,35 +341,28 @@ function check_install(){
         warn "${MSG_GLPI_INSTALLED}""${GLPI_CLI_VERSION}"
         info "${MSG_GLPI_NEW_VERSION}""${NEW_VERSION}"
         if [ "${GLPI_CLI_VERSION}" == "${NEW_VERSION}" ]; then
-            info "$MSG_GLPI_VERSION_EGAL"
+            dialog --title "GLPI" --ok "$MSG_GLPI_VERSION_EGAL" 10 50
             sleep 5
             exit 0;
         else
-            info "$MSG_GLPI_UPGRADE"
-            if [ -t 0 ]; then
-                read -r MaJ
-                case "$MaJ" in
-                    O|o|Y|y)
-                        update
-                        exit 0;;
-                    N|n)
-                        info "$MSG_EXIT"
-                        efface_script
-                        exit 0;;
-                    *)
-                        warn "$MSG_ERROR_EXIT"
-                        efface_script
-                        exit 0;;
-                esac
-            else
-                warn "$MSG_SCRIPT_NON_INTERACTIVE_UPDATE"
-                info "$MSG_EXIT"
-                efface_script
-                exit 0
-            fi
+            dialog --title "${MSG_GLPI_UPGRADE_AVAILABLE}" --yesno "${MSG_GLPI_UPGRADE}" 10 50
+            MaJ=$?
+            case "$MaJ" in
+                0)
+                    update
+                    exit 0;;
+                1)
+                    info "$MSG_EXIT"
+                    efface_script
+                    exit 0;;
+                255)
+                    warn "$MSG_ERROR_EXIT"
+                    efface_script
+                    exit 0;;
+            esac
         fi
     else
-        warn "$MSG_GLPI_NEW"
+        dialog --title "GLPI" --ok "$MSG_GLPI_NEW : GLPI $NEW_VERSION" 10 50
         glpi_install
     fi
 }
@@ -529,15 +522,15 @@ function mariadb_configure(){
         return 1
     fi
     # Modifier le fuseau horaire et la langue
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE $DB_NAME.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"; then
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '$DB_NAME'.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"; then
         warn "$MSG_ERROR_TASK: timezone fix failed"
         return 1
     fi
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE $DB_NAME.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"; then
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '$DB_NAME'.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"; then
         warn "$MSG_ERROR_TASK: language fix failed"
         return 1
     fi
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE $DB_NAME.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"; then
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '$DB_NAME'.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"; then
         warn "$MSG_ERROR_TASK: url_base fix failed"
         return 1
     fi

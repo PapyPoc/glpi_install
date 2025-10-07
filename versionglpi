@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Vérifie les dépendances
+for cmd in curl jq dialog; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+        echo "Erreur : '$cmd' est requis. Installe-le avec : sudo apt install $cmd"
+        exit 1
+    fi
+done
+
+# Récupération des versions GLPI (tags GitHub)
+VERSIONS=$(curl -s "https://api.github.com/repos/glpi-project/glpi/tags" \
+    | jq -r '.[].name' \
+    | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+    | sort -Vr)
+
+if [ -z "$VERSIONS" ]; then
+    dialog --title "Erreur" --msgbox "Impossible de récupérer les versions GLPI." 7 50
+    exit 1
+fi
+
+# Extraction des numéros de versions majeures (10, 9, 8, etc.)
+MAJEURES=$(echo "$VERSIONS" | sort -Vr | uniq | head -n 4)
+
+# Préparer la liste pour dialog
+CHOICES=()
+for v in $MAJEURES; do
+    CHOICES+=("$v" "Version GLPI")
+done
+
+# Affiche la boîte de sélection avec dialog
+CHOIX=$(dialog --clear \
+    --title "Sélection de la version GLPI" \
+    --menu "Choisissez une version à installer (4 dernières branches majeures) :" 20 60 15 \
+    "${CHOICES[@]}" \
+    2>&1 >/dev/tty)
+
+clear
+
+# Gestion du choix utilisateur
+if [ -z "$CHOIX" ]; then
+    echo "Aucune version sélectionnée. Sortie du script."
+    exit 1
+else
+    echo "✅ Version choisie : $CHOIX"
+    echo "Exemple : téléchargement automatique"
+    echo "wget -q "https://github.com/glpi-project/glpi/releases/download/$CHOIX/glpi-$CHOIX.tgz""
+    echo "tar -xzf "glpi-$CHOIX.tgz" -C /var/www/html/"
+fi
