@@ -6,7 +6,7 @@
 # Main file
 # Langage pris en compte français et anglais
 #
-set -euo pipefail
+set -Eeuo pipefail
 # Nettoyer le terminal
 clear
 # Charger les fichiers de configuration et de fonctions
