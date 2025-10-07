@@ -338,14 +338,14 @@ function check_install(){
     if [ -d "$1" ]; then
 		OUTPUT=$(php "${REP_GLPI}bin/console" -V 2>/dev/null)
 		GLPI_CLI_VERSION=$(sed -n 's/.*GLPI CLI \([^ ]*\).*/\1/p' <<< "${OUTPUT}")
-        warn "${MSG_GLPI_INSTALLED}""${GLPI_CLI_VERSION}"
-        info "${MSG_GLPI_NEW_VERSION}""${NEW_VERSION}"
+        #warn "${MSG_GLPI_INSTALLED}""${GLPI_CLI_VERSION}"
+        #info "${MSG_GLPI_NEW_VERSION}""${NEW_VERSION}"
         if [ "${GLPI_CLI_VERSION}" == "${NEW_VERSION}" ]; then
             dialog --title "GLPI" --ok "$MSG_GLPI_VERSION_EGAL" 10 50
             sleep 5
             exit 0;
         else
-            dialog --title "${MSG_GLPI_UPGRADE_AVAILABLE}" --yesno "${MSG_GLPI_UPGRADE}" 10 50
+            dialog --title "${MSG_GLPI_UPGRADE_AVAILABLE}" --yesno "${MSG_GLPI_NEW_VERSION} ${MSG_GLPI_UPGRADE}" 10 50
             MaJ=$?
             case "$MaJ" in
                 0)
