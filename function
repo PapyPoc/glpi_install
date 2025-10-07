@@ -522,15 +522,15 @@ function mariadb_configure(){
         return 1
     fi
     # Modifier le fuseau horaire et la langue
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '$DB_NAME'.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"; then
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '${DB_NAME}'.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"; then
         warn "$MSG_ERROR_TASK: timezone fix failed"
         return 1
     fi
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '$DB_NAME'.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"; then
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '${DB_NAME}'.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"; then
         warn "$MSG_ERROR_TASK: language fix failed"
         return 1
     fi
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '$DB_NAME'.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"; then
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '${DB_NAME}'.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"; then
         warn "$MSG_ERROR_TASK: url_base fix failed"
         return 1
     fi
