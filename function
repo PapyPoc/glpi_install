@@ -741,9 +741,9 @@ function maj_user_glpi(){
     ${MYSQL_CMD} -u "$DB_USER" -p"$SQLGLPIPWD" -e "USE '${DB_NAME}'; UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
 	sleep 2;
     # Modifier le fuseau horaire, la langue et l'adresse IP de GLPI
-    ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE ${DB_NAME}.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"; then
-    ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE ${DB_NAME}.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"; then
-    ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE ${DB_NAME}.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"; then
+    ${MYSQL_CMD} -u "$DB_USER" -p"$SQLGLPIPWD" -e "UPDATE ${DB_NAME}.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
+    ${MYSQL_CMD} -u "$DB_USER" -p"$SQLGLPIPWD" -e "UPDATE ${DB_NAME}.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"
+    ${MYSQL_CMD} -u "$DB_USER" -p"$SQLGLPIPWD" -e "UPDATE ${DB_NAME}.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"
     sleep 2; }
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
 function write_credentials(){ 
