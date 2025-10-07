@@ -515,6 +515,34 @@ function mariadb_configure(){
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
+    # Détecter et définir le fuseau horaire système si TIMEZONE est vide
+    if [ -z "${TIMEZONE:-}" ]; then
+        # timedatectl (systemd) est la méthode préférée
+        if command -v timedatectl >/dev/null 2>&1; then
+            TIMEZONE=$(timedatectl show -p Timezone --value 2>/dev/null || true)
+        fi
+        # fallback : /etc/timezone (Debian/Ubuntu)
+        if [ -z "${TIMEZONE:-}" ] && [ -f /etc/timezone ]; then
+            TIMEZONE=$(sed -n '1p' /etc/timezone 2>/dev/null || true)
+        fi
+        # fallback : lien ou fichier /etc/localtime pointant vers /usr/share/zoneinfo/...
+        if [ -z "${TIMEZONE:-}" ]; then
+            if [ -L /etc/localtime ] || [ -f /etc/localtime ]; then
+                tzfile=$(readlink -f /etc/localtime 2>/dev/null || true)
+                case "$tzfile" in
+                    */usr/share/zoneinfo/*) TIMEZONE=${tzfile#*/usr/share/zoneinfo/} ;;
+                esac
+            fi
+        fi
+        # fallback pour systèmes RHEL ( /etc/sysconfig/clock )
+        if [ -z "${TIMEZONE:-}" ] && [ -f /etc/sysconfig/clock ]; then
+            TIMEZONE=$(awk -F= '/^ZONE/ {gsub(/"","",$2); gsub(/"/,"",$2); gsub(/\"/,"",$2); print $2}' /etc/sysconfig/clock 2>/dev/null || true)
+        fi
+        # si toujours vide, utiliser UTC par défaut
+        TIMEZONE=${TIMEZONE:-UTC}
+        export TIMEZONE
+        info "Fuseau horaire détecté : ${TIMEZONE}"
+    fi
     # Initialiser les données des fuseaux horaires
     info "$MSG_TIMEZONE_CONFIG"
     # Import timezone data using direct mysql invocation (target 'mysql' database)
@@ -523,15 +551,15 @@ function mariadb_configure(){
         return 1
     fi
     # Modifier le fuseau horaire et la langue
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '${DB_NAME}'.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"; then
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE ${DB_NAME}.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"; then
         warn "$MSG_ERROR_TASK: timezone fix failed"
         return 1
     fi
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '${DB_NAME}'.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"; then
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE ${DB_NAME}.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"; then
         warn "$MSG_ERROR_TASK: language fix failed"
         return 1
     fi
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE '${DB_NAME}'.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"; then
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "UPDATE ${DB_NAME}.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"; then
         warn "$MSG_ERROR_TASK: url_base fix failed"
         return 1
     fi
