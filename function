@@ -732,7 +732,7 @@ EOF
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){ 
     info "${MSG_CHANGE_MDP_GLPI}"
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" -e "; then 
+    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" --batch " 
         USE '${DB_NAME}';
         UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';
         UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
