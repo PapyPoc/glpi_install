@@ -338,7 +338,7 @@ function check_distro(){
 function check_install(){
     # Vérifie si le répertoire existe
     if [ -d "$1" ]; then
-		OUTPUT=$(php "${REP_GLPI}bin/console" -V 2>/dev/null)
+		OUTPUT=$(sudo -u www-data php "${REP_GLPI}"bin/console php -V 2>/dev/null)
 		GLPI_CLI_VERSION=$(sed -n 's/.*GLPI CLI \([^ ]*\).*/\1/p' <<< "${OUTPUT}")
         warn "${MSG_GLPI_INSTALLED}""${GLPI_CLI_VERSION}"
         info "${MSG_GLPI_NEW_VERSION}""${NEW_VERSION}"
