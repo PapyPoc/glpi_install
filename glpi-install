@@ -9,6 +9,11 @@
 set -Eeuo pipefail
 # Nettoyer le terminal
 clear
+# Charger les fichiers de configuration et de fonctions
+    # Définir le répertoire du script
+REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$REP_SCRIPT/config" # Fichier de variable
+load_language # Fichier de langue
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"
@@ -20,8 +25,14 @@ else
         exit 1
     fi
 fi
-check_dialog # Regarde si dialog est installé
-check_distro # Regarde si la distribution est conforme
+if [ -f /etc/os-release ]; then # Détection de la distribution
+    source /etc/os-release
+    DISTRO_ID=${ID}
+    info "$MSG_DISTRO_DETECTED$DISTRO_ID ${VERSION_ID}"
+else
+    warn "$MSG_DISTRO_NONOK"
+    exit 1
+fi
 case "${DISTRO_ID}" in # Choix du groupe admin
     debian|ubuntu)
         ADMIN_GROUP="sudo";;
@@ -38,7 +49,6 @@ if ! id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
     if [ $? -eq 0 ]; then
         info "$MSG_USER_ADDED_SUCCESS"
         info "$MSG_RECONNECT"
-        exit 1
     else
         warn "$MSG_ADD_USER_FAILED"
         exit 1
@@ -64,5 +74,7 @@ elif [[ "${DISTRO_ID}" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
         exit 1
     fi
 fi
+check_dialog # Regarde si dialog est installé
+check_distro # Regarde si la distribution est conforme
 check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas
 display_result # Affiche le résultat de l'installation
