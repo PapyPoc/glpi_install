@@ -326,6 +326,8 @@ function check_distro(){
                     exit 1
                 fi
             fi
+            DISTRO_ID=${ID}
+            export DISTRO_ID
         fi
     else
         warn "$MSG_DISTRO_INVALID"
@@ -342,9 +344,9 @@ function check_install(){
         info "${MSG_GLPI_NEW_VERSION}""${NEW_VERSION}"
         if [ "${GLPI_CLI_VERSION}" == "${NEW_VERSION}" ]; then
             echo "$MSG_GLPI_VERSION_EGAL"
-            dialog --title "GLPI" --sleep 4 --infobox "$MSG_GLPI_VERSION_EGAL" 8 40
+            dialog --title "GLPI" --sleep 8 --infobox "$MSG_GLPI_VERSION_EGAL" 8 40
             sleep 5
-            exit 0;
+            exit 1;
         else
             dialog --title "${MSG_GLPI_UPGRADE_AVAILABLE}" --yesno "${MSG_GLPI_NEW_VERSION} ${MSG_GLPI_UPGRADE}" 10 50
             MaJ=$?
