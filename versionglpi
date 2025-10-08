@@ -9,23 +9,39 @@ done
 
 API_URL="https://api.github.com/repos/glpi-project/glpi/tags"
 
-TAGS=$(curl -s "$API_URL" | jq -r '.[] | select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .name' | sort -Vr | head -n 4)
+# Récupérer et nettoyer les tags (garde uniquement les versions semver)
+TAGS_RAW=$(curl -s "$API_URL" | jq -r '.[] | .name')
+TAGS=$(printf '%s\n' "$TAGS_RAW" | sed 's/\r//g' | sed '/^[[:space:]]*$/d' | sed '/^[[:space:]]*[#;]/d' | sed 's/^"\(.*\)"$/\1/' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | head -n 8)
+
 if [ -z "$TAGS" ]; then
     dialog --title "Erreur" --msgbox "Impossible de récupérer les versions GLPI depuis GitHub." 7 60
     exit 1
 fi
 
 declare -A LINKS
-for tag in $TAGS; do
+while IFS= read -r tag; do
     LINKS["$tag"]="https://github.com/glpi-project/glpi/archive/refs/tags/${tag}.tar.gz"
-done
+done <<EOF
+$TAGS
+EOF
 
-MENU_OPTIONS=()
-FIRST="ON"
-for tag in $TAGS; do
-    MENU_OPTIONS+=("$tag" "Version GLPI $tag" "$FIRST")
-    FIRST="OFF"
-done
+# Construire la radiolist de manière robuste (utilise un tableau d'arguments)
+TMPLIST=$(mktemp)
+FIRST=ON
+while IFS= read -r tag; do
+    # retirer guillemets et espaces
+    tag_clean=$(printf '%s' "$tag" | sed 's/^\s*//;s/\s*$//;s/^"\(.*\)"$/\1/')
+    printf '%s|%s|%s\n' "$tag_clean" "Version GLPI $tag_clean" "$FIRST" >> "$TMPLIST"
+    FIRST=OFF
+done <<EOF
+$TAGS
+EOF
+
+# Préparer les arguments pour dialog --radiolist
+radiolist_args=()
+while IFS='|' read -r tag_clean desc status; do
+    radiolist_args+=("$tag_clean" "$desc" "$status")
+done < "$TMPLIST"
 
 exec 3>&1
 VERSION=$(dialog --backtitle "Installation GLPI" \
@@ -33,17 +49,19 @@ VERSION=$(dialog --backtitle "Installation GLPI" \
     --ok-label "Suivant" \
     --cancel-label "Annuler" \
     --radiolist "Choisissez la version GLPI à installer :" \
-    15 60 4 \
-    "${MENU_OPTIONS[@]}" \
+    15 60 6 \
+    "${radiolist_args[@]}" \
     3>&1 1>&2 2>&3)
 EXIT_CODE=$?
 exec 3>&-
+rm -f "$TMPLIST"
 if [ $EXIT_CODE -ne 0 ]; then
     clear
     echo "Installation annulée."
     exit 1
 fi
 
+# Formulaire des paramètres — affiché immédiatement après la radiolist
 exec 3>&1
 FORM_OUTPUT=$(dialog --clear \
     --ok-label "Valider" \
