@@ -740,9 +740,9 @@ function maj_user_glpi(){
         UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
         UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';
         UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';
-        UPDATE ${DB_NAME}.glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';
-        UPDATE ${DB_NAME}.glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';
-        UPDATE ${DB_NAME}.glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';
+        UPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';
+        UPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';
+        UPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';
         "; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
