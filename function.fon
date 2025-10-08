@@ -215,7 +215,6 @@ function display_result() {
             MESSAGE+="${ligne}\n"
         done < "$FICHIER_MSG"
         dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_OK" --msgbox "$MESSAGE" 0 0
-		# efface_script
     else
         MESSAGE=""
         while IFS= read -r ligne; do
@@ -354,11 +353,9 @@ function check_install(){
                     exit 0;;
                 1)
                     info "$MSG_EXIT"
-                    efface_script
                     exit 0;;
                 255)
                     warn "$MSG_ERROR_EXIT"
-                    efface_script
                     exit 0;;
             esac
         fi
@@ -807,24 +804,18 @@ File ${FICHIER_MSG} save in /root
 If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
-    chmod 700 "$FICHIER_MSG"
+    chmod 600 "${FICHIER_MSG}" "$ERRORFILE" "$FICHIER_LOG"
+    chown root:root "${FICHIER_MSG}" "$ERRORFILE" "$FICHIER_LOG"
+    info "${MSG_FILE_CREDENTIALS}"
     echo ""
-    warn "$MSG_FILE_MSG"
-    echo ""	
-	sleep 2; }
-# Efface le dossier du script
-function efface_script(){ 
-    # Vérifie si le répertoire existe
-	warn "$MSG_DELETE_DIR"
-    if [ -e "$REP_SCRIPT" ]; then
-            warn "$MSG_DIR_EXIST"
-            warn "$MSG_DIR_DELETE"
-            rm -Rf "$REP_SCRIPT"
-    fi }
+    warn "${MSG_FILE_MSG}"
+    echo ""
+	sleep 2;
+}
 # Activé ou déactivé le mode maintenance (1 ou 0)
 function maintenance(){
     if [ "$1" == "1" ]; then
-        warn "$MSG_ACTIVE_SERVICE"
+        warn "${MSG_ACTIVE_SERVICE}"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
             sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
@@ -889,12 +880,13 @@ EOF
 function update(){ # Fonction principale pour exécuter les tâches avec barre de progression
     declare -A tasks=(
 		["$MSG_T20"]="maintenance 1"
-        ["$MSG_T21"]="backup_glpi"
-        ["$MSG_T22"]="install_glpi"
-        ["$MSG_T23"]="update_glpi"
-        ["$MSG_T24"]="maintenance 0"
+        ["$MSG_T21"]="update_distro"
+        ["$MSG_T22"]="backup_glpi"
+        ["$MSG_T23"]="install_glpi"
+        ["$MSG_T24"]="update_glpi"
+        ["$MSG_T25"]="maintenance 0"
     )
-    task_order=("$MSG_T20" "$MSG_T21" "$MSG_T22" "$MSG_T23" "$MSG_T24")
+    task_order=("$MSG_T20" "$MSG_T21" "$MSG_T22" "$MSG_T23" "$MSG_T24" "$MSG_T25")
     total_tasks=${#task_order[@]}
     task_index=0
     (for task_key in "${task_order[@]}"; do
@@ -906,4 +898,10 @@ function update(){ # Fonction principale pour exécuter les tâches avec barre d
         echo "XXX"
         run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks" || break
         sleep 1
-    done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120; }
+    done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120; 
+    local exit_status=${PIPESTATUS[2]}
+    if [ $exit_status -ne 0 ]; then
+        warn "$MSG_ERROR_EXIT"
+        exit 1
+    fi
+}
