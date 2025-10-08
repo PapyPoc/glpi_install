@@ -599,7 +599,6 @@ EOF
         find "${REP_GLPI}" -type d -exec chmod 755 {} \;
         sleep 1
         network_info
-        echo "${IPADRESS}" >> "${LOGFILE}"
         # Setup vhost
          cat > /etc/apache2/sites-available/glpi.conf << EOF
 <VirtualHost *:80>
@@ -631,6 +630,9 @@ EOF
         # Restart d'apache
         systemctl restart apache2
         sudo -u www-data php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction
+        chown -R www-data:www-data  /var/log/glpi
+        find /var/log/glpi -type f -exec chmod 644 {} \;
+        find /var/log/glpi -type d -exec chmod 755 {} \;
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         chown -R nginx:nginx /etc/glpi
         find /etc/glpi -type f -exec chmod 644 {} \;
