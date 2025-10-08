@@ -105,9 +105,9 @@ if [ $CONFIRM -eq 0 ]; then
     echo "Nom de la base       : $DB_NAME"
     echo "Utilisateur MySQL    : $DB_USER"
     echo ""
-    wget -q -O "/tmp/glpi-${VERSION}.tar.gz" "$DOWNLOAD_URL" && \
-    echo "Archive téléchargée : /tmp/glpi-${VERSION}.tar.gz" || \
-    echo "Erreur de téléchargement."
+    #wget -q -O "/tmp/glpi-${VERSION}.tar.gz" "$DOWNLOAD_URL" && \
+    #echo "Archive téléchargée : /tmp/glpi-${VERSION}.tar.gz" || \
+    #echo "Erreur de téléchargement."
 else
     echo "Installation annulée par l'utilisateur."
 fi
