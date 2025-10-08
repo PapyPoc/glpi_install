@@ -647,10 +647,12 @@ EOF
         find "${REP_GLPI}" -type f -exec chmod 644 {} \;
         find "${REP_GLPI}" -type d -exec chmod 755 {} \;
         sleep 1
+        network_info
+        echo "${IPADRESS}"
         cat > /etc/nginx/conf.d/glpi.conf << EOF
 server {
     listen 80;
-    server_name ${IPADRESS};
+    server_name '${IPADRESS}';
     root ${REP_GLPI}public;
     location / {
         try_files \$uri /index.php\$is_args\$args;
