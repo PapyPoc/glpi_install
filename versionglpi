@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Vérifie les dépendances
 for cmd in curl jq dialog; do
     if ! command -v $cmd >/dev/null 2>&1; then
         echo "Erreur : '$cmd' est requis. Installe-le avec : sudo apt install $cmd"
@@ -8,42 +7,89 @@ for cmd in curl jq dialog; do
     fi
 done
 
-# Récupération des versions GLPI (tags GitHub)
-VERSIONS=$(curl -s "https://api.github.com/repos/glpi-project/glpi/tags" \
-    | jq -r '.[].name' \
-    | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
-    | sort -Vr)
+API_URL="https://api.github.com/repos/glpi-project/glpi/tags"
 
-if [ -z "$VERSIONS" ]; then
-    dialog --title "Erreur" --msgbox "Impossible de récupérer les versions GLPI." 7 50
+TAGS=$(curl -s "$API_URL" | jq -r '.[] | select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .name' | sort -Vr | head -n 4)
+if [ -z "$TAGS" ]; then
+    dialog --title "Erreur" --msgbox "Impossible de récupérer les versions GLPI depuis GitHub." 7 60
     exit 1
 fi
 
-# Extraction des numéros de versions majeures (10, 9, 8, etc.)
-MAJEURES=$(echo "$VERSIONS" | sort -Vr | uniq | head -n 4)
-
-# Préparer la liste pour dialog
-CHOICES=()
-for v in $MAJEURES; do
-    CHOICES+=("$v" "Version GLPI")
+declare -A LINKS
+for tag in $TAGS; do
+    LINKS["$tag"]="https://github.com/glpi-project/glpi/archive/refs/tags/${tag}.tar.gz"
 done
 
-# Affiche la boîte de sélection avec dialog
-CHOIX=$(dialog --clear \
-    --title "Sélection de la version GLPI" \
-    --menu "Choisissez une version à installer (4 dernières branches majeures) :" 20 60 15 \
-    "${CHOICES[@]}" \
-    2>&1 >/dev/tty)
+MENU_OPTIONS=()
+FIRST="ON"
+for tag in $TAGS; do
+    MENU_OPTIONS+=("$tag" "Version GLPI $tag" "$FIRST")
+    FIRST="OFF"
+done
+
+exec 3>&1
+VERSION=$(dialog --backtitle "Installation GLPI" \
+    --title "Choix de la version GLPI" \
+    --ok-label "Suivant" \
+    --cancel-label "Annuler" \
+    --radiolist "Choisissez la version GLPI à installer :" \
+    15 60 4 \
+    "${MENU_OPTIONS[@]}" \
+    3>&1 1>&2 2>&3)
+EXIT_CODE=$?
+exec 3>&-
+if [ $EXIT_CODE -ne 0 ]; then
+    clear
+    echo "Installation annulée."
+    exit 1
+fi
+
+exec 3>&1
+FORM_OUTPUT=$(dialog --clear \
+    --ok-label "Valider" \
+    --cancel-label "Annuler" \
+    --backtitle "Installation GLPI" \
+    --title "Paramètres d'installation" \
+    --form "Version sélectionnée : GLPI $VERSION\n\nSaisissez les informations :" \
+    20 80 10 \
+    "Répertoire d'installation :" 1 2 "/var/www/html/glpi" 1 35 40 0 \
+    "Nom de la base MySQL :"      3 2 "glpi_db"          3 35 30 0 \
+    "Utilisateur MySQL :"         5 2 "glpi_user"        5 35 30 0 \
+    3>&1 1>&2 2>&3)
+EXIT_CODE=$?
+exec 3>&-
+if [ $EXIT_CODE -ne 0 ]; then
+    clear
+    echo "Installation annulée."
+    exit 1
+fi
+
+INSTALL_DIR=$(echo "$FORM_OUTPUT" | sed -n 1p)
+DB_NAME=$(echo "$FORM_OUTPUT" | sed -n 2p)
+DB_USER=$(echo "$FORM_OUTPUT" | sed -n 3p)
+DOWNLOAD_URL="${LINKS[$VERSION]}"
+
+dialog --title "Résumé de la configuration" --msgbox "Veuillez vérifier vos choix :\n
+Version GLPI : $VERSION
+Lien de téléchargement : $DOWNLOAD_URL
+Répertoire d'installation : $INSTALL_DIR
+Base de données : $DB_NAME
+Utilisateur MySQL : $DB_USER" 17 80
+
+dialog --title "Confirmation" --yesno "Souhaitez-vous procéder à l'installation de GLPI $VERSION ?" 7 70
+CONFIRM=$?
 
 clear
-
-# Gestion du choix utilisateur
-if [ -z "$CHOIX" ]; then
-    echo "Aucune version sélectionnée. Sortie du script."
-    exit 1
+if [ $CONFIRM -eq 0 ]; then
+    echo "Version GLPI         : $VERSION"
+    echo "Téléchargement       : $DOWNLOAD_URL"
+    echo "Répertoire           : $INSTALL_DIR"
+    echo "Nom de la base       : $DB_NAME"
+    echo "Utilisateur MySQL    : $DB_USER"
+    echo ""
+    wget -q -O "/tmp/glpi-${VERSION}.tar.gz" "$DOWNLOAD_URL" && \
+    echo "Archive téléchargée : /tmp/glpi-${VERSION}.tar.gz" || \
+    echo "Erreur de téléchargement."
 else
-    echo "✅ Version choisie : $CHOIX"
-    echo "Exemple : téléchargement automatique"
-    echo "wget -q "https://github.com/glpi-project/glpi/releases/download/$CHOIX/glpi-$CHOIX.tgz""
-    echo "tar -xzf "glpi-$CHOIX.tgz" -C /var/www/html/"
+    echo "Installation annulée par l'utilisateur."
 fi
