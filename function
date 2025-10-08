@@ -363,7 +363,7 @@ function check_install(){
             esac
         fi
     else
-        dialog --title "GLPI" --sleep 4 --infobox "${MSG_GLPI_NEW}\n\nGLPI ${NEW_VERSION}" 10 50
+        dialog --title "GLPI" --sleep 4 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${NEW_VERSION}" 10 50
         glpi_install
     fi
 }
@@ -496,7 +496,6 @@ function mariadb_configure(){
     # Détecter la commande MySQL/MariaDB
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
-    export MYSQL_CMD MYSQLDUMP_CMD
     sleep 1
     # Sécurise l'installation de MariaDB — exécuter un bloc SQL en une seule connexion
     # (exécute ALTER USER, suppression d'utilisateurs anonymes, suppression de la db test,
@@ -650,7 +649,6 @@ EOF
         find "${REP_GLPI}" -type d -exec chmod 755 {} \;
         sleep 1
         network_info
-        echo "${IPADRESS}" >> ${LOGFILE}
         cat > /etc/nginx/conf.d/glpi.conf << EOF
 server {
     listen 80;
@@ -736,8 +734,10 @@ EOF
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){ 
     info "${MSG_CHANGE_MDP_GLPI}"
-    if ! ${MYSQL_CMD} -u "${DB_USER}" -p"${SQLGLPIPWD}" --batch " 
-        USE '${DB_NAME}';
+    # Ensure we have a mysql client command; fallback to detecting it if not set
+    MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
+    # Execute SQL statements securely (use MYSQL_PWD to avoid exposing password in argv)
+    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent "${DB_NAME}" -e "
         UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';
         UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
         UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';
@@ -745,7 +745,7 @@ function maj_user_glpi(){
         UPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';
         UPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';
         UPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';
-        "; then
+    "; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
