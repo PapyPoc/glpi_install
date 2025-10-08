@@ -53,9 +53,7 @@ ensure_dependencies() {
     if [ ${#missing[@]} -eq 0 ]; then
         return 0
     fi
-
     echo "Missing dependencies: ${missing[*]}. Attempting to install..." >&2
-
     # détecter le gestionnaire de paquets et construire la commande d'installation
     local pkgmgr install_cmd pkgs
     pkgs="${missing[*]}"
