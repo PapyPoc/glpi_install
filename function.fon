@@ -911,11 +911,6 @@ function maintenance(){
 }
 # Sauvegarde de la base de donnée et des fichiers de GLPI
 function backup_glpi(){
-	# Vérifie si le répertoire existe
-	if [ ! -d "${REP_BACKUP}" ]; then
-		info "$MSG_DIR_SERVICE_CREATE"
-		mkdir "${REP_BACKUP}"
-	fi
 	# Sauvergarde de la bdd
 	info "${MSG_MYSQL_DUMP}"
     PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' sauve_mdp.txt)
@@ -923,19 +918,59 @@ function backup_glpi(){
 	info "${MSG_DUMP_SUCCESS}"
 	# Sauvegarde des fichiers
 	info "${MSG_SITE_COPY}"
-	cp -Rf "${REP_GLPI}config" "${REP_BACKUP}"
-    cp -Rf "${REP_GLPI}files" "${REP_BACKUP}"
+    # Vérifie si le répertoire existe
+	if [ ! -d "${REP_BACKUP}" ]; then
+		info "$MSG_DIR_SERVICE_CREATE"
+		mkdir "${REP_BACKUP}"
+	fi
+    # Copiez la Configuration
+    cp -Rf /etc/glpi/config "${REP_BACKUP}"
+    # Copiez les Fichiers
+    cp -Rf /var/lib/glpi/files "${REP_BACKUP}"
+    # Copiez les Plugins
 	cp -Rf "${REP_GLPI}plugins" "${REP_BACKUP}"
+    # Copiez le Marketplace
 	cp -Rf "${REP_GLPI}marketplace" "${REP_BACKUP}"
 	info "${MSG_SITE_COPY_OK}"
+    # Compresse la sauvegarde
+    info "${MSG_COMPRESS_BACKUP}"
+    # Créer le dossier compress si nécessaire
+    if [ ! -d "${REP_BACKUP}/compress" ]; then
+        mkdir -p "${REP_BACKUP}/compress"
+    fi
+    # Copier les dossiers à sauvegarder
+    cp -Rf "${REP_BACKUP}/config"        "${REP_BACKUP}/compress/"
+    cp -Rf "${REP_BACKUP}/files"         "${REP_BACKUP}/compress/"
+    cp -Rf "${REP_BACKUP}/plugins"       "${REP_BACKUP}/compress/"
+    cp -Rf "${REP_BACKUP}/marketplace"   "${REP_BACKUP}/compress/"
+    cp -f  "${REP_BACKUP}/${BDD_BACKUP}" "${REP_BACKUP}/compress/"
+    # Créer l'archive compressée
+    tar -czf "${REP_BACKUP}.tar.gz" -C "${REP_BACKUP}/compress" .
+    if [ $? -eq 0 ]; then
+        info "${MSG_COMPRESS_BACKUP_OK}"
+        # Nettoyage après compression
+        rm -rf "${REP_BACKUP}/config"
+        rm -rf "${REP_BACKUP}/compress/config"
+        rm -rf "${REP_BACKUP}/compress/files"
+        rm -rf "${REP_BACKUP}/compress/plugins"
+        rm -rf "${REP_BACKUP}/compress/marketplace"
+        rm -f  "${REP_BACKUP}/compress/${BDD_BACKUP}"
+    else
+        warn "${MSG_COMPRESS_BACKUP_FAILED}"
+    fi
+    sleep 2;
 }
 # Mise à jour de GLPI
 function update_glpi(){
 	info "$MSG_CP_MARKET_PLUGIN"
-    cp -Rf "${REP_BACKUP}config" "${REP_GLPI}"
-    cp -Rf "${REP_BACKUP}files" "${REP_GLPI}"
+    cp -Rf "${REP_BACKUP}config" /etc/glpi/
+    cp -Rf "${REP_BACKUP}files" /var/lib/glpi/
 	cp -Rf "${REP_BACKUP}plugins" "${REP_GLPI}"
 	cp -Rf "${REP_BACKUP}marketplace" "${REP_GLPI}"
+    rm -Rf "${REP_BACKUP}config" /etc/glpi/
+    rm -Rf "${REP_BACKUP}files" /var/lib/glpi/
+	rm -Rf "${REP_BACKUP}plugins" "${REP_GLPI}"
+	rm -Rf "${REP_BACKUP}marketplace" "${REP_GLPI}"
 	info "$MSG_UPDATE_GLPI_DATABASE"
 	if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
 		chown -R www-data:www-data "${REP_GLPI}"
