@@ -43,7 +43,7 @@ export_display_env() {
 ensure_dependencies() {
     NEED_RESTART=0
     local missing=()
-    for cmd in curl jq openssl; do
+    for cmd in curl jq openssl util-linux; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing+=("$cmd")
         fi
@@ -208,7 +208,7 @@ function glpi_install() {
 function prompt_install_options(){
     local api_url="https://api.github.com/repos/glpi-project/glpi/tags"
     local tags
-    tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 4)
+    tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 8)
     if [ -z "$tags" ]; then
         warn "${MSG_GITHUB_VERSIONS_FAILED}"
         return 1
@@ -222,7 +222,7 @@ function prompt_install_options(){
         first=OFF
     done <<< "$tags"
     exec 3>&1
-    NEW_VERSION=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (4 dernières) :" 15 60 4 "${args[@]}" 3>&1 1>&2 2>&3)
+    NEW_VERSION=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (4 dernières) :" 25 60 4 "${args[@]}" 3>&1 1>&2 2>&3)
     local rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
@@ -633,7 +633,6 @@ function mariadb_configure(){
 # Téléchargement et décompression de GLPI
 function install_glpi(){ 
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
-    echo "sudo -u www-data php \"${REP_GLPI}\"bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=\"${DB_NAME}\" --db-user=\"${DB_USER}\" --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction" >> "${LOGFILE}"
     # Téléchargement de GLPI
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
     if ! wget -q -O "$tmp_file" "${DOWNLOADLINK}"; then
@@ -718,7 +717,12 @@ EOF
         sudo a2ensite glpi.conf
         # Restart d'apache
         systemctl restart apache2
-        sudo -u www-data php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction
+        CMD="${REP_GLPI}bin/console db:install \ 
+        --db-host=localhost --db-port=3306 --db-name=${DB_NAME} \
+        --db-user=${DB_USER} --db-password=${SQLGLPIPWD} \
+        --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
+        echo "sudo -u www-data php ${CMD}" >> "${LOGFILE}"
+        eval sudo -u www-data php "${CMD}"
         chown -R www-data:www-data  /var/log/glpi
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
