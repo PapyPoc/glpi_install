@@ -17,11 +17,26 @@ source "${REP_SCRIPT}/function.fon"    # Fichier de fonction
 # Puis charger la configuration qui peut appeler des fonctions (ex: ensure_dependencies)
 source "${REP_SCRIPT}/config.conf" # Fichier de variable
 load_language # Fichier de langue
-ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
+# Determine the home directory of the user who invoked the installer (supports sudo).
+if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+    INVOKING_USER="$SUDO_USER"
+else
+    INVOKING_USER="${LOGNAME:-${USER:-$(logname 2>/dev/null || echo root)}}"
+fi
+INVOKING_HOME=""
+if command -v getent >/dev/null 2>&1; then
+    INVOKING_HOME=$(getent passwd "$INVOKING_USER" | cut -d: -f6 || true)
+fi
+if [ -z "$INVOKING_HOME" ]; then
+    INVOKING_HOME=$(eval echo "~$INVOKING_USER" 2>/dev/null || true)
+fi
+INVOKING_HOME="${INVOKING_HOME:-${HOME:-/root}}"
+export INVOKING_USER INVOKING_HOME
+# ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"
 else
-    if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
+    if id -nG "${INVOKING_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
         exec sudo -- "$0" "$@"
     else
         warn "${MSG_USER_NOT_SUDO}"

@@ -206,24 +206,16 @@ function glpi_install() {
     done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
 }
  
-# Prompt user to choose GLPI version (last 4), install dir, DB name and DB user using dialog
+# Demander à l'utilisateur de choisir la version de GLPI (4 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
-    # Ensure dialog is available
-    if ! command -v dialog >/dev/null 2>&1; then
-        warn "dialog not found. Please install 'dialog' to use interactive mode."
-        return 1
-    fi
-
-    # Fetch last 4 semver tags
     local api_url="https://api.github.com/repos/glpi-project/glpi/tags"
     local tags
     tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 4)
     if [ -z "$tags" ]; then
-        warn "Impossible de récupérer les versions GLPI depuis GitHub."
+        warn "${MSG_GITHUB_VERSIONS_FAILED}"
         return 1
     fi
-
-    # Build radiolist args
+    # Construire les arguments de la liste radio
     local args=()
     local first=ON
     local tag
@@ -231,7 +223,6 @@ function prompt_install_options(){
         args+=("$tag" "GLPI $tag" "$first")
         first=OFF
     done <<< "$tags"
-
     exec 3>&1
     NEW_VERSION=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (4 dernières) :" 15 60 4 "${args[@]}" 3>&1 1>&2 2>&3)
     local rc=$?
@@ -240,8 +231,7 @@ function prompt_install_options(){
         warn "Sélection de la version annulée."
         return 1
     fi
-
-    # Prompt for install dir, DB name and DB user
+    # Demander le répertoire d'installation, le nom de la base et l'utilisateur BDD
     exec 3>&1
     local form
     form=$(dialog --clear --backtitle "$MSG_TITRE" --title "Paramètres d'installation" --form "Version sélectionnée : $NEW_VERSION\n\nSaisissez les paramètres :" 15 70 6 \
@@ -255,24 +245,53 @@ function prompt_install_options(){
         warn "Formulaire annulé."
         return 1
     fi
-
-    # Parse form output (lines)
+    # Analyser la sortie du formulaire (lignes)
     IFS=$'\n' read -r rep_glpi db_name db_user <<< "$form" || true
-    # Normalize values
+    # Normaliser les valeurs saisies
+    # Répertoire GLPI: trim des espaces, convertir les \ en /, s'assurer d'un chemin absolu et d'un / final
+    local _def_rep="${REP_GLPI:-/var/www/html/glpi/}"
+    # trim
+    rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"
+    rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
+    # conversions
+    rep_glpi="${rep_glpi//\\//}"
+    if [ -z "$rep_glpi" ]; then
+        rep_glpi="$_def_rep"
+    fi
+    if [[ "$rep_glpi" != /* ]]; then
+        rep_glpi="$_def_rep"
+    fi
+    # supprimer doublons de /
+    rep_glpi="$(printf '%s' "$rep_glpi" | sed -E 's#/{2,}#/#g')"
+    # assurer un / final
+    rep_glpi="${rep_glpi%/}/"
+    # Nom de base et utilisateur: trim, forcer caractères sûrs [A-Za-z0-9_], valeurs par défaut si vide
+    local _def_db="${DB_NAME:-glpi}"
+    local _def_user="${DB_USER:-glpi_user}"
+    db_name="${db_name#"${db_name%%[![:space:]]*}"}"
+    db_name="${db_name%"${db_name##*[![:space:]]}"}"
+    db_user="${db_user#"${db_user%%[![:space:]]*}"}"
+    db_user="${db_user%"${db_user##*[![:space:]]}"}"
+    # Remplacer les caractères non autorisés par '_'
+    db_name="${db_name//[^A-Za-z0-9_]/_}"
+    db_user="${db_user//[^A-Za-z0-9_]/_}"
+    # Valeurs par défaut si vides
+    [ -z "$db_name" ] && db_name="$_def_db"
+    [ -z "$db_user" ] && db_user="$_def_user"
+    # Si le nom de base ne commence pas par une lettre ou '_', le préfixer
+    if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        db_name="glpi_${db_name}"
+    fi
     REP_GLPI="${rep_glpi%/}/"
     DB_NAME="$db_name"
     DB_USER="$db_user"
-
-    export REP_GLPI DB_NAME DB_USER NEW_VERSION
     DOWNLOADLINK="https://github.com/glpi-project/glpi/archive/refs/tags/${NEW_VERSION}.tar.gz"
-    export DOWNLOADLINK
-
+    export DOWNLOADLINK 
     info "Version choisie : $NEW_VERSION"
     info "Répertoire : $REP_GLPI"
     info "Base : $DB_NAME ($DB_USER)"
     return 0
 }
-
 # Afficher le résultat final
 function display_result() {
 	if [[ -f "$FICHIER_MSG" ]]; then
