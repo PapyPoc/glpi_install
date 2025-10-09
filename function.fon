@@ -703,6 +703,9 @@ EOF
         chown -Rc www-data:www-data /etc/glpi
         find /etc/glpi -type f -exec chmod 644 {} \;
         find /etc/glpi -type d -exec chmod 755 {} \;
+        chown -R nginx:nginx /var/lib/glpi
+        find /var/lib/glpi -type f -exec chmod 644 {} \;
+        find /var/lib/glpi -type d -exec chmod 755 {} \;
         chown -Rc www-data:www-data /var/log/glpi
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
@@ -783,6 +786,9 @@ EOF
         chown -R nginx:nginx /etc/glpi
         find /etc/glpi -type f -exec chmod 644 {} \;
         find /etc/glpi -type d -exec chmod 755 {} \;
+        chown -R nginx:nginx /var/lib/glpi
+        find /var/lib/glpi -type f -exec chmod 644 {} \;
+        find /var/lib/glpi -type d -exec chmod 755 {} \;
         chown -R nginx:nginx /var/log/glpi
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
