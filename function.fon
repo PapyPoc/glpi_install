@@ -832,7 +832,7 @@ function write_credentials(){
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "$FICHIER_MSG" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
-GLPI Version: ${NEW_VERSION}
+GLPI Version: ${VERSION_SELECT}
 Répertoire d'installation de GLPI: ${REP_GLPI}
 
 Les comptes utilisateurs par défaut sont :
@@ -858,7 +858,7 @@ EOF
 	else
 		cat > "$FICHIER_MSG" << EOF
 <=============================> GLPI installation details <====================================>
-GLPI version: ${NEW_VERSION}
+GLPI version: ${VERSION_SELECT}
 GLPI installation directory: ${REP_GLPI}
 
 The default user accounts are:
