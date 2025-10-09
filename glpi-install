@@ -13,8 +13,10 @@ clear
     # Définir le répertoire du script
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Charger d'abord les fonctions (ensure_dependencies est définie ici)
+# shellcheck disable=SC1091
 source "${REP_SCRIPT}/function.fon"    # Fichier de fonction
 # Puis charger la configuration qui peut appeler des fonctions (ex: ensure_dependencies)
+# shellcheck disable=SC1091
 source "${REP_SCRIPT}/config.conf" # Fichier de variable
 load_language # Fichier de langue
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
@@ -29,6 +31,7 @@ else
     fi
 fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
+    # shellcheck disable=SC1091
     source /etc/os-release
     DISTRO_ID=${ID}
     info "$MSG_DISTRO_DETECTED$DISTRO_ID ${VERSION_ID}"

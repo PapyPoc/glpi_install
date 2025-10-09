@@ -221,7 +221,7 @@ function prompt_install_options(){
         first=OFF
     done <<< "$tags"
     exec 3>&1
-    NEW_VERSION=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (16 dernières) :" 23 50 4 "${args[@]}" 3>&1 1>&2 2>&3)
+    VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (16 dernières) :" 23 50 4 "${args[@]}" 3>&1 1>&2 2>&3)
     local rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
@@ -231,7 +231,7 @@ function prompt_install_options(){
     # Demander le répertoire d'installation, le nom de la base et l'utilisateur BDD
     exec 3>&1
     local form
-    form=$(dialog --clear --backtitle "$MSG_TITRE" --title "Paramètres d'installation" --form "\nVersion sélectionnée : $NEW_VERSION\n\nSaisissez les paramètres :" 16 70 6 \
+    form=$(dialog --clear --backtitle "$MSG_TITRE" --title "Paramètres d'installation" --form "\nVersion sélectionnée : ${VERSION_SELECT}\n\nSaisissez les paramètres :" 16 70 6 \
         "Répertoire d'installation :" 1 1 "${REP_GLPI:-/var/www/html/glpi/}" 1 30 50 0 \
         "           Nom de la base :" 3 1 "${DB_NAME:-glpi}" 3 30 10 0 \
         "          Utilisateur BDD :" 5 1 "${DB_USER:-glpi_user}" 5 30 10 0 \
@@ -239,6 +239,7 @@ function prompt_install_options(){
     rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
+        echo $NEW_VERSION
         warn "Formulaire annulé."
         exit 0
     fi
@@ -282,7 +283,7 @@ function prompt_install_options(){
     REP_GLPI="${rep_glpi%/}/"
     DB_NAME="$db_name"
     DB_USER="$db_user"
-    DOWNLOADLINK="https://github.com/glpi-project/glpi/archive/refs/tags/${NEW_VERSION}.tar.gz"
+    DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     export DOWNLOADLINK REP_GLPI DB_NAME DB_USER
     return 1
 }
@@ -699,33 +700,28 @@ EOF
         sudo a2ensite glpi.conf
         # Restart d'apache
         systemctl restart apache2
-        # Change permissions
+        # Changer le propriétaire des fichiers de configuration
         chown -Rc www-data:www-data /etc/glpi
+        # Changer les permissions des fichiers de configuration
         find /etc/glpi -type f -exec chmod 644 {} \;
         find /etc/glpi -type d -exec chmod 755 {} \;
-        chown -R www-data:www-data /var/lib/glpi
+        # Changer le propriétaire des fichiers de GLPI
+        chown -Rc www-data:www-data /var/lib/glpi
+        # Changer les permissions des fichiers de GLPI
         find /var/lib/glpi -type f -exec chmod 644 {} \;
         find /var/lib/glpi -type d -exec chmod 755 {} \;
+        # Changer le propriétaire des fichiers de logs
         chown -Rc www-data:www-data /var/log/glpi
+        # Changer les permissions des fichiers de logs
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
-        chown -Rc www-data:www-data "${REP_GLPI}"
-        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+        # Changement du propriétaire des fichiers GLPI
+        chown -Rc apache:apache "${REP_GLPI}"
+        # Changement des permissions des fichiers GLPI
         find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        # Execusion de composer pour installer les dépendances
-        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-        php composer-setup.php
-        mv composer.phar /usr/local/bin/composer
-        php -r "unlink('composer-setup.php');"
-        cd "${REP_GLPI}" || exit 1
-        if [ ! -f "${REP_GLPI}vendor/autoload.php" ]; then
-            echo "Dépendances manquantes — installation via Composer..."
-            sudo -u www-data composer install --no-dev --optimize-autoloader -d "$REP_GLPI"
-        fi
+        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
         # Installation de GLPI en ligne de commande
-        CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
-        #sudo -u www-data "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --quiet --no-interaction
-        #sudo -u www-data php /var/www/html/glpi/bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="P+NyXa9Sz/Aj4/DFvy" --default-language="fr_FR" --force --no-telemetry --no-interaction
+        CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --quiet --no-interaction"
         echo "sudo -u www-data ${CMD}" >> "${LOGFILE}"
         eval sudo -u www-data "${CMD}"
         systemctl restart apache2
@@ -784,27 +780,26 @@ EOF
         systemctl restart nginx php-fpm
         # Change permissions
         chown -R nginx:nginx /etc/glpi
+        # Changer le propriétaire des fichiers de configuration
+        chown -Rc www-data:www-data /etc/glpi
+        # Changer les permissions des fichiers de configuration
         find /etc/glpi -type f -exec chmod 644 {} \;
         find /etc/glpi -type d -exec chmod 755 {} \;
-        chown -R nginx:nginx /var/lib/glpi
+        # Changer le propriétaire des fichiers de GLPI
+        chown -Rc www-data:www-data /var/lib/glpi
+        # Changer les permissions des fichiers de GLPI
         find /var/lib/glpi -type f -exec chmod 644 {} \;
         find /var/lib/glpi -type d -exec chmod 755 {} \;
-        chown -R nginx:nginx /var/log/glpi
+        # Changer le propriétaire des fichiers de logs
+        chown -Rc www-data:www-data /var/log/glpi
+        # Changer les permissions des fichiers de logs
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
-        chown -R nginx:nginx "${REP_GLPI}"
-        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+        # Changement du propriétaire des fichiers GLPI
+        chown -Rc apache:apache "${REP_GLPI}"
+        # Changement des permissions des fichiers GLPI
         find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        # Execusion de composer pour installer les dépendances
-        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-        php composer-setup.php
-        mv composer.phar /usr/local/bin/composer
-        php -r "unlink('composer-setup.php');"
-        cd "${REP_GLPI}" || exit 1
-        if [ ! -f "${REP_GLPI}vendor/autoload.php" ]; then
-            echo "Dépendances manquantes — installation via Composer..."
-            sudo -u www-data composer install --no-dev --optimize-autoloader -d "$REP_GLPI"
-        fi
+        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
         # Installation de GLPI en ligne de commande
         CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
         eval sudo -u nginx "${CMD}"
