@@ -285,6 +285,7 @@ function prompt_install_options(){
     DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/archive/refs/tags/${NEW_VERSION}.tar.gz"
     export DOWNLOADLINK REP_GLPI DB_NAME DB_USER
+    echo "${DOWNLOADLINK} ${REP_GLPI} ${DB_NAME} ${DB_USER}" >> "${LOGFILE}"
     return 1
 }
 # Afficher le résultat final
