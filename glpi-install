@@ -79,5 +79,10 @@ elif [[ "${DISTRO_ID}" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
 fi
 check_dialog # Regarde si dialog est installé
 check_distro # Regarde si la distribution est conforme
+# If we're running interactively and dialog is available, prompt for install options
+if [ -t 1 ] && command -v dialog >/dev/null 2>&1; then
+    prompt_install_options || true
+fi
+
 check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas
 display_result # Affiche le résultat de l'installation

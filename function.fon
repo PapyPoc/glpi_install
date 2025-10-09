@@ -205,6 +205,74 @@ function glpi_install() {
         sleep 1
     done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
 }
+ 
+# Prompt user to choose GLPI version (last 4), install dir, DB name and DB user using dialog
+function prompt_install_options(){
+    # Ensure dialog is available
+    if ! command -v dialog >/dev/null 2>&1; then
+        warn "dialog not found. Please install 'dialog' to use interactive mode."
+        return 1
+    fi
+
+    # Fetch last 4 semver tags
+    local api_url="https://api.github.com/repos/glpi-project/glpi/tags"
+    local tags
+    tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 4)
+    if [ -z "$tags" ]; then
+        warn "Impossible de récupérer les versions GLPI depuis GitHub."
+        return 1
+    fi
+
+    # Build radiolist args
+    local args=()
+    local first=ON
+    local tag
+    while IFS= read -r tag; do
+        args+=("$tag" "GLPI $tag" "$first")
+        first=OFF
+    done <<< "$tags"
+
+    exec 3>&1
+    NEW_VERSION=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (4 dernières) :" 15 60 4 "${args[@]}" 3>&1 1>&2 2>&3)
+    local rc=$?
+    exec 3>&-
+    if [ $rc -ne 0 ]; then
+        warn "Sélection de la version annulée."
+        return 1
+    fi
+
+    # Prompt for install dir, DB name and DB user
+    exec 3>&1
+    local form
+    form=$(dialog --clear --backtitle "$MSG_TITRE" --title "Paramètres d'installation" --form "Version sélectionnée : $NEW_VERSION\n\nSaisissez les paramètres :" 15 70 6 \
+        "Répertoire d'installation :" 1 1 "${REP_GLPI:-/var/www/html/glpi/}" 1 40 60 0 \
+        "Nom de la base :" 3 1 "${DB_NAME:-glpi}" 3 40 30 0 \
+        "Utilisateur BDD :" 5 1 "${DB_USER:-glpi_user}" 5 40 30 0 \
+        3>&1 1>&2 2>&3)
+    rc=$?
+    exec 3>&-
+    if [ $rc -ne 0 ]; then
+        warn "Formulaire annulé."
+        return 1
+    fi
+
+    # Parse form output (lines)
+    IFS=$'\n' read -r rep_glpi db_name db_user <<< "$form" || true
+    # Normalize values
+    REP_GLPI="${rep_glpi%/}/"
+    DB_NAME="$db_name"
+    DB_USER="$db_user"
+
+    export REP_GLPI DB_NAME DB_USER NEW_VERSION
+    DOWNLOADLINK="https://github.com/glpi-project/glpi/archive/refs/tags/${NEW_VERSION}.tar.gz"
+    export DOWNLOADLINK
+
+    info "Version choisie : $NEW_VERSION"
+    info "Répertoire : $REP_GLPI"
+    info "Base : $DB_NAME ($DB_USER)"
+    return 0
+}
+
 # Afficher le résultat final
 function display_result() {
 	if [[ -f "$FICHIER_MSG" ]]; then
@@ -770,7 +838,7 @@ Mot de passe root: ${SQLROOTPWD}
 Mot de passe $DB_USER: ${SQLGLPIPWD}
 Nom de la base de données GLPI: $DB_NAME
 
-Fichier de ${FICHIER_MSG} enregistré dans /root
+Fichier de ${FICHIER_MSG} enregistré dans "$INVOKING_HOME"
 <===============================================================================================>
 
 Si vous rencontrez un probléme avec ce script, veuillez le signaler sur GitHub : https://github.com/PapyPoc/glpi_install/issues
@@ -796,7 +864,7 @@ Root password: ${SQLROOTPWD}
 $DB_USER password: ${SQLGLPIPWD}
 GLPI database name: $DB_NAME
 
-File ${FICHIER_MSG} save in /root
+File ${FICHIER_MSG} save in "$INVOKING_HOME"
 <===============================================================================================>
 
 If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
@@ -827,8 +895,10 @@ function maintenance(){
             sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable 
         fi
     fi
-	sleep 2; }
-function backup_glpi(){ # Sauvegarde de la base de donnée et des fichiers de GLPI
+	sleep 2;
+}
+# Sauvegarde de la base de donnée et des fichiers de GLPI
+function backup_glpi(){
 	# Vérifie si le répertoire existe
 	if [ ! -d "${REP_BACKUP}" ]; then
 		info "$MSG_DIR_SERVICE_CREATE"
@@ -836,27 +906,24 @@ function backup_glpi(){ # Sauvegarde de la base de donnée et des fichiers de GL
 	fi
 	# Sauvergarde de la bdd
 	info "${MSG_MYSQL_DUMP}"
-    PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' /root/sauve_mdp.txt)
-    ${MYSQLDUMP_CMD:-mysqldump} -u root -p"$PASSWORD" --databases $DB_NAME > "${REP_BACKUP}${BDD_BACKUP}"
+    PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' sauve_mdp.txt)
+    ${MYSQLDUMP_CMD} -u root -p"$PASSWORD" --databases $DB_NAME > "${REP_BACKUP}${BDD_BACKUP}"
 	info "${MSG_DUMP_SUCCESS}"
 	# Sauvegarde des fichiers
 	info "${MSG_SITE_COPY}"
-	cp -Rf "${REP_GLPI}" "${REP_BACKUP}"backup_glpi
+	cp -Rf "${REP_GLPI}config" "${REP_BACKUP}"
+    cp -Rf "${REP_GLPI}files" "${REP_BACKUP}"
+	cp -Rf "${REP_GLPI}plugins" "${REP_BACKUP}"
+	cp -Rf "${REP_GLPI}marketplace" "${REP_BACKUP}"
 	info "${MSG_SITE_COPY_OK}"
-	info "$MSG_RM_SITE_FILE"
-	rm -Rf "${REP_GLPI}"
-	sleep 2; }
-function update_glpi(){ # Mise à jour de GLPI
+}
+# Mise à jour de GLPI
+function update_glpi(){
 	info "$MSG_CP_MARKET_PLUGIN"
-	cp -Rf "${REP_BACKUP}"backup_glpi/plugins "${REP_GLPI}"
-	cp -Rf "${REP_BACKUP}"backup_glpi/marketplace "${REP_GLPI}"
-	cat > "${REP_GLPI}"inc/downstream.php << EOF
-<?php
-    define('GLPI_CONFIG_DIR', '/etc/glpi');
-    if (file_exists(GLPI_CONFIG_DIR . '/local_define.php')) {
-        require_once GLPI_CONFIG_DIR . '/local_define.php';
-    }
-EOF
+    cp -Rf "${REP_BACKUP}config" "${REP_GLPI}"
+    cp -Rf "${REP_BACKUP}files" "${REP_GLPI}"
+	cp -Rf "${REP_BACKUP}plugins" "${REP_GLPI}"
+	cp -Rf "${REP_BACKUP}marketplace" "${REP_GLPI}"
 	info "$MSG_UPDATE_GLPI_DATABASE"
 	if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
 		chown -R www-data:www-data "${REP_GLPI}"
@@ -874,8 +941,8 @@ EOF
 	rm -Rf "$REP_BACKUP"backup_glpi
 	sleep 2;
 }
-
-function update(){ # Fonction principale pour exécuter les tâches avec barre de progression
+# Fonction principale pour exécuter les tâches avec barre de progression
+function update(){
     declare -A tasks=(
 		["$MSG_T20"]="maintenance 1"
         ["$MSG_T21"]="update_distro"
