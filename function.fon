@@ -227,7 +227,7 @@ function prompt_install_options(){
     exec 3>&-
     if [ $rc -ne 0 ]; then
         warn "Sélection de la version annulée."
-        return 1
+        exit 0
     fi
     # Demander le répertoire d'installation, le nom de la base et l'utilisateur BDD
     exec 3>&1
@@ -241,7 +241,7 @@ function prompt_install_options(){
     exec 3>&-
     if [ $rc -ne 0 ]; then
         warn "Formulaire annulé."
-        return 1
+        exit 0
     fi
     # Analyser la sortie du formulaire (lignes)
     IFS=$'\n' read -r rep_glpi db_name db_user <<< "$form" || true
@@ -284,11 +284,8 @@ function prompt_install_options(){
     DB_NAME="$db_name"
     DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/archive/refs/tags/${NEW_VERSION}.tar.gz"
-    export DOWNLOADLINK REP_GLPI DB_NAME DB_USER 
-    info "Version choisie : $NEW_VERSION"
-    info "Répertoire : $REP_GLPI"
-    info "Base : $DB_NAME ($DB_USER)"
-    return 0
+    export DOWNLOADLINK REP_GLPI DB_NAME DB_USER
+    return 1
 }
 # Afficher le résultat final
 function display_result() {
@@ -637,9 +634,16 @@ function mariadb_configure(){
 function install_glpi(){ 
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
     # Téléchargement de GLPI
-    wget -nv -O /tmp/glpi-latest.tgz "$DOWNLOADLINK"
-    tar xzf /tmp/glpi-latest.tgz -C /var/www/html/
-	sleep 5; }
+    tmp_file="/tmp/glpi-latest.tgz"
+    if ! wget -q -O "$tmp_file" "$DOWNLOADLINK"; then
+        warn "$MSG_DOWNLOAD_FAILED"
+        exit 1
+    fi
+    # Extraire l'archive dans le répertoire d'installation
+    tar xzf "$tmp_file" --strip-components=1 -C "$REP_GLPI"
+    rm -f "$tmp_file"
+    sleep 5; 
+}
 # Mise en place des réglage pour GLPI
 function setup_glpi(){
     info "$MSG_CONFIG_GLPI"
