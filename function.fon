@@ -233,7 +233,7 @@ function prompt_install_options(){
     exec 3>&1
     local form
     form=$(dialog --clear --backtitle "$MSG_TITRE" --title "Paramètres d'installation" --form "\nVersion sélectionnée : $NEW_VERSION\n\nSaisissez les paramètres :" 16 70 6 \
-        "Répertoire d'installation :" 1 1 "${REP_GLPI:-/var/www/html/glpi/}" 1 4 60 0 \
+        "Répertoire d'installation :" 1 1 "${REP_GLPI:-/var/www/html/glpi/}" 1 40 50 0 \
         "Nom de la base :" 3 1 "${DB_NAME:-glpi}" 3 40 30 0 \
         "Utilisateur BDD :" 5 1 "${DB_USER:-glpi_user}" 5 40 30 0 \
         3>&1 1>&2 2>&3)
