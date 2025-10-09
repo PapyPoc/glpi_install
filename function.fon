@@ -473,7 +473,7 @@ function install_packages(){
             exit 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! apt-get install -y --no-install-recommends wget tar apache2 apache2-bin mariadb-server mariadb-client perl php; then
+        if ! apt-get install -y --no-install-recommends wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php; then
             warn "$MSG_LAMP_FAILED"
             exit 1
         fi
@@ -501,7 +501,7 @@ function install_packages(){
             warn "$MSG_EPEL_FAILED"
             exit 1
         fi
-        if ! dnf module reset -y php nginx mariadb; then
+        if ! dnf module reset -y php nginx mariadb composer; then
             warn "$MSG_MODULES_RESET_FAILED"
             exit 1
         fi
@@ -668,23 +668,6 @@ EOF
     }
 EOF
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        # Add permissions
-        chown -R www-data:www-data  /etc/glpi
-        find /etc/glpi -type f -exec chmod 644 {} \;
-        find /etc/glpi -type d -exec chmod 755 {} \;
-        sleep 1
-        chown -R www-data:www-data  /var/log/glpi
-        find /var/log/glpi -type f -exec chmod 644 {} \;
-        find /var/log/glpi -type d -exec chmod 755 {} \;
-        sleep 1
-        chown -R www-data:www-data /var/lib/glpi/files
-        find /var/lib/glpi/files -type f -exec chmod 644 {} \;
-        find /var/lib/glpi/files -type d -exec chmod 755 {} \;
-        sleep 1
-        chown -R www-data:www-data "${REP_GLPI}"
-        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
-        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        sleep 1
         network_info
         # Setup vhost
          cat > /etc/apache2/sites-available/glpi.conf << EOF
@@ -716,30 +699,33 @@ EOF
         sudo a2ensite glpi.conf
         # Restart d'apache
         systemctl restart apache2
+        # Execusion de composer pour installer les dépendances
+        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+        php composer-setup.php
+        mv composer.phar /usr/local/bin/composer
+        php -r "unlink('composer-setup.php');"
+        cd "${REP_GLPI}" || exit 1
+        sudo -u www-data composer install --no-dev --prefer-dist
+        # Installation de GLPI en ligne de commande
         CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
         #sudo -u www-data "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --quiet --no-interaction
+        #sudo -u www-data php /var/www/html/glpi/bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="P+NyXa9Sz/Aj4/DFvy" --default-language="fr_FR" --force --no-telemetry --no-interaction
         echo "sudo -u www-data ${CMD}" >> "${LOGFILE}"
         eval sudo -u www-data "${CMD}"
-        chown -R www-data:www-data  /var/log/glpi
-        find /var/log/glpi -type f -exec chmod 644 {} \;
-        find /var/log/glpi -type d -exec chmod 755 {} \;
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        chown -R nginx:nginx /etc/glpi
+        # Change permissions
+        chown -Rc www-data:www-data /etc/glpi
         find /etc/glpi -type f -exec chmod 644 {} \;
         find /etc/glpi -type d -exec chmod 755 {} \;
-        sleep 1
-        chown -R nginx:nginx /var/log/glpi
+        chown -Rc www-data:www-data /var/log/glpi
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
-        sleep 1
-        chown -R nginx:nginx /var/lib/glpi
-        find /var/lib/glpi -type f -exec chmod 644 {} \;
-        find /var/lib/glpi -type d -exec chmod 755 {} \;
-        # Add permissions
-        chown -R nginx:nginx "${REP_GLPI}"
+        chown -Rc www-data:www-data "${REP_GLPI}"
         find "${REP_GLPI}" -type f -exec chmod 644 {} \;
         find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        sleep 1
+        systemctl restart apache2
+        # Configuration de la tâche Cron
+        echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
+    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         network_info
         cat > /etc/nginx/conf.d/glpi.conf << EOF
 server {
@@ -790,30 +776,17 @@ EOF
         restorecon -R "${REP_GLPI}"marketplace
         # Restart de Nginx et php-fpm
         systemctl restart nginx php-fpm
-        CMD="${REP_GLPI}bin/console db:install \ 
-        --db-host=localhost --db-port=3306 --db-name=${DB_NAME} \
-        --db-user=${DB_USER} --db-password=${SQLGLPIPWD} \
-        --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
-        eval sudo -u www-data php "${CMD}"
-    fi
-    sleep 5
-    rm -Rf "${REP_GLPI}"install/install.php
-    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
+        # Execusion de composer pour installer les dépendances
+        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+        php composer-setup.php
+        mv composer.phar /usr/local/bin/composer
+        php -r "unlink('composer-setup.php');"
+        cd "${REP_GLPI}" || exit 1
+        sudo -u www-data composer install --no-dev --prefer-dist
+        # Installation de GLPI en ligne de commande
+        CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
+        eval sudo -u nginx "${CMD}"
         # Change permissions
-        chown -Rc www-data:www-data /etc/glpi
-        find /etc/glpi -type f -exec chmod 644 {} \;
-        find /etc/glpi -type d -exec chmod 755 {} \;
-        chown -Rc www-data:www-data /var/log/glpi
-        find /var/log/glpi -type f -exec chmod 644 {} \;
-        find /var/log/glpi -type d -exec chmod 755 {} \;
-        chown -Rc www-data:www-data "${REP_GLPI}"
-        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
-        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        systemctl restart apache2
-        # Configuration de la tâche Cron
-        echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-         # Change permissions
         chown -R nginx:nginx /etc/glpi
         find /etc/glpi -type f -exec chmod 644 {} \;
         find /etc/glpi -type d -exec chmod 755 {} \;
@@ -826,6 +799,8 @@ EOF
         systemctl restart nginx php-fpm
         echo "*/2 * * * * nginx /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
+    sleep 5
+    rm -Rf "${REP_GLPI}"install/install.php
 	sleep 2; }
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){ 
