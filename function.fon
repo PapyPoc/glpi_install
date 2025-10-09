@@ -716,10 +716,10 @@ EOF
         sudo a2ensite glpi.conf
         # Restart d'apache
         systemctl restart apache2
-        CMD="php ${REP_GLPI}bin/console db:install --db-host=localhost --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=${SQLGLPIPWD} --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
+        CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
+        #sudo -u www-data "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --quiet --no-interaction
         echo "sudo -u www-data ${CMD}" >> "${LOGFILE}"
         eval sudo -u www-data "${CMD}"
-        sudo -u www-data "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --quiet --no-interaction
         chown -R www-data:www-data  /var/log/glpi
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
