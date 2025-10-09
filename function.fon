@@ -633,7 +633,7 @@ function mariadb_configure(){
 # Téléchargement et décompression de GLPI
 function install_glpi(){ 
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
-    echo "${DOWNLOADLINK} ${REP_GLPI} ${DB_NAME} ${DB_USER}" >> "${LOGFILE}"
+    echo "sudo -u www-data php \"${REP_GLPI}\"bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=\"${DB_NAME}\" --db-user=\"${DB_USER}\" --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction" >> "${LOGFILE}"
     # Téléchargement de GLPI
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
     if ! wget -q -O "$tmp_file" "${DOWNLOADLINK}"; then
@@ -718,7 +718,7 @@ EOF
         sudo a2ensite glpi.conf
         # Restart d'apache
         systemctl restart apache2
-        sudo -u www-data php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction
+        sudo -u www-data php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction
         chown -R www-data:www-data  /var/log/glpi
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
@@ -789,7 +789,7 @@ EOF
         restorecon -R "${REP_GLPI}"marketplace
         # Restart de Nginx et php-fpm
         systemctl restart nginx php-fpm
-        sudo -u nginx php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name=glpi --db-user=glpi_user --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction 
+        sudo -u nginx php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction 
     fi
     sleep 5
     rm -Rf "${REP_GLPI}"install/install.php
@@ -805,7 +805,7 @@ EOF
         find "${REP_GLPI}" -type f -exec chmod 644 {} \;
         find "${REP_GLPI}" -type d -exec chmod 755 {} \;
         systemctl restart apache2
-        # Setup Cron task
+        # Configuration de la tâche Cron
         echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
          # Change permissions
@@ -844,7 +844,7 @@ function maj_user_glpi(){
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
 function write_credentials(){ 
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
-		cat <<EOF > "$FICHIER_MSG"
+        cat > "$FICHIER_MSG" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
 GLPI Version: ${NEW_VERSION}
 Répertoire d'installation de GLPI: ${REP_GLPI}
@@ -870,7 +870,7 @@ Fichier de ${FICHIER_MSG} enregistré dans "$INVOKING_HOME"
 Si vous rencontrez un probléme avec ce script, veuillez le signaler sur GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	else
-		cat <<EOF > "$FICHIER_MSG"
+		cat > "$FICHIER_MSG" << EOF
 <=============================> GLPI installation details <====================================>
 GLPI version: ${NEW_VERSION}
 GLPI installation directory: ${REP_GLPI}
