@@ -9,13 +9,25 @@
 set -Eeuo pipefail
 # Nettoyer le terminal
 clear
-# Définir le répertoire du script
+# Charger les fichiers de configuration et de fonctions
+    # Définir le répertoire du script
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Charger d'abord les fonctions (ensure_dependencies est définie ici)
 source "${REP_SCRIPT}/function.fon"    # Fichier de fonction
 # Puis charger la configuration qui peut appeler des fonctions (ex: ensure_dependencies)
 source "${REP_SCRIPT}/config.conf" # Fichier de variable
 load_language # Fichier de langue
+ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
+if [ "$EUID" -eq 0 ]; then # Vérifie si root
+    info "$MSG_ROOT"
+else
+    if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
+        exec sudo -- "$0" "$@"
+    else
+        warn "${MSG_USER_NOT_SUDO}"
+        exit 1
+    fi
+fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
     source /etc/os-release
     DISTRO_ID=${ID}
@@ -31,46 +43,41 @@ case "${DISTRO_ID}" in # Choix du groupe admin
         ADMIN_GROUP="wheel";;
     *)
         ADMIN_GROUP="sudo"
-        info "${MSG_DISTRO_UNKNOWN}";
+        info "$MSG_DISTRO_UNKNOWN";
 esac
 # Vérification de l'appartenance
-if ! id -nG "${INVOKING_USER}" | grep -qw "${ADMIN_GROUP}"; then
-    info "${MSG_ADD_USER_GROUP}"
-    usermod -aG "${ADMIN_GROUP}" "${INVOKING_USER}"
+if ! id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
+    info "$MSG_ADD_USER_GROUP"
+    usermod -aG "${ADMIN_GROUP}" "${ORIG_USER}"
     if [ $? -eq 0 ]; then
-        info "${MSG_USER_ADDED_SUCCESS}"
-        info "${MSG_RECONNECT}"
+        info "$MSG_USER_ADDED_SUCCESS"
+        info "$MSG_RECONNECT"
     else
-        warn "${MSG_ADD_USER_FAILED}"
+        warn "$MSG_ADD_USER_FAILED"
         exit 1
     fi
 fi
 # Installation des outils de base après vérification de la distribution
 if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
     if ! apt-get update &> /dev/null; then
-        warn "${MSG_UPDATE_FAILED}"
+        warn "$MSG_UPDATE_FAILED"
         exit 1
     fi
     if ! apt-get install -y curl jq sudo &> /dev/null; then
-        warn "${MSG_INSTALL_TOOLS_FAILED}"
+        warn "$MSG_INSTALL_TOOLS_FAILED"
         exit 1
     fi
     if ! apt-get autoremove -y &> /dev/null; then
-        warn "${MSG_AUTOREMOVE_FAILED}"
+        warn "$MSG_AUTOREMOVE_FAILED"
         exit 1
     fi
 elif [[ "${DISTRO_ID}" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
     if ! dnf install -y curl jq sudo &> /dev/null && ! yum install -y curl jq sudo &> /dev/null; then
-        warn "${MSG_INSTALL_TOOLS_FAILED}"
+        warn "$MSG_INSTALL_TOOLS_FAILED"
         exit 1
     fi
 fi
 check_dialog # Regarde si dialog est installé
 check_distro # Regarde si la distribution est conforme
-# If we're running interactively and dialog is available, prompt for install options
-if [ -t 1 ] && command -v dialog >/dev/null 2>&1; then
-    prompt_install_options || true
-fi
-
 check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas
 display_result # Affiche le résultat de l'installation
