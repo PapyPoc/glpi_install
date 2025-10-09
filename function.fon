@@ -468,7 +468,7 @@ function install_packages(){
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
         info "$MSG_INSTALL_EXT_PHP"
-        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,zlib,ldap,openssl,session,apcu,opcache,xmlrpc,zip,bz2}; then
+        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
             warn "$MSG_PHP_EXT_FAILED"
             exit 1
         fi
@@ -545,7 +545,7 @@ EOF
             exit 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
-        if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,zlib,ldap,openssl,session,apcu,opcache,xmlrpc,zip,bz2}; then
+        if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
             warn "$MSG_PHP_EXT_FAILED"
             exit 1
         fi
