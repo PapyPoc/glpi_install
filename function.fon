@@ -284,7 +284,7 @@ function prompt_install_options(){
     DB_NAME="$db_name"
     DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/archive/refs/tags/${NEW_VERSION}.tar.gz"
-    export DOWNLOADLINK 
+    export DOWNLOADLINK REP_GLPI DB_NAME DB_USER 
     info "Version choisie : $NEW_VERSION"
     info "Répertoire : $REP_GLPI"
     info "Base : $DB_NAME ($DB_USER)"
