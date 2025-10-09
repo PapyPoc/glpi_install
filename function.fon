@@ -24,9 +24,8 @@ export_display_env() {
         REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT GLPI_CLI_VERSION PHPVERSION
         DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
     )
-
-    # exporter aussi les variantes en minuscules (certains messages ou modèles
-    # peuvent utiliser des noms en minuscules)
+    # exporter aussi les variantes en minuscules (certains messages ou modèles peuvent
+    # utiliser des noms en minuscules)
     local lvars=(
         orig_user admin_group distro_id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
         error_file log_file task_index task_key language timezone ipadress interface downloadlink
@@ -34,7 +33,6 @@ export_display_env() {
         rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output glpi_cli_version phpversion
         debian_versions ubuntu_versions alma_versions centos_versions rocky_versions redhat_versions
     )
-
     local v _val
     for v in "${vars[@]}" "${lvars[@]}"; do
         _val="${!v:-}"
