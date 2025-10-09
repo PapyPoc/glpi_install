@@ -85,3 +85,8 @@ check_distro # Regarde si la distribution est conforme
 prompt_install_options || true # Demande les options d'installation
 check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas
 display_result # Affiche le résultat de l'installation
+chmod 600 "${FICHIER_MSG}"
+chown root:root "${FICHIER_MSG}"
+echo ""
+warn "${MSG_FILE_MSG}"
+echo ""

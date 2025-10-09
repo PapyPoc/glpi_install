@@ -882,13 +882,6 @@ Backup file saved to ${FICHIER_MSG}
 If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
-    chmod 600 "${FICHIER_MSG}" "$ERRORFILE" "$FICHIER_LOG"
-    chown root:root "${FICHIER_MSG}" "$ERRORFILE" "$FICHIER_LOG"
-    info "${MSG_FILE_CREDENTIALS}"
-    echo ""
-    warn "${MSG_FILE_MSG}"
-    echo ""
-	sleep 2;
 }
 # Activé ou déactivé le mode maintenance (1 ou 0)
 function maintenance(){
@@ -931,30 +924,24 @@ function backup_glpi(){
 	cp -Rf "${REP_GLPI}plugins" "${REP_BACKUP}"
     # Copiez le Marketplace
 	cp -Rf "${REP_GLPI}marketplace" "${REP_BACKUP}"
+    # Copiez le fichier de downstream.php
+    cp -Rf "${REP_GLPI}inc/downstream.php" "${REP_BACKUP}"
 	info "${MSG_SITE_COPY_OK}"
     # Compresse la sauvegarde
     info "${MSG_COMPRESS_BACKUP}"
     # Créer le dossier compress si nécessaire
     if [ ! -d "${REP_BACKUP}/compress" ]; then
         mkdir -p "${REP_BACKUP}/compress"
-    fi
-    # Copier les dossiers à sauvegarder
-    cp -Rf "${REP_BACKUP}/config"        "${REP_BACKUP}/compress/"
-    cp -Rf "${REP_BACKUP}/files"         "${REP_BACKUP}/compress/"
-    cp -Rf "${REP_BACKUP}/plugins"       "${REP_BACKUP}/compress/"
-    cp -Rf "${REP_BACKUP}/marketplace"   "${REP_BACKUP}/compress/"
-    cp -f  "${REP_BACKUP}/${BDD_BACKUP}" "${REP_BACKUP}/compress/"
+    fi    
     # Créer l'archive compressée
-    tar -czf "${REP_BACKUP}.tar.gz" -C "${REP_BACKUP}/compress" .
+    tar -czf "${REP_BACKUP}/compress/backup_glpi_$(date +"%d-%m-%Y_%H-%M-%S").tar.gz" -C "${REP_BACKUP}" .
     if [ $? -eq 0 ]; then
         info "${MSG_COMPRESS_BACKUP_OK}"
-        # Nettoyage après compression
-        rm -rf "${REP_BACKUP}/config"
-        rm -rf "${REP_BACKUP}/compress/config"
-        rm -rf "${REP_BACKUP}/compress/files"
-        rm -rf "${REP_BACKUP}/compress/plugins"
-        rm -rf "${REP_BACKUP}/compress/marketplace"
-        rm -f  "${REP_BACKUP}/compress/${BDD_BACKUP}"
+        # Supprimer le répertoire de l'ancien site GLPI
+        info "$MSG_REMOVE_OLD_GLPI_DIR"
+        if [ -d "${REP_GLPI}" ]; then   
+            rm -Rf "${REP_GLPI}"
+        fi
     else
         warn "${MSG_COMPRESS_BACKUP_FAILED}"
     fi
@@ -967,10 +954,14 @@ function update_glpi(){
     cp -Rf "${REP_BACKUP}files" /var/lib/glpi/
 	cp -Rf "${REP_BACKUP}plugins" "${REP_GLPI}"
 	cp -Rf "${REP_BACKUP}marketplace" "${REP_GLPI}"
+    cp -f "${REP_BACKUP}inc/downstream.php" "${REP_GLPI}inc/downstream.php"
+    # Suppression des anciens fichiers de GLPI
+    info "$MSG_REMOVE_OLD_FILES"
     rm -Rf "${REP_BACKUP}config" /etc/glpi/
     rm -Rf "${REP_BACKUP}files" /var/lib/glpi/
 	rm -Rf "${REP_BACKUP}plugins" "${REP_GLPI}"
 	rm -Rf "${REP_BACKUP}marketplace" "${REP_GLPI}"
+    rm -f "${REP_BACKUP}inc/downstream.php"
 	info "$MSG_UPDATE_GLPI_DATABASE"
 	if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
 		chown -R www-data:www-data "${REP_GLPI}"
