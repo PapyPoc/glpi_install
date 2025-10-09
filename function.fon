@@ -793,7 +793,11 @@ EOF
         restorecon -R "${REP_GLPI}"marketplace
         # Restart de Nginx et php-fpm
         systemctl restart nginx php-fpm
-        sudo -u nginx php "${REP_GLPI}"bin/console db:install --db-host="localhost" --db-port=3306 --db-name="${DB_NAME}" --db-user="${DB_USER}" --db-password="${SQLGLPIPWD}" --default-language="${LANGUAGE}" --force --no-telemetry --no-interaction 
+        CMD="${REP_GLPI}bin/console db:install \ 
+        --db-host=localhost --db-port=3306 --db-name=${DB_NAME} \
+        --db-user=${DB_USER} --db-password=${SQLGLPIPWD} \
+        --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
+        eval sudo -u www-data php "${CMD}"
     fi
     sleep 5
     rm -Rf "${REP_GLPI}"install/install.php
