@@ -203,7 +203,6 @@ function glpi_install() {
         sleep 1
     done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
 }
- 
 # Demander à l'utilisateur de choisir la version de GLPI (4 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
     local api_url="https://api.github.com/repos/glpi-project/glpi/tags"
@@ -222,7 +221,7 @@ function prompt_install_options(){
         first=OFF
     done <<< "$tags"
     exec 3>&1
-    NEW_VERSION=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (16 dernières) :" 23 60 4 "${args[@]}" 3>&1 1>&2 2>&3)
+    NEW_VERSION=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (16 dernières) :" 23 50 4 "${args[@]}" 3>&1 1>&2 2>&3)
     local rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
@@ -469,7 +468,7 @@ function install_packages(){
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
         info "$MSG_INSTALL_EXT_PHP"
-        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
+        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,zlib,ldap,openssl,session,apcu,opcache,xmlrpc,zip,bz2}; then
             warn "$MSG_PHP_EXT_FAILED"
             exit 1
         fi
@@ -546,7 +545,7 @@ EOF
             exit 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
-        if ! dnf install -y php-{mysqlnd,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,zip,bz2}; then
+        if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,zlib,ldap,openssl,session,apcu,opcache,xmlrpc,zip,bz2}; then
             warn "$MSG_PHP_EXT_FAILED"
             exit 1
         fi
@@ -584,9 +583,9 @@ function mariadb_configure(){
     DROP DATABASE IF EXISTS test;
     DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
     GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';
-    CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;
+    CREATE DATABASE IF NOT EXISTS '$DB_NAME';
     CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
-    GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '${DB_USER}'@'localhost';
+    GRANT ALL PRIVILEGES ON '$DB_NAME'.* TO '${DB_USER}'@'localhost';
     GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
     FLUSH PRIVILEGES;"; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
@@ -717,12 +716,9 @@ EOF
         sudo a2ensite glpi.conf
         # Restart d'apache
         systemctl restart apache2
-        CMD="${REP_GLPI}bin/console db:install \ 
-        --db-host=localhost --db-port=3306 --db-name=${DB_NAME} \
-        --db-user=${DB_USER} --db-password=${SQLGLPIPWD} \
-        --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
-        echo "sudo -u www-data php ${CMD}" >> "${LOGFILE}"
-        eval sudo -u www-data php "${CMD}"
+        CMD="${REP_GLPI}bin/console db:install --db-host=localhost --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=${SQLGLPIPWD} --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
+        echo "sudo -u www-data-www-data php ${CMD}" >> "${LOGFILE}"
+        eval sudo -u www-data-www-data php "${CMD}"
         chown -R www-data:www-data  /var/log/glpi
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
