@@ -208,7 +208,7 @@ function glpi_install() {
 function prompt_install_options(){
     local api_url="https://api.github.com/repos/glpi-project/glpi/tags"
     local tags
-    tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 18)
+    tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
     if [ -z "$tags" ]; then
         warn "${MSG_GITHUB_VERSIONS_FAILED}"
         return 1
@@ -222,7 +222,7 @@ function prompt_install_options(){
         first=OFF
     done <<< "$tags"
     exec 3>&1
-    NEW_VERSION=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (4 dernières) :" 23 60 4 "${args[@]}" 3>&1 1>&2 2>&3)
+    NEW_VERSION=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (16 dernières) :" 23 60 4 "${args[@]}" 3>&1 1>&2 2>&3)
     local rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
