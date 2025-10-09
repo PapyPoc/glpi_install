@@ -43,7 +43,7 @@ export_display_env() {
 ensure_dependencies() {
     NEED_RESTART=0
     local missing=()
-    for cmd in curl jq openssl util-linux; do
+    for cmd in curl jq openssl; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing+=("$cmd")
         fi
