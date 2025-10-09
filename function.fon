@@ -850,7 +850,7 @@ Mot de passe root: ${SQLROOTPWD}
 Mot de passe $DB_USER: ${SQLGLPIPWD}
 Nom de la base de données GLPI: $DB_NAME
 
-Fichier de ${FICHIER_MSG} enregistré dans "$INVOKING_HOME"
+Fichier de sauvegarde enregistré dans ${FICHIER_MSG}
 <===============================================================================================>
 
 Si vous rencontrez un probléme avec ce script, veuillez le signaler sur GitHub : https://github.com/PapyPoc/glpi_install/issues
@@ -876,7 +876,7 @@ Root password: ${SQLROOTPWD}
 $DB_USER password: ${SQLGLPIPWD}
 GLPI database name: $DB_NAME
 
-File ${FICHIER_MSG} save in "$INVOKING_HOME"
+Backup file saved to ${FICHIER_MSG}
 <===============================================================================================>
 
 If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
