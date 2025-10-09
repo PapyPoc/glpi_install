@@ -208,7 +208,7 @@ function glpi_install() {
 function prompt_install_options(){
     local api_url="https://api.github.com/repos/glpi-project/glpi/tags"
     local tags
-    tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 8)
+    tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 18)
     if [ -z "$tags" ]; then
         warn "${MSG_GITHUB_VERSIONS_FAILED}"
         return 1
