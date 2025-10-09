@@ -285,8 +285,6 @@ function prompt_install_options(){
     DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/archive/refs/tags/${NEW_VERSION}.tar.gz"
     export DOWNLOADLINK REP_GLPI DB_NAME DB_USER
-    echo "${DOWNLOADLINK} ${REP_GLPI} ${DB_NAME} ${DB_USER}" >> "${LOGFILE}"
-    exit 0
     return 1
 }
 # Afficher le résultat final
@@ -635,16 +633,21 @@ function mariadb_configure(){
 # Téléchargement et décompression de GLPI
 function install_glpi(){ 
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
+    echo "${DOWNLOADLINK} ${REP_GLPI} ${DB_NAME} ${DB_USER}" >> "${LOGFILE}"
     # Téléchargement de GLPI
-    tmp_file="/tmp/glpi-latest.tgz"
-    if ! wget -q -O "$tmp_file" "$DOWNLOADLINK"; then
+    tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
+    if ! wget -q -O "$tmp_file" "${DOWNLOADLINK}"; then
         warn "$MSG_DOWNLOAD_FAILED"
+        rm -f "$tmp_file"
         exit 1
+    fi
+    if [ ! -d "$REP_GLPI" ]; then
+        mkdir -p "$REP_GLPI" || { warn "$MSG_CREATE_DIR_FAILED"; rm -f "$tmp_file"; exit 1; }
     fi
     # Extraire l'archive dans le répertoire d'installation
     tar xzf "$tmp_file" --strip-components=1 -C "$REP_GLPI"
     rm -f "$tmp_file"
-    sleep 5; 
+    sleep 5;
 }
 # Mise en place des réglage pour GLPI
 function setup_glpi(){
