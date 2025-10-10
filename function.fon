@@ -162,7 +162,7 @@ function run_task() {
     echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" >> "${LOGFILE}"
     trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR >> "$LOGFILE"
     local output
-    output=$(eval "$task_cmd" 2>&1)
+    output=$(eval "$task_cmd")
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
         echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" >> "${LOGFILE}"
