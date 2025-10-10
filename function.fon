@@ -23,6 +23,7 @@ export_display_env() {
         DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
         REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT GLPI_CLI_VERSION PHPVERSION
         DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
+        NEW_VERSION
     )
     # exporter aussi les variantes en minuscules (certains messages ou modèles peuvent
     # utiliser des noms en minuscules)
@@ -32,6 +33,7 @@ export_display_env() {
         db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd
         rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output glpi_cli_version phpversion
         debian_versions ubuntu_versions alma_versions centos_versions rocky_versions redhat_versions
+        new_version
     )
     local v _val
     for v in "${vars[@]}" "${lvars[@]}"; do
