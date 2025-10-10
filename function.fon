@@ -312,7 +312,6 @@ function prompt_install_options(){
         echo -e "Nom BDD: $DB_NAME"
         echo -e "Utilisateur BDD: $DB_USER\n"
     } >> "${LOGFILE}"
-    exit 1
     return 1
 }
 # Afficher le résultat final
