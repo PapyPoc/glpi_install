@@ -105,7 +105,7 @@ ensure_dependencies() {
     return 0
 }
 # Affichage d'alerte
-function warn(){ 
+function warn(){
     local msg="$1"
     export_display_env
     local expanded
@@ -116,7 +116,7 @@ function warn(){
     fi
     echo -e "${ROUGE}${expanded}${NC}" # Couleur rouge
 }
-# Affichage d'information 
+# Affichage d'information
 function info(){
     local msg="$1"
     export_display_env
@@ -231,7 +231,7 @@ function prompt_install_options(){
     fi
     # Demander le répertoire d'installation, le nom de la base et l'utilisateur BDD
     exec 3>&1
-    local form 
+    local form
     local WIDTH_MSG_PARAM_REP=25
     local WIDTH_MSG_PARAM_DB_HOST=25
     local WIDTH_MSG_PARAM_DB_NAME=25
@@ -242,15 +242,16 @@ function prompt_install_options(){
     local LEN_MSG_PARAM_DB_USER="${MSG_PARAM_DB_USER}"
     PAD_MSG_PARAM_REP=$(("${WIDTH_MSG_PARAM_REP}" - "${LEN_MSG_PARAM_REP}" - 4)) # -4 pour marge interne du cadre
     SPACES_MSG_PARAM_REP=$(printf "%${PAD_MSG_PARAM_REP}s" "")
-    LEN_MSG_PARAM_DB_HOST=${#MSG_PARAM_DB_HOST}
+    echo "LEN_MSG_PARAM_REP=$LEN_MSG_PARAM_REP, PAD_MSG_PARAM_REP=$PAD_MSG_PARAM_REP" >> "$LOGFILE"
     MSG_PARAM_DB_HOST_PAD=$(("${WIDTH_MSG_PARAM_DB_HOST}" - "${LEN_MSG_PARAM_DB_HOST}" - 4)) # -4 pour marge interne du cadre
     SPACES_MSG_PARAM_DB_HOST=$(printf "%${MSG_PARAM_DB_HOST_PAD}s" "")
-    LEN_MSG_PARAM_DB_NAME=${#MSG_PARAM_DB_NAME}
+    echo "LEN_MSG_PARAM_DB_HOST=$LEN_MSG_PARAM_DB_HOST, PAD_MSG_PARAM_DB_HOST=$PAD_MSG_PARAM_DB_HOST" >> "$LOGFILE"
     MSG_PARAM_DB_NAME_PAD=$(("${WIDTH_MSG_PARAM_DB_NAME}" - "${LEN_MSG_PARAM_DB_NAME}" - 4)) # -4 pour marge interne du cadre
     SPACES_MSG_PARAM_DB_NAME=$(printf "%${MSG_PARAM_DB_NAME_PAD}s" "")
-    LEN_MSG_PARAM_DB_USER=${#MSG_PARAM_DB_USER}
+    echo "LEN_MSG_PARAM_DB_NAME=$LEN_MSG_PARAM_DB_NAME, PAD_MSG_PARAM_DB_NAME=$PAD_MSG_PARAM_DB_NAME" >> "$LOGFILE"
     MSG_PARAM_DB_USER_PAD=$(("${WIDTH_MSG_PARAM_DB_USER}" - "${LEN_MSG_PARAM_DB_USER}" - 4)) # -4 pour marge interne du cadre
     SPACES_MSG_PARAM_DB_USER=$(printf "%${MSG_PARAM_DB_USER_PAD}s" "")
+    echo "LEN_MSG_PARAM_DB_USER=$LEN_MSG_PARAM_DB_USER, PAD_MSG_PARAM_DB_USER=$PAD_MSG_PARAM_DB_USER" >> "$LOGFILE"
     form=$(dialog --clear --backtitle "$MSG_TITRE" --title "${MSG_PARAM_TITLE}Paramètres d'installation" --form "\nVersion sélectionnée : ${VERSION_SELECT}\n\nSaisissez les paramètres :" 40 80 6 \
         "${SPACES_MSG_PARAM_REP}${MSG_PARAM_REP}" 1 1 "${REP_GLPI:-/var/www/html/glpi/}" 1 40 $WIDTH_MSG_PARAM_REP 0 \
         "${SPACES_MSG_PARAM_DB_HOST}${MSG_PARAM_DB_HOST}" 3 1 "${DB_HOST:-localhost}" 3 40 $WIDTH_MSG_PARAM_DB_HOST 0 \
@@ -264,6 +265,7 @@ function prompt_install_options(){
         warn "Formulaire annulé."
         exit 0
     fi
+    exit 1
     # Analyser la sortie du formulaire (lignes)
     IFS=$'\n' read -r rep_glpi db_name db_user <<< "$form" || true
     # Normaliser les valeurs saisies
@@ -658,7 +660,7 @@ function mariadb_configure(){
     systemctl restart mariadb
     sleep 5; }
 # Téléchargement et décompression de GLPI
-function install_glpi(){ 
+function install_glpi(){
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
     # Téléchargement de GLPI
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
@@ -770,7 +772,7 @@ server {
         fastcgi_split_path_info ^(.+\.php)(/.*)$;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    } 
+    }
 }
 EOF
         cat > /etc/logrotate.d/glpi << EOF
@@ -836,7 +838,7 @@ EOF
     rm -Rf "${REP_GLPI}"install/install.php
 	sleep 2; }
 # Mise à jour des mot de passe des utilisateurs de GLPI
-function maj_user_glpi(){ 
+function maj_user_glpi(){
     info "${MSG_CHANGE_MDP_GLPI}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
@@ -855,7 +857,7 @@ function maj_user_glpi(){
     fi
 }
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
-function write_credentials(){ 
+function write_credentials(){
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "$FICHIER_MSG" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
@@ -919,16 +921,16 @@ function maintenance(){
     if [ "$1" == "1" ]; then
         warn "${MSG_ACTIVE_SERVICE}"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable 
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable
         fi
     elif [ "$1" == "0" ]; then
         info "$MSG_DEACTIVE_SERVICE"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable 
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable 
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable
         fi
     fi
 	sleep 2;
@@ -963,14 +965,14 @@ function backup_glpi(){
     # Créer le dossier compress si nécessaire
     if [ ! -d "${REP_BACKUP}/compress" ]; then
         mkdir -p "${REP_BACKUP}/compress"
-    fi    
+    fi
     # Créer l'archive compressée
     tar -czf "${REP_BACKUP}/compress/backup_glpi_$(date +"%d-%m-%Y_%H-%M-%S").tar.gz" -C "${REP_BACKUP}" .
     if [ $? -eq 0 ]; then
         info "${MSG_COMPRESS_BACKUP_OK}"
         # Supprimer le répertoire de l'ancien site GLPI
         info "$MSG_REMOVE_OLD_GLPI_DIR"
-        if [ -d "${REP_GLPI}" ]; then   
+        if [ -d "${REP_GLPI}" ]; then
             rm -Rf "${REP_GLPI}"
         fi
     else
@@ -996,14 +998,14 @@ function update_glpi(){
 	info "$MSG_UPDATE_GLPI_DATABASE"
 	if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
 		chown -R www-data:www-data "${REP_GLPI}"
-		sudo -u www-data php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
+		sudo -u www-data php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force
 	elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
 		chown -R nginx:nginx "${REP_GLPI}"
 		semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
 		semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
 		restorecon -Rv "${REP_GLPI}"
 		restorecon -Rv "${REP_GLPI}"marketplace
-		sudo -u nginx php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
+		sudo -u nginx php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force
 	fi
 	info "$MSG_UPDATE_CLEAN"
 	rm -Rf "${REP_GLPI}"install/install.php
@@ -1032,7 +1034,7 @@ function update(){
         echo "XXX"
         run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks" || break
         sleep 1
-    done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120; 
+    done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
     local exit_status=${PIPESTATUS[2]}
     if [ $exit_status -ne 0 ]; then
         warn "$MSG_ERROR_EXIT"
