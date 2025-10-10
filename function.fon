@@ -166,9 +166,10 @@ function run_task() {
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
         echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" >> "${LOGFILE}"
-        echo "$output" >> "${LOGFILE}"
+        echo "$output" >> "${LOGFILE}" 2>> "${ERRORFILE}"
     else
         : "${ERRORFILE:=$(mktemp /tmp/glpi_error.XXXXXX)}"
+        # shellcheck disable=SC2129
         echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd" >> "${ERRORFILE}"
         echo "$output" >> "${ERRORFILE}"
         warn "$MSG_ERROR_TASK: $task_key" 2>> "${ERRORFILE}"
@@ -265,8 +266,12 @@ function prompt_install_options(){
     # assurer un / final
     rep_glpi="${rep_glpi%/}/"
     # Nom de base et utilisateur: trim, forcer caractères sûrs [A-Za-z0-9_], valeurs par défaut si vide
+    local _def_db_host="${DB_HOST:-localhost}"
     local _def_db="${DB_NAME:-glpi}"
     local _def_user="${DB_USER:-glpi_user}"
+    # trim
+    db_host="${db_host#"${db_host%%[![:space:]]*}"}"
+    db_host="${db_host%"${db_host##*[![:space:]]}"}"
     db_name="${db_name#"${db_name%%[![:space:]]*}"}"
     db_name="${db_name%"${db_name##*[![:space:]]}"}"
     db_user="${db_user#"${db_user%%[![:space:]]*}"}"
@@ -275,17 +280,19 @@ function prompt_install_options(){
     db_name="${db_name//[^A-Za-z0-9_]/_}"
     db_user="${db_user//[^A-Za-z0-9_]/_}"
     # Valeurs par défaut si vides
+    [ -z "$db_host" ] && db_host="$_def_db_host"
     [ -z "$db_name" ] && db_name="$_def_db"
     [ -z "$db_user" ] && db_user="$_def_user"
     # Si le nom de base ne commence pas par une lettre ou '_', le préfixer
     if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
         db_name="glpi_${db_name}"
     fi
+    DB_HOST="$db_host"
     REP_GLPI="${rep_glpi%/}/"
     DB_NAME="$db_name"
     DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
-    export DOWNLOADLINK REP_GLPI DB_NAME DB_USER
+    export DB_HOST REP_GLPI DB_HOST DB_NAME DB_USER DOWNLOADLINK
     return 1
 }
 # Afficher le résultat final
@@ -847,9 +854,11 @@ Vous pouvez accéder à la page web de GLPI à partir d'une adresse IP ou d'un n
 http://${IPADRESS}
 
 ==> Base de données:
+Hôte de la base de données: ${DB_HOST}
+Port de la base de données: 3306
+Nom de la base de données GLPI: ${DB_NAME}
 Mot de passe root: ${SQLROOTPWD}
-Mot de passe $DB_USER: ${SQLGLPIPWD}
-Nom de la base de données GLPI: $DB_NAME
+Mot de passe ${DB_USER}: ${SQLGLPIPWD}
 
 Fichier de sauvegarde enregistré dans ${FICHIER_MSG}
 <===============================================================================================>
@@ -873,9 +882,11 @@ You can access the GLPI web page from the following address :
 http://${IPADRESS}
 
 ==> Database:
+Database host: ${DB_HOST}
+Database port: 3306
+GLPI database name: ${DB_NAME}
 Root password: ${SQLROOTPWD}
 $DB_USER password: ${SQLGLPIPWD}
-GLPI database name: $DB_NAME
 
 Backup file saved to ${FICHIER_MSG}
 <===============================================================================================>
