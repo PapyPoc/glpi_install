@@ -256,7 +256,6 @@ function prompt_install_options(){
         warn "Formulaire annulé."
         exit 0
     fi
-    exit 1
     # Analyser la sortie du formulaire (lignes)
     IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form" || true
     # Normaliser les valeurs saisies
