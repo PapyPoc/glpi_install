@@ -306,6 +306,13 @@ function prompt_install_options(){
     DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     export DB_HOST REP_GLPI DB_HOST DB_NAME DB_USER DOWNLOADLINK
+    {
+        echo -e "Répertoire GLPI: $REP_GLPI\n"
+        echo -e "Hôte BDD: $DB_HOST\n"
+        echo -e "Nom BDD: $DB_NAME\n"
+        echo -e "Utilisateur BDD: $DB_USER\n"
+    } >> "${LOGFILE}"
+    exit 1
     return 1
 }
 # Afficher le résultat final
