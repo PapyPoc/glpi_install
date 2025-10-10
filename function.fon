@@ -262,7 +262,7 @@ function prompt_install_options(){
     rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
-        echo "$VERSION_SELECT"
+        echo "$form"
         warn "Formulaire annulé."
         exit 0
     fi
