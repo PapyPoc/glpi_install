@@ -232,10 +232,10 @@ function prompt_install_options(){
     # Demander le répertoire d'installation, le nom de la base et l'utilisateur BDD
     exec 3>&1
     local form 
-    local WIDTH_MSG_PARAM_REP=20
-    local WIDTH_MSG_PARAM_DB_HOST=5
-    local WIDTH_MSG_PARAM_DB_NAME=5
-    local WIDTH_MSG_PARAM_DB_USER=5
+    local WIDTH_MSG_PARAM_REP=25
+    local WIDTH_MSG_PARAM_DB_HOST=25
+    local WIDTH_MSG_PARAM_DB_NAME=25
+    local WIDTH_MSG_PARAM_DB_USER=25
     PAD_MSG_PARAM_REP=$((WIDTH_MSG_PARAM_REP - ${#MSG_PARAM_REP} - 1)) # -4 pour marge interne du cadre
     SPACES_MSG_PARAM_REP=$(printf "%${PAD_MSG_PARAM_REP}s" "")
     MSG_PARAM_DB_HOST_PAD=$((WIDTH_MSG_PARAM_DB_HOST - ${#MSG_PARAM_DB_HOST} - 1)) # -4 pour marge interne du cadre
