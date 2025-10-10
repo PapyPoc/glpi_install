@@ -221,7 +221,7 @@ function prompt_install_options(){
         first=OFF
     done <<< "$tags"
     exec 3>&1
-    VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "Choix de la version GLPI" --radiolist "Sélectionnez la version (16 dernières) :" 23 50 4 "${args[@]}" 3>&1 1>&2 2>&3)
+    VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 4 "${args[@]}" 3>&1 1>&2 2>&3)
     local rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
@@ -231,10 +231,11 @@ function prompt_install_options(){
     # Demander le répertoire d'installation, le nom de la base et l'utilisateur BDD
     exec 3>&1
     local form
-    form=$(dialog --clear --backtitle "$MSG_TITRE" --title "Paramètres d'installation" --form "\nVersion sélectionnée : ${VERSION_SELECT}\n\nSaisissez les paramètres :" 16 70 6 \
-        "Répertoire d'installation :" 1 1 "${REP_GLPI:-/var/www/html/glpi/}" 1 30 50 0 \
-        "           Nom de la base :" 3 1 "${DB_NAME:-glpi}" 3 30 10 0 \
-        "          Utilisateur BDD :" 5 1 "${DB_USER:-glpi_user}" 5 30 10 0 \
+    form=$(dialog --clear --backtitle "$MSG_TITRE" --title "${MSG_PARAM_TITLE}Paramètres d'installation" --form "\nVersion sélectionnée : ${VERSION_SELECT}\n\nSaisissez les paramètres :" 16 70 6 \
+        "${MSG_PARAM_REP}" 1 1 "${REP_GLPI:-/var/www/html/glpi/}" 1 30 50 0 \
+        "${MSG_PARAM_DB_HOST}" 2 1 "${DB_HOST:-localhost}" 2 30 10 0 \
+        "${MSG_PARAM_DB_NAME}" 3 1 "${DB_NAME:-glpi}" 3 30 10 0 \
+        "${MSG_PARAM_DB_USER}" 4 1 "${DB_USER:-glpi_user}" 4 30 10 0 \
         3>&1 1>&2 2>&3)
     rc=$?
     exec 3>&-
