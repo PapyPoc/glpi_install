@@ -262,7 +262,7 @@ function prompt_install_options(){
     rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
-        echo "$form"
+        printf "$VERSION_SELECT%s\n" "$REP_GLPI%s\n" "$DB_HOST%s\n" "$DB_NAME%s\n" "$DB_USER%s\n"
         warn "Formulaire annulé."
         exit 0
     fi
