@@ -45,7 +45,7 @@ export_display_env() {
 ensure_dependencies() {
     NEED_RESTART=0
     local missing=()
-    for cmd in curl jq openssl; do
+    for cmd in curl jq openssl find sudo; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing+=("$cmd")
         fi
@@ -53,44 +53,48 @@ ensure_dependencies() {
     if [ ${#missing[@]} -eq 0 ]; then
         return 0
     fi
-    echo "Missing dependencies: ${missing[*]}. Attempting to install..." >&2
+    echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..." >&2
     # détecter le gestionnaire de paquets et construire la commande d'installation
     local pkgmgr install_cmd pkgs
     pkgs="${missing[*]}"
+    # Détecter le gestionnaire de paquets et construire la commande d'installation
     if command -v apt-get >/dev/null 2>&1; then
         pkgmgr=apt-get
+        # Debian / Ubuntu
         install_cmd="apt-get update -qq && apt-get install -y -qq ${pkgs}"
     elif command -v dnf >/dev/null 2>&1; then
         pkgmgr=dnf
+        # RedHat / Fedora
         install_cmd="dnf install -y -q ${pkgs}"
     elif command -v yum >/dev/null 2>&1; then
         pkgmgr=yum
+        # RedHat / CentOS
         install_cmd="yum install -y -q ${pkgs}"
     elif command -v apk >/dev/null 2>&1; then
         pkgmgr=apk
+        # Alpine Linux
         install_cmd="apk add --no-cache ${pkgs}"
     elif command -v pacman >/dev/null 2>&1; then
         pkgmgr=pacman
+        # Arch Linux
         install_cmd="pacman -Syu --noconfirm ${pkgs}"
     elif command -v zypper >/dev/null 2>&1; then
         pkgmgr=zypper
+        # OpenSUSE
         install_cmd="zypper install -y ${pkgs}"
     else
-        echo "No supported package manager found to install: ${pkgs}" >&2
+        echo "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}" >&2
         return 1
     fi
-
     # utiliser sudo si nécessaire
     if [ "${EUID:-0}" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
         install_cmd="sudo sh -c '${install_cmd}'"
     fi
-
-    echo "Installing via ${pkgmgr}: ${pkgs}" >&2
+    echo "Installation via ${pkgmgr} : ${pkgs}" >&2
     if ! sh -c "$install_cmd"; then
-        echo "Failed to install dependencies: ${pkgs}" >&2
+        echo "Échec de l'installation des dépendances : ${pkgs}" >&2
         return 1
     fi
-
     # vérification
     local still_missing=()
     for cmd in curl jq openssl; do
@@ -99,7 +103,7 @@ ensure_dependencies() {
         fi
     done
     if [ ${#still_missing[@]} -gt 0 ]; then
-        echo "Commands still missing after install: ${still_missing[*]}" >&2
+        echo "Commandes toujours manquantes après l'installation : ${still_missing[*]}" >&2
         return 1
     fi
     NEED_RESTART=1
@@ -207,7 +211,6 @@ function glpi_install() {
 }
 # Demander à l'utilisateur de choisir la version de GLPI (4 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
-    api_url="https://api.github.com/repos/glpi-project/glpi/tags"
     locale tags
     local installed_version=""
     local installed_dir=""
@@ -226,6 +229,7 @@ function prompt_install_options(){
         fi
     fi
     # Récupérer les tags des versions disponibles
+    api_url="https://api.github.com/repos/glpi-project/glpi/tags"
     tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
     if [ ! -z "$tags" ]; then
         # Si installed_version est définie, supprimer les versions inférieures ou égales de la liste
