@@ -212,19 +212,17 @@ function prompt_install_options(){
     local installed_version=""
     local installed_dir=""
     # Tenter de détecter le répertoire d'installation de GLPI en recherchant 'console'
-    if command -v find >/dev/null 2>&1; then
-        installed_dir=$(find /var/www -type f -name 'console' -print -quit 2>/dev/null)
-        if [ -n "${installed_dir}" ]; then
-            # Vérifie si le fichier "console" contient le mot "glpi" (insensible à la casse)
-            if grep -qi "glpi" "$installed_dir"; then
-                # shellcheck disable=SC2012
-                installed_version=$(ls "$(dirname "$(dirname "${installed_dir}")")/version" 2>/dev/null | head -n 1)
-                installed_version="${installed_version//[[:space:]]/}"
-                REP_GLPI="${installed_dir}"
-            else
-                dialog --title "${MSG_INFO}" --msgbox "Erreur : le fichier '$installed_dir' ne semble pas appartenir à GLPI." 7 60
-                exit 1
-            fi
+    installed_dir=$(find /var/www -type f -name 'console' -print -quit 2>/dev/null)
+    if [ -n "${installed_dir}" ]; then
+        # Vérifie si le fichier "console" contient le mot "glpi" (insensible à la casse)
+        if grep -qi "glpi" "$installed_dir"; then
+            # shellcheck disable=SC2012
+            installed_version=$(ls "$(dirname "$(dirname "${installed_dir}")")/version" 2>/dev/null | head -n 1)
+            installed_version="${installed_version//[[:space:]]/}"
+            REP_GLPI="${installed_dir}"
+        else
+            dialog --title "${MSG_INFO}" --msgbox "Erreur : le fichier '$installed_dir' ne semble pas appartenir à GLPI." 7 60
+            exit 1
         fi
     fi
     # Récupérer les tags des versions disponibles
