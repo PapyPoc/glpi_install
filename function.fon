@@ -194,7 +194,6 @@ function glpi_install() {
     task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
     total_tasks=${#task_order[@]}
     task_index=0
-    NEW_VERSION=$(curl -s https://api.github.com/repos/glpi-project/glpi/releases/latest | jq -r '.name') # Constante pour la dernière version de GLPI
     (for task_key in "${task_order[@]}"; do
         task_index=$((task_index + 1))
         progress=$((task_index * 100 / total_tasks))
@@ -264,20 +263,18 @@ function prompt_install_options(){
     # Répertoire GLPI: trim des espaces, convertir les \ en /, s'assurer d'un chemin absolu et d'un / final
     local _def_rep="${REP_GLPI:-/var/www/html/glpi/}"
     # trim
-    rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"
-    rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
+    local rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"
+    local rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
     # conversions
-    rep_glpi="${rep_glpi//\\//}"
-    if [ -z "$rep_glpi" ]; then
-        rep_glpi="$_def_rep"
+    local rep_glpi="${rep_glpi//\\//}"
+    if [ -z "${rep_glpi}" ]; then
+        rep_glpi="${_def_rep}"
     fi
-    if [[ "$rep_glpi" != /* ]]; then
-        rep_glpi="$_def_rep"
+    if [[ "${rep_glpi}" != /* ]]; then
+        rep_glpi="${_def_rep}"
     fi
     # supprimer doublons de /
-    rep_glpi="$(printf '%s' "$rep_glpi" | sed -E 's#/{2,}#/#g')"
-    # assurer un / final
-    rep_glpi="${rep_glpi%/}/"
+    rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
     # Nom de base et utilisateur: trim, forcer caractères sûrs [A-Za-z0-9_], valeurs par défaut si vide
     local _def_db_host="${DB_HOST:-localhost}"
     local _def_db="${DB_NAME:-glpi}"
@@ -290,6 +287,7 @@ function prompt_install_options(){
     db_user="${db_user#"${db_user%%[![:space:]]*}"}"
     db_user="${db_user%"${db_user##*[![:space:]]}"}"
     # Remplacer les caractères non autorisés par '_'
+    db_host="${db_host//[^A-Za-z0-9_\/-]/_}"
     db_name="${db_name//[^A-Za-z0-9_]/_}"
     db_user="${db_user//[^A-Za-z0-9_]/_}"
     # Valeurs par défaut si vides
@@ -448,6 +446,7 @@ function check_install(){
             case $REP_EXISTE in
                 0)
                     info "$MSG_CONTINUING"
+                    #update
                     ;;
                 1)
                     dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_EXITING}" 10 50
