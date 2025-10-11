@@ -174,7 +174,7 @@ function run_task() {
         # shellcheck disable=SC2129
         echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd" >> "${ERRORFILE}"
         echo "$output" >> "${ERRORFILE}"
-        warn "$MSG_ERROR_TASK: $task_key" 2>> "${ERRORFILE}"
+        warn "$MSG_ERROR_TASK: $task_key" 2>> "${ERRORFILE}" 1>>"${ERRORFILE}"
         return 1
     fi
     return 0;
@@ -436,31 +436,31 @@ function check_distro(){
 # Vérifie si GLPI est installé ou pas
 function check_install(){
     # Vérifie si le répertoire existe
-    if [ -d "$1" ]; then
-		OUTPUT=$(sudo -u www-data php "${REP_GLPI}"bin/console php -V 2>/dev/null)
-		GLPI_CLI_VERSION=$(sed -n 's/.*GLPI CLI \([^ ]*\).*/\1/p' <<< "${OUTPUT}")
-        if [ "${GLPI_CLI_VERSION}" == "${VERSION_SELECT}" ]; then
-            echo "$MSG_GLPI_VERSION_EGAL"
-            dialog --title "GLPI" --sleep 8 --infobox "$MSG_GLPI_VERSION_EGAL" 8 40
-            sleep 5
+    FIND_REP_GLPI=$(find /var/www -type d -name "glpi" -print -quit)
+    if [ -d "$1" ] || [ -d "$FIND_REP_GLPI" ]; then
+        if [ "${REP_GLPI}" == "${FIND_REP_GLPI}" ]; then
+            dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_EXISTE}\n\nGLPI ${VERSION_SELECT}" 10 50
             exit 1;
         else
-            dialog --title "${MSG_GLPI_UPGRADE_AVAILABLE}" --yesno "${MSG_GLPI_NEW_VERSION} ${MSG_GLPI_UPGRADE}" 10 50
-            MaJ=$?
-            case "$MaJ" in
+            warn "$MSG_REP_EXISTE"
+            dialog --title "GLPI" --yesno "${MSG_REP_EXISTE_QUESTION}" 10 50
+            REP_EXISTE=$?
+            case $REP_EXISTE in
                 0)
-                    update
-                    exit 0;;
+                    info "$MSG_CONTINUING"
+                    ;;
                 1)
-                    info "$MSG_EXIT"
-                    exit 0;;
+                    dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_EXITING}" 10 50
+                    exit 1
+                    ;;
                 255)
-                    warn "$MSG_ERROR_EXIT"
-                    exit 0;;
+                    dialog --title "GLPI" --sleep 5 --infobox "\n\n$MSG_ERROR_EXIT" 10 50
+                    exit 1
+                    ;;
             esac
         fi
     else
-        dialog --title "GLPI" --sleep 4 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
+        dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
         glpi_install
     fi
 }
