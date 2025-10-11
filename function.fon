@@ -207,9 +207,31 @@ function glpi_install() {
 }
 # Demander à l'utilisateur de choisir la version de GLPI (4 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
-    local api_url="https://api.github.com/repos/glpi-project/glpi/tags"
-    local tags
+    api_url="https://api.github.com/repos/glpi-project/glpi/tags"
+    #locale tags
     tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
+    # Detect currently installed GLPI version (if any) to exclude it from choices
+    installed_version=""
+    installed_dir=""
+    # Try to detect GLPI installation directory by searching for console
+    if command -v find >/dev/null 2>&1; then
+        installed_dir=$(find /var/www -type f -name 'console' -print -quit 2>/dev/null)
+        if [ -n "$installed_dir" ]; then
+            installed_version=$(ls -1 "$(dirname "$(dirname "$installed_dir")")/version" | head -n 1)
+            installed_version="${installed_version//[[:space:]]/}"
+            REP_GLPI=${installed_dir}
+        fi
+    fi
+    # If installed_version is present, remove it from tags list
+    if [ -n "$installed_version" ]; then
+        # Garde uniquement les versions supérieures à celle installée
+        tags=$(printf '%s\n' "${tags}" | sort -Vr | awk -v v="$installed_version" '$0 > v' | uniq | head -n 16)
+        echo "${tags}"
+    else
+        # Si installed_version est vide → garder toutes les versions triées
+        tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
+        echo "${tags}"
+    fi
     if [ -z "$tags" ]; then
         warn "${MSG_GITHUB_VERSIONS_FAILED}"
         return 1
