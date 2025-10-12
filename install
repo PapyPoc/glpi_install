@@ -119,7 +119,7 @@ if [ "$EUID" -ne 0 ]; then
         sleep 2
         info "Utilisation de l'utilisateur ${ORIG_USER} avec les droits ${ADMIN_GROUP}."
         if command -v "$ADMIN_GROUP" >/dev/null 2>&1; then
-            exec "$ADMIN_GROUP" -E "$0" "$@"
+            exec "$ADMIN_GROUP" "$0" "$@"
         else
             warn "Aucune commande disponible pour élever les privilèges (sudo/su)."
             exit 1
