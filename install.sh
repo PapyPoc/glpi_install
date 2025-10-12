@@ -18,7 +18,7 @@ SUCCESSFILE="${REP_SCRIPT}/install_success.log" # Fichier de log des succès
 # Rediriger les erreurs vers le fichier de log
 exec 2>>"$ERRORFILE" 
 # Rediriger les sorties standard vers le fichier de log et vers le terminal
-exec >>"$SUCCESSFILE" 2>&1
+exec >>"$SUCCESSFILE" 1>&1
 export ORIG_USER REP_SCRIPT GIT BRANCHE
 # Fonctions d'affichage
 warn() {
