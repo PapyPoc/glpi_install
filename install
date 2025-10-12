@@ -112,6 +112,7 @@ get_git_branch() {
 BRANCHE="$(get_git_branch "$GIT")"
 export BRANCHE
 echo "Branche git détectée : ${BRANCHE}"
+exit 0
 # Détection de la distribution
 if source /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
