@@ -269,11 +269,11 @@ function prompt_install_options(){
     WIDTH=$(( ${#MSG_PARAM_DB_USER} + 1 ))
     form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" \
     --form "\nVersion sélectionnée : GLPI ${VERSION_SELECT}\n\n⚙️ Saisissez les paramètres :" \
-    70 100 8 \
-    "📁 ${MSG_PARAM_REP}"     1 1 1 ${WIDTH} 40 0 "/var/www/html/glpi" \
-    "🗄️ ${MSG_PARAM_DB_HOST}" 3 1 3 ${WIDTH} 40 0 "localhost" \
-    "💾 ${MSG_PARAM_DB_NAME}" 5 1 5 ${WIDTH} 40 0 "glpi" \
-    "👤 ${MSG_PARAM_DB_USER}" 7 1 7 ${WIDTH} 40 0 "glpi_user" \
+    50 80 8 \
+    "📁 ${MSG_PARAM_REP} ${WIDTH}"     1 2 1 ${WIDTH} 40 0 "/var/www/html/glpi" \
+    "🗄️ ${MSG_PARAM_DB_HOST}" 3 2 3 ${WIDTH} 40 0 "localhost" \
+    "💾 ${MSG_PARAM_DB_NAME}" 5 2 5 ${WIDTH} 40 0 "glpi" \
+    "👤 ${MSG_PARAM_DB_USER}" 7 2 7 ${WIDTH} 40 0 "glpi_user" \
     2>&1 1>&3)
     rc=$?
     exec 3>&-
