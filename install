@@ -118,9 +118,7 @@ if [ "$EUID" -ne 0 ]; then
         info "Relance du script avec les droits administrateur..."
         sleep 2
         info "Utilisation de l'utilisateur ${ORIG_USER} avec les droits ${ADMIN_GROUP}."
-        if command -v su >/dev/null 2>&1; then
-            exec su -c "bash -c \"$0 $*\""
-        elif command -v "$ADMIN_GROUP" >/dev/null 2>&1; then
+        if command -v "$ADMIN_GROUP" >/dev/null 2>&1; then
             exec "$ADMIN_GROUP" -E "$0" "$@"
         else
             warn "Aucune commande disponible pour élever les privilèges (sudo/su)."
