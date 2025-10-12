@@ -257,7 +257,7 @@ function prompt_install_options(){
         first=OFF
     done <<< "${tags}"
     exec 3>&1
-    VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" --clear \
+    VERSION_SELECT=$(dialog --aspect 5 --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" --clear \
     --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 "${args[@]}" 3>&1 1>&2 2>&3)
     local rc=$?
     exec 3>&-
