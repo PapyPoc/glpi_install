@@ -153,6 +153,8 @@ else
     sleep 5
     goto finish
 fi
+echo "$NEED_RESTART"
+# Si des dépendances ont été installées, relancer le script
 if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     info "Dépendances installées. Redémarrage du script..."
     sleep 5
