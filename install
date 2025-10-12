@@ -168,9 +168,6 @@ ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
 ERRORFILE="${REP_SCRIPT}/install_error.log"
 DEPENDENCIES="curl jq openssl sudo dialog git shadow"
 GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
-BRANCHE="$(get_git_branch "$GIT")"
-echo "Branche git détectée : ${BRANCHE}"
-sleep 5
 BRANCHE="dev" # Branche git à utiliser
 export ROUGE CYAN NC ORIG_USER ERRORFILE REP_SCRIPT GIT BRANCHE
 # Gestion du dépôt glpi_install
