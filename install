@@ -16,7 +16,7 @@ function warn(){
 # Affichage d'information
 function info(){
     local msg="$1"
-    echo -e "${CYAN}${msg}${NC}" # Couleur cyan
+    echo -e "${CYAN}${msg}${NC}" # Couleur cyan 
 }
 # S'assurer que les commandes requises sont présentes ; les installer si elles manquent.
 ensure_dependencies() {
