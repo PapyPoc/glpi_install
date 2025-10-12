@@ -278,18 +278,21 @@ function prompt_install_options(){
     exec 3>&1
     local form
     #local WIDTH=40
-    #local WIDTH_DEFAULT=$((WIDTH + 1))
-    #local PAD_MSG_PARAM_REP=$((WIDTH - "${#MSG_PARAM_REP}" + 1))
-    #local PAD_MSG_PARAM_DB_HOST=$((WIDTH - "${#MSG_PARAM_DB_HOST}" + 1))
-    #local PAD_MSG_PARAM_DB_NAME=$((WIDTH - "${#MSG_PARAM_DB_NAME}" + 1))
-    #local PAD_MSG_PARAM_DB_USER=$((WIDTH - "${#MSG_PARAM_DB_USER}" + 1))
+    #local PAD_MSG_PARAM_REP=$(( ${#MSG_PARAM_REP} + 1))
+    local PAD2_MSG_PARAM_REP=$(("${#MSG_PARAM_REP}" + 1))
+    #local PAD_MSG_PARAM_DB_HOST=$(("${#MSG_PARAM_DB_HOST}" + 1))
+    local PAD2_MSG_PARAM_DB_HOST=$(("${#MSG_PARAM_DB_HOST}" + 1))
+    #local PAD_MSG_PARAM_DB_NAME=$(("${#MSG_PARAM_DB_NAME}" + 1))
+    local PAD2_MSG_PARAM_DB_NAME=$(("${#MSG_PARAM_DB_NAME}" + 1))
+    #local PAD_MSG_PARAM_DB_USER=$(("${#MSG_PARAM_DB_USER}" + 1))
+    local PAD2_MSG_PARAM_DB_USER=$(("${#MSG_PARAM_DB_USER}" + 1))
     form=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_TITLE}" --clear \
     --form "\nVersion sélectionnée : GLPI ${VERSION_SELECT}\n\n⚙️ Saisissez les paramètres :" \
-    22 130 10 \
-    "📁 ${MSG_PARAM_REP}"       1 2 1 40 40 0 "${REP_GLPI:-/var/www/html/glpi}" \
-    "🗄️ ${MSG_PARAM_DB_HOST}"   3 2 3 40 40 0 "${DB_HOST:-localhost}" \
-    "💾 ${MSG_PARAM_DB_NAME}"   5 2 5 40 40 0 "${DB_NAME:-glpi}" \
-    "👤 ${MSG_PARAM_DB_USER}"   7 2 7 40 40 0 "${DB_USER:-glpi_user}" \
+    40 150 10 \
+    "📁 ${MSG_PARAM_REP}"       1 1 ${PAD2_MSG_PARAM_REP} 40 40 0 "${REP_GLPI:-/var/www/html/glpi}" \
+    "🗄️ ${MSG_PARAM_DB_HOST}"   3 1 ${PAD2_MSG_PARAM_DB_HOST} 40 40 0 "${DB_HOST:-localhost}" \
+    "💾 ${MSG_PARAM_DB_NAME}"   5 1 ${PAD2_MSG_PARAM_DB_NAME} 40 40 0 "${DB_NAME:-glpi}" \
+    "👤 ${MSG_PARAM_DB_USER}"   7 1 ${PAD2_MSG_PARAM_DB_USER} 40 40 0 "${DB_USER:-glpi_user}" \
     3>&1 1>&2 2>&3)
     local rc=$?
     exec 3>&-
