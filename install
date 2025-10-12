@@ -15,8 +15,8 @@ NC='\033[0m' # No Color
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 ERRORFILE="${REP_SCRIPT}/install_error.log"
-
-
+export ROUGE CYAN NC
+export ORIG_USER ERRORFILE REP_SCRIPT
 # Affichage d'alerte
 function warn(){
     local msg="$1"
@@ -69,23 +69,23 @@ ensure_dependencies() {
         # OpenSUSE
         install_cmd="zypper install -y ${pkgs}"
     else
-        echo "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}" >> "${ERRORFILE}"
+        echo "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
         return 1
     fi
-    echo "Installation via ${pkgmgr} : ${pkgs}" >>  "${ERRORFILE}"
+    echo "Installation via ${pkgmgr} : ${pkgs}"
     if ! sh -c "$install_cmd"; then
-        echo "Échec de l'installation des dépendances : ${pkgs}" >> "${ERRORFILE}"
+        echo "Échec de l'installation des dépendances : ${pkgs}"
         return 1
     fi
     # vérification
     local still_missing=()
-    for cmd in curl jq openssl; do
+    for cmd in curl jq openssl find sudo dialog; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             still_missing+=("$cmd")
         fi
     done
     if [ ${#still_missing[@]} -gt 0 ]; then
-        echo "Commandes toujours manquantes après l'installation : ${still_missing[*]}" >> "${ERRORFILE}"
+        echo "Commandes toujours manquantes après l'installation : ${still_missing[*]}"
         return 1
     fi
     NEED_RESTART=1
