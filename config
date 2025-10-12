@@ -28,6 +28,7 @@ if [ -z "$INVOKING_HOME" ]; then
     INVOKING_HOME=$(eval echo "~$INVOKING_USER" 2>/dev/null || true)
 else
     INVOKING_HOME="${INVOKING_HOME:-${HOME:-/root}}"
+    export INVOKING_HOME
 fi
 ROUGE='\033[0;31m' # Red
 CYAN='\033[0;36m' # Cyan
@@ -46,9 +47,7 @@ ADMINGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 POSTGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
-# Backup filename with timestamp
 BDD_BACKUP="bdd_glpi-$(date +"%d-%m-%Y_%H-%M-%S").sql"
-# Message/log files placed in the invoking user's home directory.
 FICHIER_MSG="${INVOKING_HOME}/sauve_mdp.txt"
 ERRORFILE="${INVOKING_HOME}/error.log"
 LOGFILE="${INVOKING_HOME}/install.log"

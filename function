@@ -12,9 +12,33 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo -e "This file must be sourced, not executed.\n">> "${ERRORFILE}"
     exit 1
 fi
+# Affichage d'alerte
+function warn(){
+    local msg="$1"
+    export_display_env
+    local expanded
+    if command -v envsubst >/dev/null 2>&1; then
+        expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
+    else
+        expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
+    fi
+    echo -e "${ROUGE}${expanded}${NC}" # Couleur rouge
+}
+# Affichage d'information
+function info(){
+    local msg="$1"
+    export_display_env
+    local expanded
+    if command -v envsubst >/dev/null 2>&1; then
+        expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
+    else
+        expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
+    fi
+    echo -e "${CYAN}${expanded}${NC}" # Couleur cyan
+}
 # Exporter une liste blanche de variables utilisées dans les fichiers de langue pour que envsubst puisse les remplacer
 export_display_env() {
-    # Exporter un ensemble complet de variables (majuscules)
+    # Exporter un ensemble complet de variables (majuscules et minuscules)
     # pouvant être référencées comme espaces réservés dans les fichiers de langue.
     # Les valeurs par défaut sont vides si elles ne sont pas définies.
     local vars_maj=(
@@ -107,30 +131,6 @@ ensure_dependencies() {
     NEED_RESTART=1
     export NEED_RESTART
     return 0
-}
-# Affichage d'alerte
-function warn(){
-    local msg="$1"
-    export_display_env
-    local expanded
-    if command -v envsubst >/dev/null 2>&1; then
-        expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
-    else
-        expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
-    fi
-    echo -e "${ROUGE}${expanded}${NC}" # Couleur rouge
-}
-# Affichage d'information
-function info(){
-    local msg="$1"
-    export_display_env
-    local expanded
-    if command -v envsubst >/dev/null 2>&1; then
-        expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
-    else
-        expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
-    fi
-    echo -e "${CYAN}${expanded}${NC}" # Couleur cyan
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
@@ -228,10 +228,10 @@ function check_distro(){
 function load_language() {
     local syslang="${LC_ALL:-${LANG:-}}"
     if [[ $syslang =~ ^fr ]]; then
-        LANG_FILE="$REP_SCRIPT/lang/fr.ini"
+        LANG_FILE="$REP_SCRIPT/lang/fr.lang"
         LANGUAGE="fr_FR"
     else
-        LANG_FILE="$REP_SCRIPT/lang/en.ini"
+        LANG_FILE="$REP_SCRIPT/lang/en.lang"
         LANGUAGE="en_US"
     fi
     if [[ -f $LANG_FILE ]]; then

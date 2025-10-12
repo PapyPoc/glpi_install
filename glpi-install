@@ -10,9 +10,9 @@ set -Eeuo pipefail
 clear # Nettoyer le terminal
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
 # shellcheck disable=SC1091
-source "${REP_SCRIPT}/config.conf" # Fichier de variable
+source "${REP_SCRIPT}/function"    # Fichier de fonction
 # shellcheck disable=SC1091
-source "${REP_SCRIPT}/function.fon"    # Fichier de fonction
+source "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
