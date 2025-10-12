@@ -153,10 +153,13 @@ GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
 BRANCHE="dev" # Branche git à utiliser
 export ORIG_USER REP_SCRIPT GIT BRANCHE
 # Gestion du dépôt glpi_install
-if [ -d "${REP_SCRIPT}/glpi_install/.git" ]; then
+if [ -d "${REP_SCRIPT}/glpi_install" ]; then
     cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}"&& cd ..
 else
-    git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install"
+    git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install" || {
+        warn "Échec du clonage du dépôt git ${GIT}."
+        exit 1
+    }
 fi
 chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"
 # Lancer le script principal en remplaçant le processus courant
