@@ -97,7 +97,7 @@ else
     exit 1
 fi
 # Détermination du groupe administrateur
-case "$DISTRO_ID" in
+case "${DISTRO_ID}" in
     debian|ubuntu)
         ADMIN_GROUP="sudo"
         ;;
@@ -111,31 +111,31 @@ case "$DISTRO_ID" in
 esac
 # Vérification des droits root
 if [ "$EUID" -ne 0 ]; then
-    if id -nG "$ORIG_USER" 2>/dev/null | grep -Eqw "sudo|wheel"; then
+    if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then
         info "Relance du script avec les droits administrateur..."
         sleep 2
         info "Utilisation de l'utilisateur ${ORIG_USER} avec les droits ${ADMIN_GROUP}."
-        if command -v "$ADMIN_GROUP" >/dev/null 2>&1; then
-            exec "$ADMIN_GROUP" -E "$0" "$@"
+        if command -v "${ADMIN_GROUP}" >/dev/null 2>&1; then
+            exec "${ADMIN_GROUP}" -E "$0" "$@"
         else
             warn "Aucune commande disponible pour élever les privilèges (sudo/su)."
-            exit 1
+            goto finish
         fi
     else
         warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
         if command -v usermod >/dev/null 2>&1; then
-            usermod -aG "$ADMIN_GROUP" "$ORIG_USER" || true
+            usermod -aG "$ADMIN_GROUP" "${ORIG_USER}" || true
         elif command -v adduser >/dev/null 2>&1; then
             # Cas Alpine ou BusyBox
-            adduser "$ORIG_USER" "$ADMIN_GROUP" || true
+            adduser "$ORIG_USER" "${ADMIN_GROUP}" || true
         else
-            warn "Impossible d'ajouter $ORIG_USER au groupe $ADMIN_GROUP : aucune commande compatible trouvée."
+            warn "Impossible d'ajouter ${ORIG_USER} au groupe ${ADMIN_GROUP} : aucune commande compatible trouvée."
             sleep 5
-            exit 1
+            goto finish
         fi
-        warn "Ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}. Veuillez vous reconnectter et relancer le script."
+        warn "Ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}. Veuillez vous reconnecter et relancer le script."
         sleep 5
-        exit 1
+        goto finish
     fi
 fi
 # Vérification et installation des dépendances
@@ -145,7 +145,7 @@ if ensure_dependencies "curl jq openssl git sudo dialog shellcheck"; then # Ajou
 else
     warn "Échec de la vérification ou installation des dépendances."
     sleep 5
-    exit 1
+    goto finish
 fi
 if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     info "Dépendances installées. Redémarrage du script..."
@@ -158,7 +158,7 @@ if [ -d "${REP_SCRIPT}/glpi_install" ]; then
 else
     git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install" || {
         warn "Échec du clonage du dépôt git ${GIT}."
-        exit 1
+        goto finish
     }
 fi
 chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"
@@ -167,5 +167,9 @@ if [ -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     exec "${REP_SCRIPT}/glpi_install/glpi-install" "$@"
 else
     warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' n'est pas exécutable ou introuvable."
-    exit 1
+    goto finish
 fi
+end install script
+finish:
+exit 0
+# Fin du script d'installation
