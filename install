@@ -12,24 +12,19 @@ clear # Nettoyer le terminal
 ROUGE='\033[0;31m' # Red
 CYAN='\033[0;36m' # Cyan
 NC='\033[0m' # No Color
-REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
-ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
+REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du script
+ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
 ERRORFILE="${REP_SCRIPT}/install_error.log"
-export ROUGE CYAN NC
-export ORIG_USER ERRORFILE REP_SCRIPT
-# Affichage d'alerte
-function warn(){
-    local msg="$1"
-    echo -e "${ROUGE}${msg}${NC}" # Couleur rouge
+export ROUGE CYAN NC ORIG_USER ERRORFILE REP_SCRIPT
+# Fonctions d'affichage
+warn() {
+    echo -e "${ROUGE}$1${NC}"
 }
-# Affichage d'information
-function info(){
-    local msg="$1"
-    echo -e "${CYAN}${msg}${NC}" # Couleur cyan 
+info() {
+    echo -e "${CYAN}$1${NC}"
 }
-# S'assurer que les commandes requises sont présentes ; les installer si elles manquent.
+# Vérifie et installe les dépendances manquantes
 ensure_dependencies() {
-    NEED_RESTART=0
     local missing=()
     for cmd in curl jq openssl find sudo dialog; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -37,47 +32,39 @@ ensure_dependencies() {
         fi
     done
     if [ ${#missing[@]} -eq 0 ]; then
-        return 1
+        return 0
     fi
-    echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..." >>  "${ERRORFILE}"
-    # détecter le gestionnaire de paquets et construire la commande d'installation
-    local pkgmgr install_cmd pkgs
-    pkgs="${missing[*]}"
-    # Détecter le gestionnaire de paquets et construire la commande d'installation
+    echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..." >> "${ERRORFILE}"
+    local pkgmgr install_cmd
+    local pkgs="${missing[*]}"
     if command -v apt-get >/dev/null 2>&1; then
-        pkgmgr=apt-get
-        # Debian / Ubuntu
+        pkgmgr="apt-get"
         install_cmd="apt-get update -qq && apt-get install -y -qq ${pkgs}"
     elif command -v dnf >/dev/null 2>&1; then
-        pkgmgr=dnf
-        # RedHat / Fedora
+        pkgmgr="dnf"
         install_cmd="dnf install -y -q ${pkgs}"
     elif command -v yum >/dev/null 2>&1; then
-        pkgmgr=yum
-        # RedHat / CentOS
+        pkgmgr="yum"
         install_cmd="yum install -y -q ${pkgs}"
     elif command -v apk >/dev/null 2>&1; then
-        pkgmgr=apk
-        # Alpine Linux
+        pkgmgr="apk"
         install_cmd="apk add --no-cache ${pkgs}"
     elif command -v pacman >/dev/null 2>&1; then
-        pkgmgr=pacman
-        # Arch Linux
+        pkgmgr="pacman"
         install_cmd="pacman -Syu --noconfirm ${pkgs}"
     elif command -v zypper >/dev/null 2>&1; then
-        pkgmgr=zypper
-        # OpenSUSE
+        pkgmgr="zypper"
         install_cmd="zypper install -y ${pkgs}"
     else
-        echo "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
+        warn "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
         return 1
     fi
-    echo "Installation via ${pkgmgr} : ${pkgs}"
-    if ! sh -c "$install_cmd"; then
-        echo "Échec de l'installation des dépendances : ${pkgs}"
+    info "Installation via ${pkgmgr} : ${pkgs}"
+
+    if ! bash -c "$install_cmd"; then
+        warn "Échec de l'installation des dépendances : ${pkgs}"
         return 1
     fi
-    # vérification
     local still_missing=()
     for cmd in curl jq openssl find sudo dialog; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -85,69 +72,62 @@ ensure_dependencies() {
         fi
     done
     if [ ${#still_missing[@]} -gt 0 ]; then
-        echo "Commandes toujours manquantes après l'installation : ${still_missing[*]}"
+        warn "Commandes toujours manquantes après l'installation : ${still_missing[*]}"
         return 1
     fi
-    NEED_RESTART=1
-    export NEED_RESTART
+    export NEED_RESTART=1
     return 0
 }
-# shellcheck disable=SC1091
-if source /etc/os-release; then # Détection de la distribution
-    DISTRO_ID=${ID^}
-    info "Distribution détectée : $DISTRO_ID $(echo "${VERSION_ID}" | xargs)"
+# Détection de la distribution
+if source /etc/os-release 2>/dev/null; then
+    DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
+    info "Distribution détectée : ${DISTRO_ID^} $(echo "${VERSION_ID}" | xargs)"
 else
-    warn "Distribution non prise en charge ou non détectée."
+    warn "Distribution non détectée ou non prise en charge."
     exit 1
 fi
-case "${DISTRO_ID}" in # Choix du groupe admin
+# Détermination du groupe administrateur
+case "$DISTRO_ID" in
     debian|ubuntu)
-        ADMIN_GROUP="sudo";;
+        ADMIN_GROUP="sudo"
+        ;;
     centos|rhel|rocky|almalinux|fedora)
-        ADMIN_GROUP="wheel";;
+        ADMIN_GROUP="wheel"
+        ;;
     *)
         ADMIN_GROUP="sudo"
-        info "Distribution non prise en charge ou non détectée. Utilisation de '${ADMIN_GROUP}' comme groupe admin par défaut.";;
+        info "Distribution non reconnue. Utilisation de '${ADMIN_GROUP}' par défaut."
+        ;;
 esac
-if ! [ "$EUID" -eq 0 ]; then # Vérifie si root
-    if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
-        exec ${ADMIN_GROUP} -- "$0" "$@"
+# Vérification des droits root
+if [ "$EUID" -ne 0 ]; then
+    if id -nG "$ORIG_USER" 2>/dev/null | grep -Eqw "sudo|wheel"; then
+        exec sudo -- "$0" "$@"
     else
-        warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP}).\nVeuillez rajouter ${ORIG_USER} au groupe ${ADMIN_GROUP} ou exécuter ce script en tant que root.\n"
+        warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
+        warn "Veuillez rajouter ${ORIG_USER} au groupe ${ADMIN_GROUP} ou exécuter ce script en tant que root."
         exit 1
     fi
 fi
+# Vérification et installation des dépendances
 if declare -F ensure_dependencies >/dev/null 2>&1; then
-    if ensure_dependencies; then
-        echo "Échec de la vérification des dépendances ou de leur installation."
+    if ! ensure_dependencies; then
+        warn "Échec de la vérification ou installation des dépendances."
         exit 1
     fi
     if [ "${NEED_RESTART:-0}" -eq 1 ]; then
-        # Restart top-level script that sourced this file
-        idx=$(( ${#BASH_SOURCE[@]} - 1 ))
-        top_script="${BASH_SOURCE[$idx]}"
-        if [ -n "$top_script" ] && [ "$top_script" != "$(basename "$SHELL")" ]; then
-            echo "Dépendance installée. Redémarrage de : $top_script..."
-            if [ -x "$top_script" ]; then
-                exec "$top_script"
-            else
-                exec "$SHELL" -lc "bash '$(printf '%q' "$top_script")'"
-            fi
-        else
-            echo "Dépendances installées. Veuillez relancer votre installateur."
-            return 0
-        fi
+        info "Dépendances installées. Redémarrage du script..."
+        exec "$0" "$@"
     fi
 else
-    echo "Avertissement : 'ensure_dependencies' non disponible ; vérification automatique de l'installation ignorée."
+    warn "'ensure_dependencies' non disponible ; vérification ignorée."
 fi
-if [ -d glpi_install ]; then
-    cd glpi_install
-    git pull origin dev
-    cd ..
+# Gestion du dépôt glpi_install
+if [ -d "${REP_SCRIPT}/glpi_install/.git" ]; then
+    cd "${REP_SCRIPT}/glpi_install" && git pull origin dev && cd ..
 else
-    git clone https://github.com/PapyPoc/glpi_install.git -b dev
+    git clone https://github.com/PapyPoc/glpi_install.git -b dev "${REP_SCRIPT}/glpi_install"
 fi
-chmod +x "$REP_SCRIPT/glpi_install/glpi-install"
-exit
-source "$REP_SCRIPT/glpi_install/glpi-install"
+chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"
+exit 0
+source "${REP_SCRIPT}/glpi_install/glpi-install"
