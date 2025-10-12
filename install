@@ -109,7 +109,7 @@ get_git_branch() {
     printf '%s' "${branch:-unknown}"
 }
 
-BRANCHE="$(get_git_branch "$REP_SCRIPT")"
+BRANCHE="$(get_git_branch "$GIT")"
 export BRANCHE
 echo "Branche git détectée : ${BRANCHE}"
 # Détection de la distribution
