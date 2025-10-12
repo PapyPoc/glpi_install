@@ -78,21 +78,20 @@ if ! id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
         exit 1
     fi
 fi
-check_distro # Regarde si la distribution est conforme
+# Regarde si la distribution est conforme
 if ! check_distro; then
-    echo "Distribution check failed" >> "${ERRORS_LOG}"
+    echo "Distribution check failed" >> "${ERRORFILE}"
     exit 1
 fi
-echo "dddd"
-prompt_install_options # Demande les options d'installation
+# Demande les options d'installation
 if ! prompt_install_options; then
-    echo "Prompt install options cancelled or failed" >> "${ERRORS_LOG}"
+    echo "Prompt install options cancelled or failed" >> "${ERRORFILE}"
     exit 1
 fi
 # shellcheck disable=SC2154
-echo "${tags}" >> "${ERRORS_LOG}"
+echo "${tags}" >> "${ERRORFILE}"
 if ! check_install "${REP_GLPI}"; then
-    echo "Check install failed or user aborted" >> "${ERRORS_LOG}"
+    echo "Check install failed or user aborted" >> "${ERRORFILE}"
     exit 1
 fi
 display_result # Affiche le résultat de l'installation
