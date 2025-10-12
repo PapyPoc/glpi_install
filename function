@@ -301,24 +301,24 @@ function prompt_install_options(){
             installed_version="${installed_version//[[:space:]]/}"
             REP_GLPI="${installed_dir}"
         else
-            dialog --title "${MSG_INFO}" --msgbox "Erreur : le fichier '$installed_dir' ne semble pas appartenir à GLPI." 7 60
+            dialog --title "${MSG_INFO}" --msgbox "Erreur : le fichier '${installed_dir}' ne semble pas appartenir à GLPI." 7 60
             return 1
         fi
     fi
     # Récupérer les tags des versions disponibles
     api_url="https://api.github.com/repos/glpi-project/glpi/tags"
-    tags=$(curl -s "$api_url" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
-    if [ ! -z "$tags" ]; then
+    tags=$(curl -s "${api_url}" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
+    if [ ! -z "${tags}" ]; then
         # Si installed_version est définie, supprimer les versions inférieures ou égales de la liste
-        if [ -n "$installed_version" ]; then
+        if [ -n "${installed_version}" ]; then
             # Garde uniquement les versions supérieures à celle installée
-            tags=$(printf '%s\n' "${tags}" | sort -Vr | awk -v v="$installed_version" '$0 > v' | uniq | head -n 16)
+            tags=$(printf '%s\n' "${tags}" | sort -Vr | awk -v v="${installed_version}" '$0 > v' | uniq | head -n 16)
             echo "${tags}"
         else
             # Si installed_version est vide → garder toutes les versions triées
             tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
         fi
-        if [ -z "$tags" ]; then
+        if [ -z "${tags}" ]; then
             dialog --title "${MSG_INFO}" --msgbox "Aucune version plus récente que la version installée ($installed_version) n'est disponible." 7 60
             return 1
         fi
@@ -332,9 +332,9 @@ function prompt_install_options(){
     local args=()
     local first=ON
     while IFS= read -r tag; do
-        args+=("$tag" "GLPI $tag" "$first")
+        args+=("${tag}" "GLPI ${tag}" "${first}")
         first=OFF
-    done <<< "$tags"
+    done <<< "${tags}"
     exec 3>&1
     VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 4 "${args[@]}" 3>&1 1>&2 2>&3)
     local rc=$?
@@ -347,14 +347,10 @@ function prompt_install_options(){
     exec 3>&1
     local form
     local WIDTH=35
-    local LEN_MSG_PARAM_REP="${#MSG_PARAM_REP}"
-    local LEN_MSG_PARAM_DB_HOST="${#MSG_PARAM_DB_HOST}"
-    local LEN_MSG_PARAM_DB_NAME="${#MSG_PARAM_DB_NAME}"
-    local LEN_MSG_PARAM_DB_USER="${#MSG_PARAM_DB_USER}"
-    local PAD_MSG_PARAM_REP=$((WIDTH - LEN_MSG_PARAM_REP + 4))
-    local PAD_MSG_PARAM_DB_HOST=$((WIDTH - LEN_MSG_PARAM_DB_HOST + 4))
-    local PAD_MSG_PARAM_DB_NAME=$((WIDTH - LEN_MSG_PARAM_DB_NAME + 4))
-    local PAD_MSG_PARAM_DB_USER=$((WIDTH - LEN_MSG_PARAM_DB_USER + 4))
+    local PAD_MSG_PARAM_REP=$((WIDTH - "${#MSG_PARAM_REP}" + 4))
+    local PAD_MSG_PARAM_DB_HOST=$((WIDTH - "${#MSG_PARAM_DB_HOST}" + 4))
+    local PAD_MSG_PARAM_DB_NAME=$((WIDTH - "${#MSG_PARAM_DB_NAME}" + 4))
+    local PAD_MSG_PARAM_DB_USER=$((WIDTH - "${#MSG_PARAM_DB_USER}" + 4))
     form=$(dialog --clear \
     --backtitle "$MSG_TITRE" \
     --title "${MSG_PARAM_TITLE}" \
