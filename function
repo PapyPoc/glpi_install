@@ -354,7 +354,7 @@ function prompt_install_options(){
     #local PAD_MSG_PARAM_DB_USER=$((WIDTH - "${#MSG_PARAM_DB_USER}" + 1))
     form=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_TITLE}" --clear \
     --form "\nVersion sélectionnée : GLPI ${VERSION_SELECT}\n\n⚙️ Saisissez les paramètres :" \
-    22 80 8 \
+    22 130 8 \
     "📁 ${MSG_PARAM_REP}"       1 2 1 40 40 0 "${REP_GLPI:-/var/www/html/glpi/}" \
     "🗄️ ${MSG_PARAM_DB_HOST}"   3 2 3 40 40 0 "${DB_HOST:-localhost}" \
     "💾 ${MSG_PARAM_DB_NAME}"   5 2 5 40 40 0 "${DB_NAME:-glpi}" \
