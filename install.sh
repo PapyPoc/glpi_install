@@ -6,11 +6,15 @@ ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
 DEPENDENCIES="curl jq openssl sudo dialog git shellcheck"
 GIT="https://github.com/PapyPoc/glpi_install.git"
 BRANCHE="dev"
-ERRORFILE="${REP_SCRIPT}/install_error.log"
-SUCCESSFILE="${REP_SCRIPT}/install_success.log"
+# ERRORFILE="${REP_SCRIPT}/install_error.log"
+# SUCCESSFILE="${REP_SCRIPT}/install_success.log"
 export ORIG_USER REP_SCRIPT GIT BRANCHE
-warn(){ echo -e "\033[0;31m[ERREUR]\033[0m $1"; }
-info(){ echo -e "\033[0;36m[INFO]\033[0m $1"; }
+warn(){ 
+    echo -e "\033[0;31m[ERREUR]\033[0m $1";
+}
+info(){
+    echo -e "\033[0;36m[INFO]\033[0m $1";
+}
 ensure_dependencies(){
     NEED_RESTART=0
     local missing=""
