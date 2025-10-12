@@ -8,16 +8,6 @@
 #
 set -Eeuo pipefail
 clear # Nettoyer le terminal
-# Définition des variables Globales
-ROUGE='\033[0;31m' # Red
-CYAN='\033[0;36m' # Cyan
-NC='\033[0m' # No Color
-REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du script
-ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
-ERRORFILE="${REP_SCRIPT}/install_error.log"
-DEPENDENCIES="curl jq openssl sudo dialog git shadow"
-GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
-export ROUGE CYAN NC ORIG_USER ERRORFILE REP_SCRIPT GIT
 # Fonctions d'affichage
 warn() {
     echo -e "${ROUGE}$1${NC}"
@@ -105,11 +95,6 @@ get_git_branch() {
     fi
     printf '%s' "${branch:-unknown}"
 }
-
-BRANCHE="$(get_git_branch "$GIT")"
-export BRANCHE
-echo "Branche git détectée : ${BRANCHE}"
-exit 0
 # Détection de la distribution
 if source /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
@@ -161,7 +146,7 @@ if [ "$EUID" -ne 0 ]; then
     fi
 fi
 # Vérification et installation des dépendances
-if ensure_dependencies "curl jq openssl sudo dialog shellcheck"; then # Ajout de shellcheck
+if ensure_dependencies "curl jq openssl git sudo dialog shellcheck"; then # Ajout de shellcheck
     info "Toutes les dépendances sont satisfaites."
     sleep 5
 else
@@ -174,6 +159,20 @@ if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     sleep 5
     exec "$0" "$@"
 fi
+# Définition des variables Globales
+ROUGE='\033[0;31m' # Red
+CYAN='\033[0;36m' # Cyan
+NC='\033[0m' # No Color
+REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du script
+ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
+ERRORFILE="${REP_SCRIPT}/install_error.log"
+DEPENDENCIES="curl jq openssl sudo dialog git shadow"
+GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
+BRANCHE="$(get_git_branch "$GIT")"
+echo "Branche git détectée : ${BRANCHE}"
+sleep 5
+BRANCHE="dev" # Branche git à utiliser
+export ROUGE CYAN NC ORIG_USER ERRORFILE REP_SCRIPT GIT BRANCHE
 # Gestion du dépôt glpi_install
 if [ -d "${REP_SCRIPT}/glpi_install/.git" ]; then
     cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}"&& cd ..
