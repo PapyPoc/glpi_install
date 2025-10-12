@@ -16,7 +16,8 @@ REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du scri
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
 ERRORFILE="${REP_SCRIPT}/install_error.log"
 DEPENDENCIES="curl jq openssl sudo dialog git shadow"
-export ROUGE CYAN NC ORIG_USER ERRORFILE REP_SCRIPT
+GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
+export ROUGE CYAN NC ORIG_USER ERRORFILE REP_SCRIPT GIT
 # Fonctions d'affichage
 warn() {
     echo -e "${ROUGE}$1${NC}"
@@ -91,6 +92,26 @@ ensure_dependencies() {
     export NEED_RESTART
     return 0
 }
+get_git_branch() {
+    local repo="$1"
+    local branch="unknown"
+    if git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
+        branch=$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || true)
+        if [ -z "$branch" ] || [ "$branch" = "HEAD" ]; then
+            branch=$(git -C "$repo" describe --tags --exact-match 2>/dev/null || true)
+            if [ -z "$branch" ]; then
+                branch=$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+            fi
+        fi
+    fi
+    # Nettoyage : n'autorise que des caractères sûrs
+    branch="${branch//[^A-Za-z0-9._\\/-]/_}"
+    printf '%s' "${branch:-unknown}"
+}
+
+BRANCHE="$(get_git_branch "$REP_SCRIPT")"
+export BRANCHE
+echo "Branche git détectée : ${BRANCHE}"
 # Détection de la distribution
 if source /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
@@ -119,7 +140,7 @@ if [ "$EUID" -ne 0 ]; then
         sleep 2
         info "Utilisation de l'utilisateur ${ORIG_USER} avec les droits ${ADMIN_GROUP}."
         if command -v "$ADMIN_GROUP" >/dev/null 2>&1; then
-            exec "$ADMIN_GROUP" "$0" "$@"
+            exec "$ADMIN_GROUP" -E "$0" "$@"
         else
             warn "Aucune commande disponible pour élever les privilèges (sudo/su)."
             exit 1
@@ -157,15 +178,15 @@ if [ "${NEED_RESTART:-0}" -eq 1 ]; then
 fi
 # Gestion du dépôt glpi_install
 if [ -d "${REP_SCRIPT}/glpi_install/.git" ]; then
-    cd "${REP_SCRIPT}/glpi_install" && git pull origin dev && cd ..
+    cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}"&& cd ..
 else
-    git clone https://github.com/PapyPoc/glpi_install.git -b dev "${REP_SCRIPT}/glpi_install"
+    git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install"
 fi
 chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"
 # Lancer le script principal en remplaçant le processus courant
 if [ -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     exec "${REP_SCRIPT}/glpi_install/glpi-install" "$@"
 else
-    warn "Le script glpi-install n'est pas exécutable ou introuvable."
+    warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' n'est pas exécutable ou introuvable."
     exit 1
 fi
