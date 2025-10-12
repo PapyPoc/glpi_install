@@ -219,16 +219,13 @@ function load_language() {
 }
 # Demander à l'utilisateur de choisir la version de GLPI (4 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
-    tags=""
+    local tags=""
     local installed_version=""
     local installed_dir=""
-    # Tenter de détecter le répertoire d'installation de GLPI en recherchant 'console'
     installed_dir=$(find /var/www -type f -name 'console' -print -quit 2>/dev/null)
     if [ -n "${installed_dir}" ]; then
-        # Vérifie si le fichier "console" contient le mot "glpi" (insensible à la casse)
         if grep -qi "glpi" "$installed_dir"; then
-            # shellcheck disable=SC2012
-            installed_version=$(ls "$(dirname "$(dirname "${installed_dir}")")/version" 2>/dev/null | head -n 1)
+            installed_version=$(cat "$(dirname "$(dirname "${installed_dir}")")/version" 2>/dev/null | head -n 1)
             installed_version="${installed_version//[[:space:]]/}"
             REP_GLPI="${installed_dir}"
         else
@@ -236,20 +233,16 @@ function prompt_install_options(){
             return 1
         fi
     fi
-    # Récupérer les tags des versions disponibles
-    api_url="https://api.github.com/repos/glpi-project/glpi/tags"
-    tags=$(curl -s "${api_url}" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
+    local api_url="https://api.github.com/repos/glpi-project/glpi/tags"
+    tags=$(curl -s "${api_url}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
     if [ -n "${tags}" ]; then
-        # Si installed_version est définie, supprimer les versions inférieures ou égales de la liste
         if [ -n "${installed_version}" ]; then
-            # Garde uniquement les versions supérieures à celle installée
             tags=$(printf '%s\n' "${tags}" | sort -Vr | awk -v v="${installed_version}" '$0 > v' | uniq | head -n 16)
         else
-            # Si installed_version est vide → garder toutes les versions triées
             tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
         fi
         if [ -z "${tags}" ]; then
-            dialog --title "${MSG_INFO}" --msgbox "Aucune version plus récente que la version installée ($installed_version) n'est disponible." 7 60
+            dialog --title "${MSG_INFO}" --msgbox "Aucune version plus récente que ${installed_version} n'est disponible." 7 60
             return 1
         fi
     else
@@ -257,7 +250,6 @@ function prompt_install_options(){
         warn "${MSG_GITHUB_VERSIONS_FAILED}"
         return 1
     fi
-    # Construire les arguments de la liste radio
     local args=()
     local first=ON
     while IFS= read -r tag; do
@@ -273,11 +265,8 @@ function prompt_install_options(){
         warn "Sélection de la version annulée."
         return 1
     fi
-    # Demander le répertoire d'installation, le nom de la base et l'utilisateur BDD
     exec 3>&1
-    # Calcul dynamique de la largeur minimale
-    WIDTH=$(( ${#MSG_PARAM_DB_USER} + 1 ))
-    # Formulaire avec dialog
+    WIDTH=$(( ${#MSG_PARAM_DB_USER:-10} + 1 ))
     form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" \
     --form "\nVersion sélectionnée : GLPI ${VERSION_SELECT}\n\n⚙️ Saisissez les paramètres :" \
     70 100  \
@@ -286,55 +275,36 @@ function prompt_install_options(){
     "💾 ${MSG_PARAM_DB_NAME}" 5 1 "" ${WIDTH} 40 0 "glpi" \
     "👤 ${MSG_PARAM_DB_USER}" 7 1 "" ${WIDTH} 40 0 "glpi_user" \
     2>&1 1>&3)
-    local rc=$?
+    rc=$?
     exec 3>&-
     if [ "${rc}" -ne 0 ]; then
-        IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form" || true
-        info "Rep: ${rep_glpi}"
-        info "db_host: ${db_host}"
-        info "db_name: ${db_name}"
-        info "db_user: ${db_user}"
         warn "Formulaire annulé."
         return 1
     fi
-    # Analyser la sortie du formulaire (lignes)
     IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form" || true
-    # Nom de base et utilisateur: trim, forcer caractères sûrs [A-Za-z0-9_], valeurs par défaut si vide
     local _def_rep="${REP_GLPI:-/var/www/html/glpi/}"
     local _def_db_host="${DB_HOST:-localhost}"
     local _def_db="${DB_NAME:-glpi}"
     local _def_user="${DB_USER:-glpi_user}"
-    # trim
-    rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"
-    rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
-    db_host="${db_host#"${db_host%%[![:space:]]*}"}"
-    db_host="${db_host%"${db_host##*[![:space:]]}"}"
-    db_name="${db_name#"${db_name%%[![:space:]]*}"}"
-    db_name="${db_name%"${db_name##*[![:space:]]}"}"
-    db_user="${db_user#"${db_user%%[![:space:]]*}"}"
-    db_user="${db_user%"${db_user##*[![:space:]]}"}"
-    # Remplacer les caractères non autorisés par '_'
+    rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
+    db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
+    db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
+    db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
     rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
     db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
     db_name="${db_name//[^A-Za-z0-9_]/_}"
     db_user="${db_user//[^A-Za-z0-9_]/_}"
-    # Valeurs par défaut si vides
     [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
     [ -z "$db_host" ] && db_host="$_def_db_host"
     [ -z "$db_name" ] && db_name="$_def_db"
     [ -z "$db_user" ] && db_user="$_def_user"
-    # Si le nom de base ne commence pas par une lettre ou '_', le préfixer
     if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
         db_name="glpi_${db_name}"
     fi
-    local rep_glpi="${rep_glpi//\\//}"
-    if [ -z "${rep_glpi}" ]; then
+    rep_glpi="${rep_glpi//\\//}"
+    if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
         rep_glpi="${_def_rep}"
     fi
-    if [[ "${rep_glpi}" != /* ]]; then
-        rep_glpi="${_def_rep}"
-    fi
-    # supprimer doublons de /
     rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
     DB_HOST="$db_host"
     REP_GLPI="${rep_glpi%/}/"
@@ -343,6 +313,7 @@ function prompt_install_options(){
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK tags
 }
+
 # Vérifie si la version est compatible
 function compatible() {
     local version="$1"
