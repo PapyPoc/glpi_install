@@ -110,17 +110,15 @@ if [ "$EUID" -ne 0 ]; then
     fi
 fi
 # Vérification et installation des dépendances
-if declare -F ensure_dependencies >/dev/null 2>&1; then
-    if ! ensure_dependencies; then
-        warn "Échec de la vérification ou installation des dépendances."
-        exit 1
-    fi
-    if [ "${NEED_RESTART:-0}" -eq 1 ]; then
-        info "Dépendances installées. Redémarrage du script..."
-        exec "$0" "$@"
-    fi
+if ensure_dependencies; then
+    info "Toutes les dépendances sont satisfaites."
 else
-    warn "'ensure_dependencies' non disponible ; vérification ignorée."
+    warn "Échec de la vérification ou installation des dépendances."
+    exit 1
+fi
+if [ "${NEED_RESTART:-0}" -eq 1 ]; then
+    info "Dépendances installées. Redémarrage du script..."
+    exec "$0" "$@"
 fi
 # Gestion du dépôt glpi_install
 if [ -d "${REP_SCRIPT}/glpi_install/.git" ]; then
