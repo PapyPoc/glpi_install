@@ -27,7 +27,7 @@ else
 fi
 if declare -F ensure_dependencies >/dev/null 2>&1; then
     if ! ensure_dependencies; then
-        echo "Failed to ensure dependencies" >> "${ERRORS_LOG}"
+        echo "Failed to ensure dependencies" >> "${ERRORFILE}"
         exit 1
     fi
     if [ "${NEED_RESTART:-0}" -eq 1 ]; then
@@ -35,19 +35,19 @@ if declare -F ensure_dependencies >/dev/null 2>&1; then
         idx=$(( ${#BASH_SOURCE[@]} - 1 ))
         top_script="${BASH_SOURCE[$idx]}"
         if [ -n "$top_script" ] && [ "$top_script" != "$(basename "$SHELL")" ]; then
-            echo "Dependencies installed. Restarting $top_script..." "${ERRORS_LOG}"
+            echo "Dependencies installed. Restarting $top_script..." >> "${ERRORFILE}"
             if [ -x "$top_script" ]; then
                 exec "$top_script"
             else
                 exec "$SHELL" -lc "bash '$(printf '%q' "$top_script")'"
             fi
         else
-            echo "Dependencies installed. Please re-run your installer." "${ERRORS_LOG}"
+            echo "Dependencies installed. Please re-run your installer." >> "${ERRORFILE}"
             return 0
         fi
     fi
 else
-    echo "Warning: ensure_dependencies not available; skipping automatic install check." "${ERRORS_LOG}"
+    echo "Warning: ensure_dependencies not available; skipping automatic install check." >> "${ERRORFILE}"
 fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
     . /etc/os-release
