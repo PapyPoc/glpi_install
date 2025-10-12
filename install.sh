@@ -13,6 +13,12 @@ ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Ut
 DEPENDENCIES="curl jq openssl sudo dialog git shellcheck" # Dépendances requises. Ajout de shellcheck
 GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
 BRANCHE="dev" # Branche git à utiliser
+ERRORFILE="${REP_SCRIPT}/install_error.log" # Fichier de log des erreurs
+SUCCESSFILE="${REP_SCRIPT}/install_success.log" # Fichier de log des succès
+# Rediriger les erreurs vers le fichier de log
+exec 2>>"$ERRORFILE"
+# Rediriger les sorties standard vers le fichier de log et vers le terminal
+exec >>"$SUCCESSFILE" 2>&1
 export ORIG_USER REP_SCRIPT GIT BRANCHE
 # Fonctions d'affichage
 warn() {
