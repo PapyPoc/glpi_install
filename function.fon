@@ -14,7 +14,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 # Exporter une liste blanche de variables utilisées dans les fichiers de langue pour que envsubst puisse les remplacer
 export_display_env() {
-    # Exporter un ensemble complet de variables (majuscules et minuscules)
+    # Exporter un ensemble complet de variables (majuscules)
     # pouvant être référencées comme espaces réservés dans les fichiers de langue.
     # Les valeurs par défaut sont vides si elles ne sont pas définies.
     local vars=(
@@ -25,18 +25,8 @@ export_display_env() {
         DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
         NEW_VERSION
     )
-    # exporter aussi les variantes en minuscules (certains messages ou modèles peuvent
-    # utiliser des noms en minuscules)
-    local lvars=(
-        orig_user admin_group distro_id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
-        error_file log_file task_index task_key language timezone ipadress interface downloadlink
-        db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd
-        rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output glpi_cli_version phpversion
-        debian_versions ubuntu_versions alma_versions centos_versions rocky_versions redhat_versions
-        new_version
-    )
     local v _val
-    for v in "${vars[@]}" "${lvars[@]}"; do
+    for v in "${vars[@]}"; do
         _val="${!v:-}"
         export "$v"="$_val"
     done

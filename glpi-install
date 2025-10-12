@@ -83,6 +83,7 @@ fi
 check_dialog # Regarde si dialog est installé
 check_distro # Regarde si la distribution est conforme
 prompt_install_options # Demande les options d'installation
+echo "${tags}" >> "${ERRORS_LOG}"
 check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas
 display_result # Affiche le résultat de l'installation
 chmod 600 "${FICHIER_MSG}"
