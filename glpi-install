@@ -9,6 +9,9 @@
 set -Eeuo pipefail
 # Nettoyer le terminal
 clear
+source "${REP_SCRIPT}/config.conf" # Fichier de variable
+source "${REP_SCRIPT}/function.fon"    # Fichier de fonction
+load_language # Fichier de langue
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"
@@ -22,9 +25,6 @@ else
 fi
 # Définir le répertoire du script
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${REP_SCRIPT}/config.conf" # Fichier de variable
-source "${REP_SCRIPT}/function.fon"    # Fichier de fonction
-load_language # Fichier de langue
 if declare -F ensure_dependencies >/dev/null 2>&1; then
     ensure_dependencies || { echo "Failed to ensure dependencies" >> "${ERRORS_LOG}"; return 1; }
     if [ "${NEED_RESTART:-0}" -eq 1 ]; then
