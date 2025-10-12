@@ -106,6 +106,9 @@ esac
 # Vérification des droits root
 if [ "$EUID" -ne 0 ]; then
     if id -nG "$ORIG_USER" 2>/dev/null | grep -Eqw "sudo|wheel"; then
+        info "Relance du script avec les droits administrateur..."
+        sleep 5
+        info "Utilisation de l'utilisateur ${ORIG_USER} avec les droits ${ADMIN_GROUP}."
         exec "${ADMIN_GROUP}" -- "$0" "$@"
     else
         warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
