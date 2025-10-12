@@ -31,9 +31,9 @@ info() {
 ensure_dependencies() {
     # Indique si une ré-exécution du script est nécessaire après installation
     NEED_RESTART=0
-    local missing
+    local missing=""
+    local list
     # Accepte soit une chaîne d'éléments séparés par des espaces, soit rien pour utiliser ${DEPENDENCIES}
-    local -a check_cmds
     if [ $# -ge 1 ] && [ -n "$1" ]; then
         list="$1"
     else
@@ -45,53 +45,48 @@ ensure_dependencies() {
             missing="${missing:+$missing }$cmd"
         fi
     done
-    for cmd in "${check_cmds[@]}"; do
-        if ! command -v "$cmd" >/dev/null 2>&1; then
-            missing+=("$cmd")
-        fi
-    done
-    if [ ${#missing[@]} -eq 0 ]; then
+    if [ -z "$missing" ]; then
         return 0
     fi
-    echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..."
+    echo "Dépendances manquantes : ${missing}. Tentative d'installation..."
     local pkgmgr install_cmd
-    local pkgs="${missing[*]}"
+    local pkgs="$missing"
     if command -v apt-get >/dev/null 2>&1; then
         pkgmgr="apt-get"
-        install_cmd="apt-get update -qq && apt-get install -y -qq ${pkgs}"
+        install_cmd="${pkgmgr} update -qq && ${pkgmgr} install -y -qq ${pkgs}"
     elif command -v dnf >/dev/null 2>&1; then
         pkgmgr="dnf"
-        install_cmd="dnf install -y -q ${pkgs}"
+        install_cmd="${pkgmgr} install -y -q ${pkgs}"
     elif command -v yum >/dev/null 2>&1; then
         pkgmgr="yum"
-        install_cmd="yum install -y -q ${pkgs}"
+        install_cmd="${pkgmgr} install -y -q ${pkgs}"
     elif command -v apk >/dev/null 2>&1; then
         pkgmgr="apk"
-        install_cmd="apk add --no-cache ${pkgs}"
+        install_cmd="${pkgmgr} add --no-cache ${pkgs}"
     elif command -v pacman >/dev/null 2>&1; then
         pkgmgr="pacman"
-        install_cmd="pacman -Syu --noconfirm ${pkgs}"
+        install_cmd="${pkgmgr} -Syu --noconfirm ${pkgs}"
     elif command -v zypper >/dev/null 2>&1; then
         pkgmgr="zypper"
-        install_cmd="zypper install -y ${pkgs}"
+        install_cmd="${pkgmgr} install -y ${pkgs}"
     else
         warn "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
         return 1
     fi
     info "Installation via ${pkgmgr} : ${pkgs}"
-
     if ! bash -c "$install_cmd"; then
         warn "Échec de l'installation des dépendances : ${pkgs}"
         return 1
     fi
-    local still_missing=()
-    for cmd in "${check_cmds[@]}"; do
+    # Vérifie à nouveau si toutes les commandes sont présentes
+    local still_missing=""
+    for cmd in $list; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
-            still_missing+=("$cmd")
+            still_missing="${still_missing:+$still_missing }$cmd"
         fi
     done
-    if [ ${#still_missing[@]} -gt 0 ]; then
-        warn "Commandes toujours manquantes après l'installation : ${still_missing[*]}"
+    if [ -n "$still_missing" ]; then
+        warn "Commandes toujours manquantes après l'installation : ${still_missing}"
         sleep 5
         return 1
     fi
