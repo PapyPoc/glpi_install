@@ -476,41 +476,38 @@ EOF
         fi
     fi }
 # Configuration de la base de données MariaDB
-function mariadb_configure(){
+function mariadb_configure() {
     info "$MSG_BDD_CONFIG"
     # Détecter la commande MySQL/MariaDB
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
     sleep 1
-    # Sécurise l'installation de MariaDB — exécuter un bloc SQL en une seule connexion
-    # (exécute ALTER USER, suppression d'utilisateurs anonymes, suppression de la db test,
-    # création de la base et de l'utilisateur GLPI, et assignation des privilèges)
-    if ! MYSQL_PWD="${SQLROOTPWD}" ${MYSQL_CMD} -u root mysql --batch --silent -e "
-    ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
-    DELETE FROM mysql.user WHERE User='';
-    DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
-    DROP DATABASE IF EXISTS test;
-    DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
-    GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';
-    CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;
-    CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
-    GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '${DB_USER}'@'localhost';
-    GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
-    FLUSH PRIVILEGES;"; then
+    # Exécution sécurisée du bloc SQL
+    if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql --batch --silent <<-EOF
+        ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
+        DELETE FROM mysql.user WHERE User='';
+        DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
+        DROP DATABASE IF EXISTS test;
+        DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
+        GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
+        CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
+        CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
+        GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+        GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
+        FLUSH PRIVILEGES;
+EOF
+    then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
-    # Détecter et définir le fuseau horaire système si TIMEZONE est vide
+    # Détection du fuseau horaire
     if [ -z "${TIMEZONE:-}" ]; then
-        # timedatectl (systemd) est la méthode préférée
         if command -v timedatectl >/dev/null 2>&1; then
             TIMEZONE=$(timedatectl show -p Timezone --value 2>/dev/null || true)
         fi
-        # fallback : /etc/timezone (Debian/Ubuntu)
         if [ -z "${TIMEZONE:-}" ] && [ -f /etc/timezone ]; then
             TIMEZONE=$(sed -n '1p' /etc/timezone 2>/dev/null || true)
         fi
-        # fallback : lien ou fichier /etc/localtime pointant vers /usr/share/zoneinfo/...
         if [ -z "${TIMEZONE:-}" ]; then
             if [ -L /etc/localtime ] || [ -f /etc/localtime ]; then
                 tzfile=$(readlink -f /etc/localtime 2>/dev/null || true)
@@ -519,25 +516,21 @@ function mariadb_configure(){
                 esac
             fi
         fi
-        # fallback pour systèmes RHEL ( /etc/sysconfig/clock )
         if [ -z "${TIMEZONE:-}" ] && [ -f /etc/sysconfig/clock ]; then
-            TIMEZONE=$(awk -F= '/^ZONE/ {gsub(/"","",$2); gsub(/"/,"",$2); gsub(/\"/,"",$2); print $2}' /etc/sysconfig/clock 2>/dev/null || true)
+            TIMEZONE=$(awk -F= '/^ZONE/ {gsub(/"/,"",$2); print $2}' /etc/sysconfig/clock 2>/dev/null || true)
         fi
-        # si toujours vide, utiliser UTC par défaut
         TIMEZONE=${TIMEZONE:-UTC}
         export TIMEZONE
         info "Fuseau horaire détecté : ${TIMEZONE}"
     fi
-    # Initialiser les données des fuseaux horaires
     info "$MSG_TIMEZONE_CONFIG"
-    # Import timezone data using direct mysql invocation (target 'mysql' database)
-    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD="${SQLROOTPWD}" ${MYSQL_CMD} -u root mysql; then
-        warn "$MSG_ERROR_TASK: timezone import failed"
+    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql; then
+        warn "$MSG_ERROR_TASK: import du timezone échoué"
         return 1
     fi
-    # Restart MariaDB
-    systemctl restart mariadb
-    sleep 5; }
+    systemctl restart mariadb >/dev/null 2>&1 || warn "Impossible de redémarrer MariaDB (vérifiez le service)"
+    sleep 5
+}
 # Téléchargement et décompression de GLPI
 function install_glpi(){
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
