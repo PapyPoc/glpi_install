@@ -9,16 +9,6 @@
 set -Eeuo pipefail
 # Nettoyer le terminal
 clear
-# Charger les fichiers de configuration et de fonctions
-    # Définir le répertoire du script
-REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Charger d'abord les fonctions (ensure_dependencies est définie ici)
-# shellcheck disable=SC1091
-source "${REP_SCRIPT}/function.fon"    # Fichier de fonction
-# Puis charger la configuration qui peut appeler des fonctions (ex: ensure_dependencies)
-# shellcheck disable=SC1091
-source "${REP_SCRIPT}/config.conf" # Fichier de variable
-load_language # Fichier de langue
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 if [ "$EUID" -eq 0 ]; then # Vérifie si root
     info "$MSG_ROOT"
@@ -29,6 +19,32 @@ else
         warn "${MSG_USER_NOT_SUDO}"
         exit 1
     fi
+fi
+# Définir le répertoire du script
+REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${REP_SCRIPT}/config.conf" # Fichier de variable
+source "${REP_SCRIPT}/function.fon"    # Fichier de fonction
+load_language # Fichier de langue
+if declare -F ensure_dependencies >/dev/null 2>&1; then
+    ensure_dependencies || { echo "Failed to ensure dependencies" >> "${ERRORS_LOG}"; return 1; }
+    if [ "${NEED_RESTART:-0}" -eq 1 ]; then
+        # Restart top-level script that sourced this file
+        idx=$(( ${#BASH_SOURCE[@]} - 1 ))
+        top_script="${BASH_SOURCE[$idx]}"
+        if [ -n "$top_script" ] && [ "$top_script" != "$(basename "$SHELL")" ]; then
+            echo "Dependencies installed. Restarting $top_script..." "${ERRORS_LOG}"
+            if [ -x "$top_script" ]; then
+                exec "$top_script"
+            else
+                exec "$SHELL" -lc "bash '$(printf '%q' "$top_script")'"
+            fi
+        else
+            echo "Dependencies installed. Please re-run your installer." "${ERRORS_LOG}"
+            return 0
+        fi
+    fi
+else
+    echo "Warning: ensure_dependencies not available; skipping automatic install check." "${ERRORS_LOG}"
 fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
     # shellcheck disable=SC1091
@@ -60,27 +76,6 @@ if ! id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
         exit 1
     fi
 fi
-# Installation des outils de base après vérification de la distribution
-if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
-    if ! apt-get update &> /dev/null; then
-        warn "$MSG_UPDATE_FAILED"
-        exit 1
-    fi
-    if ! apt-get install -y curl jq sudo &> /dev/null; then
-        warn "$MSG_INSTALL_TOOLS_FAILED"
-        exit 1
-    fi
-    if ! apt-get autoremove -y &> /dev/null; then
-        warn "$MSG_AUTOREMOVE_FAILED"
-        exit 1
-    fi
-elif [[ "${DISTRO_ID}" =~ ^(centos|rhel|rocky|almalinux|fedora)$ ]]; then
-    if ! dnf install -y curl jq sudo &> /dev/null && ! yum install -y curl jq sudo &> /dev/null; then
-        warn "$MSG_INSTALL_TOOLS_FAILED"
-        exit 1
-    fi
-fi
-check_dialog # Regarde si dialog est installé
 check_distro # Regarde si la distribution est conforme
 prompt_install_options # Demande les options d'installation
 # shellcheck disable=SC2154

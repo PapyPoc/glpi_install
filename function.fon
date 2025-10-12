@@ -8,8 +8,8 @@
 set -Eeuo pipefail
 # Ne pas continuer si le script est exécuté directement
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    echo -e "Ce fichier doit être sourcé, pas exécuté.\n" >&2
-    echo -e "This file must be sourced, not executed.\n" >&2
+    echo -e "Ce fichier doit être sourcé, pas exécuté.\n">> "${ERRORS_LOG}"
+    echo -e "This file must be sourced, not executed.\n">> "${ERRORS_LOG}"
     exit 1
 fi
 # Exporter une liste blanche de variables utilisées dans les fichiers de langue pour que envsubst puisse les remplacer
@@ -43,7 +43,7 @@ ensure_dependencies() {
     if [ ${#missing[@]} -eq 0 ]; then
         return 0
     fi
-    echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..." >&2
+    echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..." >>  "${ERRORS_LOG}"
     # détecter le gestionnaire de paquets et construire la commande d'installation
     local pkgmgr install_cmd pkgs
     pkgs="${missing[*]}"
@@ -73,16 +73,16 @@ ensure_dependencies() {
         # OpenSUSE
         install_cmd="zypper install -y ${pkgs}"
     else
-        echo "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}" >&2
+        echo "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}" >> "${ERRORS_LOG}"
         return 1
     fi
     # utiliser sudo si nécessaire
     if [ "${EUID:-0}" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
         install_cmd="sudo sh -c '${install_cmd}'"
     fi
-    echo "Installation via ${pkgmgr} : ${pkgs}" >&2
+    echo "Installation via ${pkgmgr} : ${pkgs}" >>  "${ERRORS_LOG}"
     if ! sh -c "$install_cmd"; then
-        echo "Échec de l'installation des dépendances : ${pkgs}" >&2
+        echo "Échec de l'installation des dépendances : ${pkgs}" >> "${ERRORS_LOG}"
         return 1
     fi
     # vérification
@@ -93,7 +93,7 @@ ensure_dependencies() {
         fi
     done
     if [ ${#still_missing[@]} -gt 0 ]; then
-        echo "Commandes toujours manquantes après l'installation : ${still_missing[*]}" >&2
+        echo "Commandes toujours manquantes après l'installation : ${still_missing[*]}" >> "${ERRORS_LOG}"
         return 1
     fi
     NEED_RESTART=1
@@ -123,29 +123,6 @@ function info(){
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
     echo -e "${CYAN}${expanded}${NC}" # Couleur cyan
-}
-# Vérifier et installer 'dialog'
-function check_dialog() {
-    if ! command -v dialog &>/dev/null; then
-        info "$MSG_DIALOG_INSTALL"
-
-        if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            # Debian / Ubuntu
-            if ! apt-get update &>/dev/null || ! apt-get install -y -qq dialog &>/dev/null; then
-                warn "$MSG_DIALOG_ERROR"
-                exit 1
-            fi
-        elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
-            # RedHat / CentOS / Rocky / AlmaLinux / Fedora
-            if ! yum install -y -q dialog &>/dev/null && ! dnf install -y -q dialog &>/dev/null; then
-                warn "$MSG_DIALOG_ERROR"
-                exit 1
-            fi
-        else
-            warn "$MSG_DIALOG_DISTRO_UNKNOWN"
-            exit 1
-        fi
-    fi
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
@@ -232,9 +209,12 @@ function prompt_install_options(){
             tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
             echo "${tags}"
         fi
+        if [ -z "$tags" ]; then
+            dialog --title "${MSG_INFO}" --msgbox "Aucune version plus récente que la version installée ($installed_version) n'est disponible." 7 60
+            exit 0
+        fi
     else
-        #dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
-        echo "ddd"
+        dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
         warn "${MSG_GITHUB_VERSIONS_FAILED}"
         exit 1
     fi
