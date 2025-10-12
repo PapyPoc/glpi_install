@@ -26,10 +26,18 @@ info() {
 }
 # Vérifie et installe les dépendances manquantes
 ensure_dependencies() {
+    # Indique si une ré-exécution du script est nécessaire après installation
+    NEED_RESTART=0
     local missing=()
-    local NEED_RESTART=0
-    local -n _check_cmds=$1
-    for cmd in "${_check_cmds[@]:-${DEPENDENCIES}}"; do
+    # Accepte soit une chaîne d'éléments séparés par des espaces, soit rien pour utiliser ${DEPENDENCIES}
+    local -a check_cmds
+    if [ $# -ge 1 ] && [ -n "$1" ]; then
+        # split the provided string into an array
+        read -r -a check_cmds <<< "$1"
+    else
+        read -r -a check_cmds <<< "$DEPENDENCIES"
+    fi
+    for cmd in "${check_cmds[@]}"; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing+=("$cmd")
         fi
@@ -37,7 +45,7 @@ ensure_dependencies() {
     if [ ${#missing[@]} -eq 0 ]; then
         return 0
     fi
-    echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..." >> "${ERRORFILE}"
+    echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..."
     local pkgmgr install_cmd
     local pkgs="${missing[*]}"
     if command -v apt-get >/dev/null 2>&1; then
@@ -69,7 +77,7 @@ ensure_dependencies() {
         return 1
     fi
     local still_missing=()
-    for cmd in "${_check_cmds[@]:-${DEPENDENCIES}}"; do
+    for cmd in "${check_cmds[@]}"; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             still_missing+=("$cmd")
         fi
@@ -79,7 +87,8 @@ ensure_dependencies() {
         sleep 5
         return 1
     fi
-    export NEED_RESTART=1
+    NEED_RESTART=1
+    export NEED_RESTART
     return 0
 }
 # Détection de la distribution
@@ -107,9 +116,16 @@ esac
 if [ "$EUID" -ne 0 ]; then
     if id -nG "$ORIG_USER" 2>/dev/null | grep -Eqw "sudo|wheel"; then
         info "Relance du script avec les droits administrateur..."
-        sleep 5
+        sleep 2
         info "Utilisation de l'utilisateur ${ORIG_USER} avec les droits ${ADMIN_GROUP}."
-        exec "${ADMIN_GROUP}" -- "$0" "$@"
+        if command -v su >/dev/null 2>&1; then
+            exec su -c "bash -c \"$0 $*\""
+        elif command -v "$ADMIN_GROUP" >/dev/null 2>&1; then
+            exec "$ADMIN_GROUP" -E "$0" "$@"
+        else
+            warn "Aucune commande disponible pour élever les privilèges (sudo/su)."
+            exit 1
+        fi
     else
         warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
         if command -v usermod >/dev/null 2>&1; then
@@ -120,7 +136,7 @@ if [ "$EUID" -ne 0 ]; then
         else
             warn "Impossible d'ajouter $ORIG_USER au groupe $ADMIN_GROUP : aucune commande compatible trouvée."
             sleep 5
-            return 1
+            exit 1
         fi
         warn "Ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}. Veuillez vous reconnectter et relancer le script."
         sleep 5
@@ -128,7 +144,7 @@ if [ "$EUID" -ne 0 ]; then
     fi
 fi
 # Vérification et installation des dépendances
-if ensure_dependencies "curl jq openssl sudo dialog"; then
+if ensure_dependencies "curl jq openssl sudo dialog shellcheck"; then # Ajout de shellcheck
     info "Toutes les dépendances sont satisfaites."
     sleep 5
 else
@@ -148,5 +164,10 @@ else
     git clone https://github.com/PapyPoc/glpi_install.git -b dev "${REP_SCRIPT}/glpi_install"
 fi
 chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"
-exit 0
-source "${REP_SCRIPT}/glpi_install/glpi-install"
+# Lancer le script principal en remplaçant le processus courant
+if [ -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
+    exec "${REP_SCRIPT}/glpi_install/glpi-install" "$@"
+else
+    warn "Le script glpi-install n'est pas exécutable ou introuvable."
+    exit 1
+fi
