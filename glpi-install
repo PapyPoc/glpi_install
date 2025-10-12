@@ -90,7 +90,6 @@ if ! prompt_install_options; then
     echo "Prompt install options cancelled or failed" >> "${ERRORFILE}"
     exit 1
 fi
-echo "${tags}" >> "${ERRORFILE}"
 if ! check_install "${REP_GLPI}"; then
     dialog --title "Erreur" --msgbox "La vérification de l'installation a échoué ou l'utilisateur a annulé." 6 60
     echo "Check install failed or user aborted" >> "${ERRORFILE}"
