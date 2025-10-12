@@ -52,7 +52,7 @@ fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
     . /etc/os-release
     DISTRO_ID=${ID}
-    info "$MSG_DISTRO_DETECTED$DISTRO_ID ${VERSION_ID}"
+    info "$MSG_DISTRO_DETECTED $DISTRO_ID ${VERSION_ID}"
 else
     warn "$MSG_DISTRO_NONOK"
     exit 1
@@ -80,16 +80,19 @@ if ! id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
 fi
 # Regarde si la distribution est conforme
 if ! check_distro; then
+    dialog --title "Erreur" --msgbox "La vérification de la distribution a échoué." 6 50
     echo "Distribution check failed" >> "${ERRORFILE}"
     exit 1
 fi
 # Demande les options d'installation
 if ! prompt_install_options; then
+    dialog --title "Annulation" --msgbox "L'installation a été annulée par l'utilisateur." 6 50
     echo "Prompt install options cancelled or failed" >> "${ERRORFILE}"
     exit 1
 fi
 echo "${tags}" >> "${ERRORFILE}"
 if ! check_install "${REP_GLPI}"; then
+    dialog --title "Erreur" --msgbox "La vérification de l'installation a échoué ou l'utilisateur a annulé." 6 60
     echo "Check install failed or user aborted" >> "${ERRORFILE}"
     exit 1
 fi

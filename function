@@ -46,7 +46,7 @@ export_display_env() {
         DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
         REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT GLPI_CLI_VERSION PHPVERSION
         DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
-        NEW_VERSION
+        NEW_VERSION TAGS
     )
     local vars_min=(
         orig_user admin_group distro_id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
@@ -54,7 +54,7 @@ export_display_env() {
         db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd
         rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output glpi_cli_version phpversion
         debian_versions ubuntu_versions alma_versions centos_versions rocky_versions redhat_versions msg_upgrade_distro
-        new_version
+        new_version tags
     )
     local v _val
     for v in "${vars_maj[@]}" "${vars_min[0]}"; do
