@@ -113,7 +113,7 @@ fi
 if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     info "Dépendances installées. Redémarrage du script..."
     sleep 3
-    exec bash "./$0" " "$@"
+    exec bash "${REP_SCRIPT}/$(basename "$0")" "$@"
 fi
 if [ -d "${REP_SCRIPT}/glpi_install" ]; then
     cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}" && cd ..
