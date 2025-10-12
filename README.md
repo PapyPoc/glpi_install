@@ -68,6 +68,6 @@ GLPI is installed by running the following command in your terminal.
 For the distribution Debian and Red Hat
 
 ```bash
-wget -O install https://raw.githubusercontent.com/PapyPoc/glpi_install/dev/install && chmod +x install && bash install
+wget -O install.sh https://raw.githubusercontent.com/PapyPoc/glpi_install/dev/install.sh && chmod +x install.sh && bash install.sh
 
 ```
