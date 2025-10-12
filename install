@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du script
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
 ERRORFILE="${REP_SCRIPT}/install_error.log"
-DEPENDENCIES="curl jq openssl sudo dialog git"
+DEPENDENCIES="curl jq openssl sudo dialog git shadow"
 export ROUGE CYAN NC ORIG_USER ERRORFILE REP_SCRIPT
 # Fonctions d'affichage
 warn() {
@@ -112,8 +112,18 @@ if [ "$EUID" -ne 0 ]; then
         exec "${ADMIN_GROUP}" -- "$0" "$@"
     else
         warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
-        usermod -aG "${ADMIN_GROUP}" "$ORIG_USER" || true
+        if command -v usermod >/dev/null 2>&1; then
+            usermod -aG "$ADMIN_GROUP" "$ORIG_USER" || true
+        elif command -v adduser >/dev/null 2>&1; then
+            # Cas Alpine ou BusyBox
+            adduser "$ORIG_USER" "$ADMIN_GROUP" || true
+        else
+            warn "Impossible d'ajouter $ORIG_USER au groupe $ADMIN_GROUP : aucune commande compatible trouvée."
+            sleep 5
+            return 1
+        fi
         warn "Ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}. Veuillez vous reconnectter et relancer le script."
+        sleep 5
         exit 1
     fi
 fi
@@ -123,6 +133,7 @@ if ensure_dependencies "curl jq openssl sudo dialog"; then
     sleep 5
 else
     warn "Échec de la vérification ou installation des dépendances."
+    sleep 5
     exit 1
 fi
 if [ "${NEED_RESTART:-0}" -eq 1 ]; then
