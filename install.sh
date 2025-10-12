@@ -117,47 +117,47 @@ case "${DISTRO_ID}" in
 esac
 # Vérification des droits root
 if [ "$EUID" -ne 0 ]; then
-    if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then
-        info "Relance du script avec les droits administrateur..."
-        sleep 2
-        info "Utilisation de l'utilisateur ${ORIG_USER} avec les droits ${ADMIN_GROUP}."
-        if command -v "${ADMIN_GROUP}" >/dev/null 2>&1; then
-            exec "${ADMIN_GROUP}" -E "$0" "$@"
-        else
-            warn "Aucune commande disponible pour élever les privilèges (sudo/su)."
-            goto finish
-        fi
+    if command -v sudo >/dev/null 2>&1; then
+        info "Relance du script avec privilèges administrateur via sudo..."
+        exec sudo -E bash "$0" "$@"
+    elif command -v su >/dev/null 2>&1; then
+        info "Relance du script avec privilèges administrateur via su..."
+        exec su -c "bash '$0' $*"
     else
-        warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
-        if command -v usermod >/dev/null 2>&1; then
-            usermod -aG "$ADMIN_GROUP" "${ORIG_USER}" || true
-        elif command -v adduser >/dev/null 2>&1; then
-            # Cas Alpine ou BusyBox
-            adduser "$ORIG_USER" "${ADMIN_GROUP}" || true
-        else
-            warn "Impossible d'ajouter ${ORIG_USER} au groupe ${ADMIN_GROUP} : aucune commande compatible trouvée."
-            sleep 5
-            goto finish
-        fi
-        warn "Ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}. Veuillez vous reconnecter et relancer le script."
-        sleep 5
-        goto finish
+        warn "Aucune commande disponible pour élever les privilèges (sudo/su)."
+        sleep 3
+        exit 1
     fi
+else
+    warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
+    if command -v usermod >/dev/null 2>&1; then
+        usermod -aG "$ADMIN_GROUP" "${ORIG_USER}" || true
+    elif command -v adduser >/dev/null 2>&1; then
+        # Cas Alpine ou BusyBox
+        adduser "$ORIG_USER" "${ADMIN_GROUP}" || true
+    else
+        warn "Impossible d'ajouter ${ORIG_USER} au groupe ${ADMIN_GROUP} : aucune commande compatible trouvée."
+        sleep 3
+        exit 1
+    fi
+    warn "Ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}. Veuillez vous reconnecter et relancer le script."
+    sleep 3
+    exit 1
 fi
 # Vérification et installation des dépendances
 if ensure_dependencies "${DEPENDENCIES}"; then
     info "Toutes les dépendances sont satisfaites."
-    sleep 5
+    sleep 3
 else
     warn "Échec de la vérification ou installation des dépendances."
-    sleep 5
-    goto finish
+    sleep 3
+    exit 1
 fi
 echo "$NEED_RESTART"
 # Si des dépendances ont été installées, relancer le script
 if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     info "Dépendances installées. Redémarrage du script..."
-    sleep 5
+    sleep 3
     exec "$0" "$@"
 fi
 # Gestion du dépôt glpi_install
@@ -175,9 +175,6 @@ if [ -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     exec "${REP_SCRIPT}/glpi_install/glpi-install" "$@"
 else
     warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' n'est pas exécutable ou introuvable."
-    goto finish
+    exit 1
 fi
-end install script
-finish:
-exit 0
 # Fin du script d'installation
