@@ -25,7 +25,7 @@ info() {
 ensure_dependencies() {
     # Indique si une ré-exécution du script est nécessaire après installation
     NEED_RESTART=0
-    local missing=()
+    local missing
     # Accepte soit une chaîne d'éléments séparés par des espaces, soit rien pour utiliser ${DEPENDENCIES}
     local -a check_cmds
     if [ $# -ge 1 ] && [ -n "$1" ]; then
