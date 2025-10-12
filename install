@@ -10,10 +10,10 @@ set -Eeuo pipefail
 clear # Nettoyer le terminal
 # Fonctions d'affichage
 warn() {
-    echo -e "${ROUGE}$1${NC}"
+    echo -e "\033[0;31m$1\033[0m"
 }
 info() {
-    echo -e "${CYAN}$1${NC}"
+    echo -e "\033[0;36m$1\033[0m"
 }
 # Vérifie et installe les dépendances manquantes
 ensure_dependencies() {
@@ -82,19 +82,6 @@ ensure_dependencies() {
     export NEED_RESTART
     return 0
 }
-# Détecte la branche git à utiliser
-get_git_branch() {
-    local repo_url="$1"
-    local branch
-    branch=$(git ls-remote --heads "$repo_url" main | awk '{print $2}' | sed 's|refs/heads/||')
-    if [ -z "$branch" ]; then
-        branch=$(git ls-remote --heads "$repo_url" master | awk '{print $2}' | sed 's|refs/heads/||')
-    fi
-    if [ -z "$branch" ]; then
-        branch="dev" # Valeur par défaut si ni main ni master n'existentt
-    fi
-    printf '%s' "${branch:-unknown}"
-}
 # Détection de la distribution
 if source /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
@@ -159,17 +146,12 @@ if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     sleep 5
     exec "$0" "$@"
 fi
-# Définition des variables Globales
-ROUGE='\033[0;31m' # Red
-CYAN='\033[0;36m' # Cyan
-NC='\033[0m' # No Color
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du script
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
-ERRORFILE="${REP_SCRIPT}/install_error.log"
 DEPENDENCIES="curl jq openssl sudo dialog git shadow"
 GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
 BRANCHE="dev" # Branche git à utiliser
-export ROUGE CYAN NC ORIG_USER ERRORFILE REP_SCRIPT GIT BRANCHE
+export ORIG_USER REP_SCRIPT GIT BRANCHE
 # Gestion du dépôt glpi_install
 if [ -d "${REP_SCRIPT}/glpi_install/.git" ]; then
     cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}"&& cd ..
