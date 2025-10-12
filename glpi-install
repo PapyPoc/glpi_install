@@ -26,7 +26,7 @@ else
     fi
 fi
 if declare -F ensure_dependencies >/dev/null 2>&1; then
-    if ! ensure_dependencies; then
+    if ensure_dependencies; then
         echo "Failed to ensure dependencies" >> "${ERRORFILE}"
         exit 1
     fi
