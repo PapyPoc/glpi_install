@@ -15,6 +15,7 @@ NC='\033[0m' # No Color
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du script
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
 ERRORFILE="${REP_SCRIPT}/install_error.log"
+DEPENDENCIES="curl jq openssl sudo dialog git"
 export ROUGE CYAN NC ORIG_USER ERRORFILE REP_SCRIPT
 # Fonctions d'affichage
 warn() {
@@ -26,7 +27,9 @@ info() {
 # Vérifie et installe les dépendances manquantes
 ensure_dependencies() {
     local missing=()
-    for cmd in curl jq openssl find sudo dialog; do
+    local NEED_RESTART=0
+    local -n _check_cmds=$1
+    for cmd in "${_check_cmds[@]:-${DEPENDENCIES}}"; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing+=("$cmd")
         fi
@@ -55,6 +58,7 @@ ensure_dependencies() {
     elif command -v zypper >/dev/null 2>&1; then
         pkgmgr="zypper"
         install_cmd="zypper install -y ${pkgs}"
+        elif command -v usermod -aG  >/dev/null 2>&1; then
     else
         warn "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
         return 1
@@ -66,13 +70,14 @@ ensure_dependencies() {
         return 1
     fi
     local still_missing=()
-    for cmd in curl jq openssl find sudo dialog; do
+    for cmd in "${_check_cmds[@]:-${DEPENDENCIES}}"; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             still_missing+=("$cmd")
         fi
     done
     if [ ${#still_missing[@]} -gt 0 ]; then
         warn "Commandes toujours manquantes après l'installation : ${still_missing[*]}"
+        sleep 5
         return 1
     fi
     export NEED_RESTART=1
@@ -102,22 +107,25 @@ esac
 # Vérification des droits root
 if [ "$EUID" -ne 0 ]; then
     if id -nG "$ORIG_USER" 2>/dev/null | grep -Eqw "sudo|wheel"; then
-        exec sudo -- "$0" "$@"
+        exec "${ADMIN_GROUP}" -- "$0" "$@"
     else
         warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
-        warn "Veuillez rajouter ${ORIG_USER} au groupe ${ADMIN_GROUP} ou exécuter ce script en tant que root."
+        usermod -aG sudo "$ORIG_USER" || true
+        warn "Ajout de ${ORIG_USER} au groupe sudo. Veuillez vous reconnectter et relancer le script."
         exit 1
     fi
 fi
 # Vérification et installation des dépendances
-if ensure_dependencies; then
+if ensure_dependencies "curl jq openssl sudo dialog"; then
     info "Toutes les dépendances sont satisfaites."
+    sleep 5
 else
     warn "Échec de la vérification ou installation des dépendances."
     exit 1
 fi
 if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     info "Dépendances installées. Redémarrage du script..."
+    sleep 5
     exec "$0" "$@"
 fi
 # Gestion du dépôt glpi_install
