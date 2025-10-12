@@ -8,3 +8,145 @@
 #
 set -Eeuo pipefail
 clear # Nettoyer le terminal
+# Affichage d'alerte
+function warn(){
+    local msg="$1"
+    export_display_env
+    local expanded
+    if command -v envsubst >/dev/null 2>&1; then
+        expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
+    else
+        expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
+    fi
+    echo -e "${ROUGE}${expanded}${NC}" # Couleur rouge
+}
+# Affichage d'information
+function info(){
+    local msg="$1"
+    export_display_env
+    local expanded
+    if command -v envsubst >/dev/null 2>&1; then
+        expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
+    else
+        expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
+    fi
+    echo -e "${CYAN}${expanded}${NC}" # Couleur cyan
+}
+# S'assurer que les commandes requises sont présentes ; les installer si elles manquent.
+ensure_dependencies() {
+    NEED_RESTART=0
+    local missing=()
+    for cmd in curl jq openssl find sudo dialog; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            missing+=("$cmd")
+        fi
+    done
+    if [ ${#missing[@]} -eq 0 ]; then
+        return 1
+    fi
+    echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..." >>  "${ERRORFILE}"
+    # détecter le gestionnaire de paquets et construire la commande d'installation
+    local pkgmgr install_cmd pkgs
+    pkgs="${missing[*]}"
+    # Détecter le gestionnaire de paquets et construire la commande d'installation
+    if command -v apt-get >/dev/null 2>&1; then
+        pkgmgr=apt-get
+        # Debian / Ubuntu
+        install_cmd="apt-get update -qq && apt-get install -y -qq ${pkgs}"
+    elif command -v dnf >/dev/null 2>&1; then
+        pkgmgr=dnf
+        # RedHat / Fedora
+        install_cmd="dnf install -y -q ${pkgs}"
+    elif command -v yum >/dev/null 2>&1; then
+        pkgmgr=yum
+        # RedHat / CentOS
+        install_cmd="yum install -y -q ${pkgs}"
+    elif command -v apk >/dev/null 2>&1; then
+        pkgmgr=apk
+        # Alpine Linux
+        install_cmd="apk add --no-cache ${pkgs}"
+    elif command -v pacman >/dev/null 2>&1; then
+        pkgmgr=pacman
+        # Arch Linux
+        install_cmd="pacman -Syu --noconfirm ${pkgs}"
+    elif command -v zypper >/dev/null 2>&1; then
+        pkgmgr=zypper
+        # OpenSUSE
+        install_cmd="zypper install -y ${pkgs}"
+    else
+        echo "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}" >> "${ERRORFILE}"
+        return 1
+    fi
+    echo "Installation via ${pkgmgr} : ${pkgs}" >>  "${ERRORFILE}"
+    if ! sh -c "$install_cmd"; then
+        echo "Échec de l'installation des dépendances : ${pkgs}" >> "${ERRORFILE}"
+        return 1
+    fi
+    # vérification
+    local still_missing=()
+    for cmd in curl jq openssl; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            still_missing+=("$cmd")
+        fi
+    done
+    if [ ${#still_missing[@]} -gt 0 ]; then
+        echo "Commandes toujours manquantes après l'installation : ${still_missing[*]}" >> "${ERRORFILE}"
+        return 1
+    fi
+    NEED_RESTART=1
+    export NEED_RESTART
+    return 0
+}
+REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
+ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
+ERRORFILE="${REP_SCRIPT}/install_error.log"
+
+# shellcheck disable=SC1091
+if source /etc/os-release; then # Détection de la distribution
+    DISTRO_ID=${ID^}
+    info "Distribution détectée : $DISTRO_ID $(echo "${VERSION_ID}" | xargs)"
+else
+    warn "$MSG_DISTRO_NONOK"
+    exit 1
+fi
+case "${DISTRO_ID}" in # Choix du groupe admin
+    debian|ubuntu)
+        ADMIN_GROUP="sudo";;
+    centos|rhel|rocky|almalinux|fedora)
+        ADMIN_GROUP="wheel";;
+    *)
+        ADMIN_GROUP="sudo"
+        info "$MSG_DISTRO_UNKNOWN";
+esac
+if ! [ "$EUID" -eq 0 ]; then # Vérifie si root
+    if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
+        exec ${ADMIN_GROUP} -- "$0" "$@"
+    else
+        warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
+        exit 1
+    fi
+fi
+if declare -F ensure_dependencies >/dev/null 2>&1; then
+    if ensure_dependencies; then
+        echo "Échec de la vérification des dépendances ou de leur installation."
+        exit 1
+    fi
+    if [ "${NEED_RESTART:-0}" -eq 1 ]; then
+        # Restart top-level script that sourced this file
+        idx=$(( ${#BASH_SOURCE[@]} - 1 ))
+        top_script="${BASH_SOURCE[$idx]}"
+        if [ -n "$top_script" ] && [ "$top_script" != "$(basename "$SHELL")" ]; then
+            echo "Dépendance installée. Redémarrage de : $top_script..."
+            if [ -x "$top_script" ]; then
+                exec "$top_script"
+            else
+                exec "$SHELL" -lc "bash '$(printf '%q' "$top_script")'"
+            fi
+        else
+            echo "Dépendances installées. Veuillez relancer votre installateur."
+            return 0
+        fi
+    fi
+else
+    echo "Avertissement : 'ensure_dependencies' non disponible ; vérification automatique de l'installation ignorée."
+fi
