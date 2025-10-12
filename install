@@ -8,6 +8,12 @@
 #
 set -Eeuo pipefail
 clear # Nettoyer le terminal
+REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du script
+ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Utilisateur d'origine
+DEPENDENCIES="curl jq openssl sudo dialog git shadow" # Dépendances requises
+GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
+BRANCHE="dev" # Branche git à utiliser
+export ORIG_USER REP_SCRIPT GIT BRANCHE
 # Fonctions d'affichage
 warn() {
     echo -e "\033[0;31m$1\033[0m"
@@ -146,12 +152,6 @@ if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     sleep 5
     exec "$0" "$@"
 fi
-REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du script
-ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
-DEPENDENCIES="curl jq openssl sudo dialog git shadow"
-GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
-BRANCHE="dev" # Branche git à utiliser
-export ORIG_USER REP_SCRIPT GIT BRANCHE
 # Gestion du dépôt glpi_install
 if [ -d "${REP_SCRIPT}/glpi_install" ]; then
     cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}"&& cd ..
