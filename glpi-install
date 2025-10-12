@@ -26,7 +26,10 @@ else
     fi
 fi
 if declare -F ensure_dependencies >/dev/null 2>&1; then
-    ensure_dependencies || { echo "Failed to ensure dependencies" >> "${ERRORS_LOG}"; return 1; }
+    if ! ensure_dependencies; then
+        echo "Failed to ensure dependencies" >> "${ERRORS_LOG}"
+        exit 1
+    fi
     if [ "${NEED_RESTART:-0}" -eq 1 ]; then
         # Restart top-level script that sourced this file
         idx=$(( ${#BASH_SOURCE[@]} - 1 ))
@@ -77,11 +80,22 @@ if ! id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
     fi
 fi
 check_distro # Regarde si la distribution est conforme
+if ! check_distro; then
+    echo "Distribution check failed" >> "${ERRORS_LOG}"
+    exit 1
+fi
 echo "dddd"
 prompt_install_options # Demande les options d'installation
+if ! prompt_install_options; then
+    echo "Prompt install options cancelled or failed" >> "${ERRORS_LOG}"
+    exit 1
+fi
 # shellcheck disable=SC2154
 echo "${tags}" >> "${ERRORS_LOG}"
-check_install "${REP_GLPI}" # Regarde si GLPI est installé ou pas
+if ! check_install "${REP_GLPI}"; then
+    echo "Check install failed or user aborted" >> "${ERRORS_LOG}"
+    exit 1
+fi
 display_result # Affiche le résultat de l'installation
 chmod 600 "${FICHIER_MSG}"
 chown root:root "${FICHIER_MSG}"

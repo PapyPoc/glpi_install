@@ -9,8 +9,7 @@ set -Eeuo pipefail
 # Ne pas continuer si le script est exécuté directement
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo -e "Ce fichier doit être sourcé, pas exécuté.\n">> "${ERRORFILE}"
-    echo -e "This file must be sourced, not executed.\n">> "${ERRORFILE}"
-    exit 1
+    return 1
 fi
 # Affichage d'alerte
 function warn(){
@@ -204,16 +203,16 @@ function check_distro(){
                             ;;
                         N|n)
                             info "$MSG_EXITING"
-                            exit 1
+                            return 1
                             ;;
                         *)
                             warn "$MSG_INVALID_ANSWER"
-                            exit 1
+                            return 1
                             ;;
                     esac
                 else
                     warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO"
-                    exit 1
+                    return 1
                 fi
             fi
             DISTRO_ID=${ID}
@@ -221,7 +220,7 @@ function check_distro(){
         fi
     else
         warn "$MSG_DISTRO_INVALID"
-        exit 1
+        return 1
     fi
 }
 # Chargement du fichier de langue
@@ -303,7 +302,7 @@ function prompt_install_options(){
             REP_GLPI="${installed_dir}"
         else
             dialog --title "${MSG_INFO}" --msgbox "Erreur : le fichier '$installed_dir' ne semble pas appartenir à GLPI." 7 60
-            exit 1
+            return 1
         fi
     fi
     # Récupérer les tags des versions disponibles
@@ -321,12 +320,12 @@ function prompt_install_options(){
         fi
         if [ -z "$tags" ]; then
             dialog --title "${MSG_INFO}" --msgbox "Aucune version plus récente que la version installée ($installed_version) n'est disponible." 7 60
-            exit 1
+            return 1
         fi
     else
-        dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
-        warn "${MSG_GITHUB_VERSIONS_FAILED}"
-        exit 1
+    dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
+    warn "${MSG_GITHUB_VERSIONS_FAILED}"
+    return 1
     fi
     echo "${tags}" >> "${ERRORFILE}"
     # Construire les arguments de la liste radio
@@ -341,8 +340,8 @@ function prompt_install_options(){
     local rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
-        warn "Sélection de la version annulée."
-        exit 1
+    warn "Sélection de la version annulée."
+    return 1
     fi
     # Demander le répertoire d'installation, le nom de la base et l'utilisateur BDD
     exec 3>&1
@@ -367,8 +366,8 @@ function prompt_install_options(){
     rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
-        warn "Formulaire annulé."
-        exit 1
+    warn "Formulaire annulé."
+    return 1
     fi
     # Analyser la sortie du formulaire (lignes)
     IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form" || true
@@ -425,46 +424,46 @@ function compatible() {
 # Vérifie si GLPI est installé ou pas
 function check_install(){
     # Vérifie si le répertoire existe
-    FIND_REP_GLPI=$(find /var/www -type d -name "glpi" -print -quit)
-    if [ -d "$1" ] || [ -d "$FIND_REP_GLPI" ]; then
-        if [ "${REP_GLPI}" == "${FIND_REP_GLPI}" ]; then
-            dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_EXISTE}\n\nGLPI ${VERSION_SELECT}" 10 50
-            exit 1;
+        FIND_REP_GLPI=$(find /var/www -type d -name "glpi" -print -quit)
+        if [ -d "$1" ] || [ -d "$FIND_REP_GLPI" ]; then
+            if [ "${REP_GLPI}" == "${FIND_REP_GLPI}" ]; then
+                dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_EXISTE}\n\nGLPI ${VERSION_SELECT}" 10 50
+                    return 1;
+            else
+                warn "$MSG_REP_EXISTE"
+                dialog --title "GLPI" --yesno "${MSG_REP_EXISTE_QUESTION}" 10 50
+                REP_EXISTE=$?
+                case $REP_EXISTE in
+                    0)
+                        info "$MSG_CONTINUING"
+                        #update
+                        ;;
+                    1)
+                        dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_EXITING}" 10 50
+                        return 1
+                        ;;
+                    255)
+                        dialog --title "GLPI" --sleep 5 --infobox "\n\n$MSG_ERROR_EXIT" 10 50
+                        return 1
+                        ;;
+                esac
+            fi
         else
-            warn "$MSG_REP_EXISTE"
-            dialog --title "GLPI" --yesno "${MSG_REP_EXISTE_QUESTION}" 10 50
-            REP_EXISTE=$?
-            case $REP_EXISTE in
-                0)
-                    info "$MSG_CONTINUING"
-                    #update
-                    ;;
-                1)
-                    dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_EXITING}" 10 50
-                    exit 1
-                    ;;
-                255)
-                    dialog --title "GLPI" --sleep 5 --infobox "\n\n$MSG_ERROR_EXIT" 10 50
-                    exit 1
-                    ;;
-            esac
-        fi
-    else
-        dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
-        glpi_install
+            dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
+            glpi_install
     fi
 }
 # Mise à jour de la distribution
 function update_distro(){
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        info "$MSG_UPGRADE_DISTRO"
-        timedatectl set-ntp true # Synchronise l'heure
-        sleep 5
-        apt-get update && apt-get upgrade -y
+           info "$MSG_UPGRADE_DISTRO"
+           timedatectl set-ntp true # Synchronise l'heure
+           sleep 5
+           apt-get update && apt-get upgrade -y
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        info "$MSG_UPGRADE_DISTRO"
-        chronyc makestep # Synchronise l'heure
-        yum update -y && yum upgrade -y
+           info "$MSG_UPGRADE_DISTRO"
+           chronyc makestep # Synchronise l'heure
+           yum update -y && yum upgrade -y
 	fi
 }
 # Adresse IP de la machine
@@ -481,64 +480,64 @@ function install_packages(){
         info "$MSG_INSTALL_EXT_PHP"
         if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
             warn "$MSG_PHP_EXT_FAILED"
-            exit 1
+            return 1
         fi
         info "$MSG_INSTALL_SERVICE"
         if ! apt-get install -y --no-install-recommends wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php; then
             warn "$MSG_LAMP_FAILED"
-            exit 1
+            return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
         if ! systemctl enable mariadb; then
             echo "Échec de l'activation de MariaDB."
-            exit 1
+            return 1
         fi
         if ! systemctl restart mariadb; then
             echo "Échec du redémarrage de MariaDB."
-            exit 1
+            return 1
         fi
         info "$MSG_ACTIVE_START_WEB"
         if ! systemctl enable apache2; then
             echo "Échec de l'activation d'Apache2."
-            exit 1
+            return 1
         fi
         if ! systemctl restart apache2; then
             echo "Échec du redémarrage d'Apache2."
-            exit 1
+            return 1
         fi
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
         sleep 1
         if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm; then
             warn "$MSG_EPEL_FAILED"
-            exit 1
+            return 1
         fi
         if ! dnf module reset -y php nginx mariadb composer; then
             warn "$MSG_MODULES_RESET_FAILED"
-            exit 1
+            return 1
         fi
         if ! dnf module install -y php:8.2; then
             warn "$MSG_PHP_INSTALL_FAILED"
-            exit 1
+            return 1
         fi
         if ! dnf module install -y nginx:1.24; then
             warn "$MSG_NGINX_INSTALL_FAILED"
-            exit 1
+            return 1
         fi
         if ! dnf module install -y mariadb:10.11; then
             warn "$MSG_MARIADB_INSTALL_FAILED"
-            exit 1
+            return 1
         fi
         info "$MSG_AUTO_UPDATES"
         if ! dnf install dnf-automatic -y; then
             warn "$MSG_DNF_AUTO_FAILED"
-            exit 1
+            return 1
         fi
         sed -i 's/^\(;\?\)\(apply_updates =\).*/\2 yes/' /etc/dnf/automatic.conf
         sed -i 's/^\(;\?\)\(reboot =\).*/\2 when-needed/' /etc/dnf/automatic.conf
         sed -i 's/^\(;\?\)\(upgrade_type =\).*/\2 security/' /etc/dnf/automatic.conf
         if ! mkdir /etc/systemd/system/dnf-automatic.timer.d 2>/dev/null; then
             warn "$MSG_DNF_AUTO_DIR_FAILED"
-            exit 1
+            return 1
         fi
         tee /etc/systemd/system/dnf-automatic.timer.d/override.conf > /dev/null << 'EOF'
 [Unit]
@@ -553,28 +552,28 @@ Persistent=true
 EOF
         if ! systemctl enable --now dnf-automatic.timer; then
             warn "$MSG_DNF_AUTO_ACTIVATE_FAILED"
-            exit 1
+            return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
         if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
             warn "$MSG_PHP_EXT_FAILED"
-            exit 1
+            return 1
         fi
         info "$MSG_INSTALL_SERVICE lamp..."
         if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release; then
             warn "$MSG_LAMP_FAILED"
-            exit 1
+            return 1
         fi
         sed -i 's/^\(;\?\)\(user =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         sed -i 's/^\(;\?\)\(group =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         info "$MSG_ACTIVE_START_WEB MariaDB, d'ENGINE X et de PHP-FPM"
         if ! systemctl enable --now mariadb nginx php-fpm; then
             warn "$MSG_SERVICES_START_FAILED"
-            exit 1
+            return 1
         fi
         if ! firewall-cmd --permanent --zone=public --add-service=http || ! firewall-cmd --reload; then
             warn "$MSG_FIREWALL_FAILED"
-            exit 1
+            return 1
         fi
     fi }
 # Configuration de la base de données MariaDB
@@ -648,10 +647,10 @@ function install_glpi(){
     if ! wget -q -O "$tmp_file" "${DOWNLOADLINK}"; then
         warn "$MSG_DOWNLOAD_FAILED"
         rm -f "$tmp_file"
-        exit 1
+        return 1
     fi
     if [ ! -d "$REP_GLPI" ]; then
-        mkdir -p "$REP_GLPI" || { warn "$MSG_CREATE_DIR_FAILED"; rm -f "$tmp_file"; exit 1; }
+        mkdir -p "$REP_GLPI" || { warn "$MSG_CREATE_DIR_FAILED"; rm -f "$tmp_file"; return 1; }
     fi
     # Extraire l'archive dans le répertoire d'installation
     tar xzf "$tmp_file" --strip-components=1 -C "$REP_GLPI"
@@ -937,7 +936,7 @@ function backup_glpi(){
 	# Sauvergarde de la bdd
 	info "${MSG_MYSQL_DUMP}"
     PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' sauve_mdp.txt)
-    ${MYSQLDUMP_CMD} -u root -p"$PASSWORD" --databases $DB_NAME > "${REP_BACKUP}${BDD_BACKUP}"
+    ${MYSQLDUMP_CMD} -u root -p"$PASSWORD" --databases "$DB_NAME" > "${REP_BACKUP}${BDD_BACKUP}"
 	info "${MSG_DUMP_SUCCESS}"
 	# Sauvegarde des fichiers
 	info "${MSG_SITE_COPY}"
@@ -1035,6 +1034,6 @@ function update(){
     local exit_status=${PIPESTATUS[2]}
     if [ $exit_status -ne 0 ]; then
         warn "$MSG_ERROR_EXIT"
-        exit 1
+        return 1
     fi
 }
