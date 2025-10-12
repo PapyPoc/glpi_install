@@ -263,7 +263,7 @@ function prompt_install_options(){
     local args=()
     local first=ON
     while IFS= read -r tag; do
-        args+=("${tag}" "GLPI ${tag}" "${first}")
+        args+=("GLPI ${tag}" "${first}")
         first=OFF
     done <<< "${tags}"
     exec 3>&1
