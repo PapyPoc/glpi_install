@@ -83,6 +83,9 @@ ensure_dependencies() {
     export NEED_RESTART
     return 0
 }
+ROUGE='\033[0;31m' # Red
+CYAN='\033[0;36m' # Cyan
+NC='\033[0m' # No Color
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
 ERRORFILE="${REP_SCRIPT}/install_error.log"
