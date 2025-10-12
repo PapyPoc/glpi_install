@@ -297,16 +297,7 @@ function prompt_install_options(){
     local rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
-        rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
-        DB_HOST="$db_host"
-        REP_GLPI="${rep_glpi%/}/"
-        DB_NAME="$db_name"
-        DB_USER="$db_user"
         warn "Formulaire annulé."
-        echo "$REP_GLPI"
-        echo "$DB_HOST"
-        echo "$DB_NAME"
-        echo "$DB_USER"
         return 1
     fi
     # Analyser la sortie du formulaire (lignes)
