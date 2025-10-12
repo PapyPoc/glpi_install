@@ -2,34 +2,32 @@
 #
 # GLPI install script
 # Author: PapyPoc
-# Version: 1.8.0
+# Version: 1.8.1
 # Script d'installation GLPI
-# Langage pris en compte français et anglais
+# Langage pris en compte : français et anglais
 #
 set -Eeuo pipefail
 clear # Nettoyer le terminal
-REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Répertoire du script
-ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Utilisateur d'origine
-DEPENDENCIES="curl jq openssl sudo dialog git shadow" # Dépendances requises
-GIT="https://github.com/PapyPoc/glpi_install.git" # URL du dépôt git
-BRANCHE="dev" # Branche git à utiliser
+# Répertoire du script
+REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Utilisateur d'origine
+ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
+# Dépendances requises
+DEPENDENCIES="curl jq openssl sudo dialog git shadow"
+# URL du dépôt git
+GIT="https://github.com/PapyPoc/glpi_install.git"
+# Branche git à utiliser
+BRANCHE="dev"
 export ORIG_USER REP_SCRIPT GIT BRANCHE
-# Fonctions d'affichage
-warn() {
-    echo -e "\033[0;31m$1\033[0m"
-}
-info() {
-    echo -e "\033[0;36m$1\033[0m"
-}
-# Vérifie et installe les dépendances manquantes
+# --- Fonctions d'affichage ---
+warn() { echo -e "\033[0;31m[ERREUR]\033[0m $1"; }
+info() { echo -e "\033[0;36m[INFO]\033[0m $1"; }
+# --- Vérifie et installe les dépendances manquantes ---
 ensure_dependencies() {
-    # Indique si une ré-exécution du script est nécessaire après installation
     NEED_RESTART=0
     local missing=()
-    # Accepte soit une chaîne d'éléments séparés par des espaces, soit rien pour utiliser ${DEPENDENCIES}
     local -a check_cmds
     if [ $# -ge 1 ] && [ -n "$1" ]; then
-        # split the provided string into an array
         read -r -a check_cmds <<< "$1"
     else
         read -r -a check_cmds <<< "$DEPENDENCIES"
@@ -88,7 +86,7 @@ ensure_dependencies() {
     export NEED_RESTART
     return 0
 }
-# Détection de la distribution
+# --- Détection de la distribution ---
 if source /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
     info "Distribution détectée : ${DISTRO_ID^} $(echo "${VERSION_ID}" | xargs)"
@@ -96,7 +94,7 @@ else
     warn "Distribution non détectée ou non prise en charge."
     exit 1
 fi
-# Détermination du groupe administrateur
+# --- Détermination du groupe administrateur ---
 case "${DISTRO_ID}" in
     debian|ubuntu)
         ADMIN_GROUP="sudo"
@@ -109,67 +107,56 @@ case "${DISTRO_ID}" in
         info "Distribution non reconnue. Utilisation de '${ADMIN_GROUP}' par défaut."
         ;;
 esac
-# Vérification des droits root
+# Vérification des droits root ---
 if [ "$EUID" -ne 0 ]; then
     if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then
         info "Relance du script avec les droits administrateur..."
         sleep 2
         info "Utilisation de l'utilisateur ${ORIG_USER} avec les droits ${ADMIN_GROUP}."
-        if command -v "${ADMIN_GROUP}" >/dev/null 2>&1; then
-            exec "${ADMIN_GROUP}" -E "$0" "$@"
-        else
-            warn "Aucune commande disponible pour élever les privilèges (sudo/su)."
-            goto finish
-        fi
+        exec sudo -E bash "$0" "$@"
     else
         warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
         if command -v usermod >/dev/null 2>&1; then
             usermod -aG "$ADMIN_GROUP" "${ORIG_USER}" || true
         elif command -v adduser >/dev/null 2>&1; then
-            # Cas Alpine ou BusyBox
-            adduser "$ORIG_USER" "${ADMIN_GROUP}" || true
+            adduser "$ORIG_USER" "$ADMIN_GROUP" || true
         else
-            warn "Impossible d'ajouter ${ORIG_USER} au groupe ${ADMIN_GROUP} : aucune commande compatible trouvée."
-            sleep 5
-            goto finish
+            warn "Impossible d'ajouter ${ORIG_USER} au groupe ${ADMIN_GROUP}."
+            exit 1
         fi
         warn "Ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}. Veuillez vous reconnecter et relancer le script."
-        sleep 5
-        goto finish
+        exit 0
     fi
 fi
-# Vérification et installation des dépendances
-if ensure_dependencies "curl jq openssl git sudo dialog shellcheck"; then # Ajout de shellcheck
+# --- Vérification et installation des dépendances ---
+if ensure_dependencies "curl jq openssl git sudo dialog shellcheck"; then
     info "Toutes les dépendances sont satisfaites."
-    sleep 5
+    sleep 2
 else
     warn "Échec de la vérification ou installation des dépendances."
-    sleep 5
-    goto finish
+    exit 1
 fi
 if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     info "Dépendances installées. Redémarrage du script..."
-    sleep 5
+    sleep 3
     exec "$0" "$@"
 fi
-# Gestion du dépôt glpi_install
+# --- Gestion du dépôt glpi_install ---
 if [ -d "${REP_SCRIPT}/glpi_install" ]; then
-    cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}"&& cd ..
+    cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}" && cd ..
 else
     git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install" || {
         warn "Échec du clonage du dépôt git ${GIT}."
-        goto finish
+        exit 1
     }
 fi
 chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"
-# Lancer le script principal en remplaçant le processus courant
+# --- Lancer le script principal ---
 if [ -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     exec "${REP_SCRIPT}/glpi_install/glpi-install" "$@"
 else
     warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' n'est pas exécutable ou introuvable."
-    goto finish
+    exit 1
 fi
-end install script
-finish:
+# --- Fin du script ---
 exit 0
-# Fin du script d'installation
