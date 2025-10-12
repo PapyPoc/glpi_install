@@ -298,10 +298,10 @@ function prompt_install_options(){
     exec 3>&-
     if [ $rc -ne 0 ]; then
         IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form" || true
-        echo "${rep_glpi}"
-        echo "${db_host}"
-        echo "${db_name}"
-        echo "${db_user}"
+        info "Rep: ${rep_glpi}"
+        info "db_host: ${db_host}"
+        info "db_name: ${db_name}"
+        info "db_user: ${db_user}"
         warn "Formulaire annulé."
         return 1
     fi
