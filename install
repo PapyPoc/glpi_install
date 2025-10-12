@@ -58,7 +58,6 @@ ensure_dependencies() {
     elif command -v zypper >/dev/null 2>&1; then
         pkgmgr="zypper"
         install_cmd="zypper install -y ${pkgs}"
-        elif command -v usermod -aG  >/dev/null 2>&1; then
     else
         warn "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
         return 1
@@ -110,8 +109,8 @@ if [ "$EUID" -ne 0 ]; then
         exec "${ADMIN_GROUP}" -- "$0" "$@"
     else
         warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
-        usermod -aG sudo "$ORIG_USER" || true
-        warn "Ajout de ${ORIG_USER} au groupe sudo. Veuillez vous reconnectter et relancer le script."
+        usermod -aG "${ADMIN_GROUP}" "$ORIG_USER" || true
+        warn "Ajout de ${ORIG_USER} au groupe ${ADMIN_GROUP}. Veuillez vous reconnectter et relancer le script."
         exit 1
     fi
 fi
