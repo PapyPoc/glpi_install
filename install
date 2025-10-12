@@ -3,7 +3,7 @@
 # GLPI install script
 # Author: PapyPoc
 # Version: 1.8.0
-# Main file
+# Script d'installation GLPI
 # Langage pris en compte français et anglais
 #
 set -Eeuo pipefail
@@ -150,3 +150,12 @@ if declare -F ensure_dependencies >/dev/null 2>&1; then
 else
     echo "Avertissement : 'ensure_dependencies' non disponible ; vérification automatique de l'installation ignorée."
 fi
+if [ -d glpi_install ]; then
+    cd glpi_install
+    git pull origin dev
+    cd ..
+else
+    git clone https://github.com/PapyPoc/glpi_install.git -b dev
+fi
+chmod +x "$REP_SCRIPT/glpi_install/glpi-install"
+source "$REP_SCRIPT/glpi_install/glpi-install"
