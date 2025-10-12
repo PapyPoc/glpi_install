@@ -97,7 +97,7 @@ if source /etc/os-release; then # Détection de la distribution
     DISTRO_ID=${ID^}
     info "Distribution détectée : $DISTRO_ID $(echo "${VERSION_ID}" | xargs)"
 else
-    warn "$MSG_DISTRO_NONOK"
+    warn "Distribution non prise en charge ou non détectée."
     exit 1
 fi
 case "${DISTRO_ID}" in # Choix du groupe admin
@@ -107,13 +107,13 @@ case "${DISTRO_ID}" in # Choix du groupe admin
         ADMIN_GROUP="wheel";;
     *)
         ADMIN_GROUP="sudo"
-        info "$MSG_DISTRO_UNKNOWN";
+        info "Distribution non prise en charge ou non détectée. Utilisation de '${ADMIN_GROUP}' comme groupe admin par défaut.";;
 esac
 if ! [ "$EUID" -eq 0 ]; then # Vérifie si root
     if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
         exec ${ADMIN_GROUP} -- "$0" "$@"
     else
-        warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP})."
+        warn "L'utilisateur ${ORIG_USER} n'a pas les droits administrateur (${ADMIN_GROUP}).\nVeuillez rajouter ${ORIG_USER} au groupe ${ADMIN_GROUP} ou exécuter ce script en tant que root.\n"
         exit 1
     fi
 fi
