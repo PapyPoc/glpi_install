@@ -250,7 +250,6 @@ function prompt_install_options(){
     # Construire les arguments de la liste radio
     local args=()
     local first=ON
-    local tag
     while IFS= read -r tag; do
         args+=("$tag" "GLPI $tag" "$first")
         first=OFF
@@ -279,10 +278,10 @@ function prompt_install_options(){
     --backtitle "$MSG_TITRE" \
     --title "${MSG_PARAM_TITLE}" \
     --form "\nVersion sélectionnée : ${VERSION_SELECT}\n\nSaisissez les paramètres :" 20 70 10 \
-    "${MSG_PARAM_REP}"       1 ${PAD_MSG_PARAM_REP} "${REP_GLPI:-/var/www/html/glpi/}" 1 40 40 0 \
-    "${MSG_PARAM_DB_HOST}"   3 ${PAD_MSG_PARAM_DB_HOST} "${DB_HOST:-localhost}"         3 40 40 0 \
-    "${MSG_PARAM_DB_NAME}"   5 ${PAD_MSG_PARAM_DB_NAME} "${DB_NAME:-glpi}"             5 40 40 0 \
-    "${MSG_PARAM_DB_USER}"   7 ${PAD_MSG_PARAM_DB_USER} "${DB_USER:-glpi_user}"        7 40 40 0 \
+    "${MSG_PARAM_REP}" 1 ${PAD_MSG_PARAM_REP} WIDTH 0 "${REP_GLPI:-/var/www/html/glpi/}" 1 40 40 0 \
+    "${MSG_PARAM_DB_HOST}" 3 ${PAD_MSG_PARAM_DB_HOST} WIDTH 0 "${DB_HOST:-localhost}"         3 40 40 0 \
+    "${MSG_PARAM_DB_NAME}" 5 ${PAD_MSG_PARAM_DB_NAME} WIDTH 0 "${DB_NAME:-glpi}"             5 40 40 0 \
+    "${MSG_PARAM_DB_USER}" 7 ${PAD_MSG_PARAM_DB_USER} WIDTH 0 "${DB_USER:-glpi_user}"        7 40 40 0 \
     3>&1 1>&2 2>&3)
     rc=$?
     exec 3>&-
@@ -336,24 +335,7 @@ function prompt_install_options(){
     DB_NAME="$db_name"
     DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
-    export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK
-}
-# Afficher le résultat final
-function display_result() {
-	if [[ -f "$FICHIER_MSG" ]]; then
-        MESSAGE=""
-        while IFS= read -r ligne; do
-            MESSAGE+="${ligne}\n"
-        done < "$FICHIER_MSG"
-        dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_OK" --msgbox "$MESSAGE" 0 0
-    else
-        MESSAGE=""
-        while IFS= read -r ligne; do
-            MESSAGE+="${ligne}\n"
-        done < "$ERRORFILE"
-        dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_NONOK" --msgbox "$MSG_NONOK\n\n$MESSAGE" 0 0
-        warn "$MSG_ERROR_FICHIER_MSG"
-    fi
+    export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK tags
 }
 # Chargement du fichier de langue
 function load_language() {
@@ -877,6 +859,22 @@ function maj_user_glpi(){
     "; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
+    fi
+}
+# Afficher le résultat final
+function display_result() {
+    MESSAGE=""
+	if [[ -f "$FICHIER_MSG" ]]; then
+        while IFS= read -r ligne; do
+            MESSAGE+="${ligne}\n"
+        done < "$FICHIER_MSG"
+        dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_OK" --msgbox "$MESSAGE" 0 0
+    else
+        while IFS= read -r ligne; do
+            MESSAGE+="${ligne}\n"
+        done < "$ERRORFILE"
+        dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_NONOK" --msgbox "$MSG_NONOK\n\n$MESSAGE" 0 0
+        warn "$MSG_ERROR_FICHIER_MSG"
     fi
 }
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
