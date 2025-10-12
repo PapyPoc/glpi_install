@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#
+# GLPI install script
+# Author: PapyPoc
+# Version: 1.8.0
+# Main file
+# Langage pris en compte français et anglais
+#
+set -Eeuo pipefail
+clear # Nettoyer le terminal
