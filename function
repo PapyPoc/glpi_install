@@ -351,15 +351,18 @@ function prompt_install_options(){
     local PAD_MSG_PARAM_DB_HOST=$((WIDTH - "${#MSG_PARAM_DB_HOST}" + 2))
     local PAD_MSG_PARAM_DB_NAME=$((WIDTH - "${#MSG_PARAM_DB_NAME}" + 2))
     local PAD_MSG_PARAM_DB_USER=$((WIDTH - "${#MSG_PARAM_DB_USER}" + 2))
-    form=$(dialog --clear \
+    form=$(dialog \
+    --clear \
     --backtitle "$MSG_TITRE" \
     --title "${MSG_PARAM_TITLE}" \
-    --form "\nVersion sélectionnée : GLPI ${VERSION_SELECT}\n\nSaisissez les paramètres :" 19 75 10 \
-    "${MSG_PARAM_REP}" 1 ${PAD_MSG_PARAM_REP} 1 35 0 0 "${REP_GLPI:-/var/www/html/glpi/}" \
-    "${MSG_PARAM_DB_HOST}" 3 ${PAD_MSG_PARAM_DB_HOST} 3 35 0 0 "${DB_HOST:-localhost}" \
-    "${MSG_PARAM_DB_NAME}" 5 ${PAD_MSG_PARAM_DB_NAME} 5 35 0 0 "${DB_NAME:-glpi}" \
-    "${MSG_PARAM_DB_USER}" 7 ${PAD_MSG_PARAM_DB_USER} 7 35 0 0 "${DB_USER:-glpi_user}" 3>&1 1>&2 2>&3 )
-    rc=$?
+    --form "\nVersion sélectionnée : GLPI ${VERSION_SELECT}\n\nSaisissez les paramètres :" \
+    19 75 10 \
+    "${MSG_PARAM_REP}"       1 ${PAD_MSG_PARAM_REP}     1 35 40 0 "${REP_GLPI:-/var/www/html/glpi/}" \
+    "${MSG_PARAM_DB_HOST}"   3 ${PAD_MSG_PARAM_DB_HOST}  3 35 40 0 "${DB_HOST:-localhost}" \
+    "${MSG_PARAM_DB_NAME}"   5 ${PAD_MSG_PARAM_DB_NAME}  5 35 40 0 "${DB_NAME:-glpi}" \
+    "${MSG_PARAM_DB_USER}"   7 ${PAD_MSG_PARAM_DB_USER}  7 35 40 0 "${DB_USER:-glpi_user}" \
+    3>&1 1>&2 2>&3 )
+    local rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
         warn "Formulaire annulé."
