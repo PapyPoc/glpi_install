@@ -211,7 +211,7 @@ function glpi_install() {
 }
 # Demander à l'utilisateur de choisir la version de GLPI (4 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
-    locale tags
+    local tags
     local installed_version=""
     local installed_dir=""
     # Tenter de détecter le répertoire d'installation de GLPI en recherchant 'console'
