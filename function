@@ -243,7 +243,7 @@ function load_language() {
             line="${line%%$'\r'}"
             # skip empty lines and comments
             # supprimer les espaces de tête
-            trimmed="${line#${line%%[![:space:]]*}}"
+            trimmed="${line#"${line%%[![:space:]]*}"}"
             if [ -z "$trimmed" ]; then
                 continue
             fi
@@ -258,8 +258,8 @@ function load_language() {
                 local key="${BASH_REMATCH[1]}"
                 local value="${BASH_REMATCH[2]}"
                 # trim leading/trailing whitespace from value
-                value="${value#${value%%[![:space:]]*}}"
-                value="${value%${value##*[![:space:]]}}"
+                value="${value#"${value%%[![:space:]]*}"}"
+                value="${value%"${value##*[![:space:]]}"}"
                 # remove surrounding single or double quotes if present
                 if [[ $value =~ ^\'(.*)\'$ ]]; then
                     value="${BASH_REMATCH[1]}"
@@ -308,7 +308,7 @@ function prompt_install_options(){
     # Récupérer les tags des versions disponibles
     api_url="https://api.github.com/repos/glpi-project/glpi/tags"
     tags=$(curl -s "${api_url}" | jq -r '.[] | .name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
-    if [ ! -z "${tags}" ]; then
+    if [ -n "${tags}" ]; then
         # Si installed_version est définie, supprimer les versions inférieures ou égales de la liste
         if [ -n "${installed_version}" ]; then
             # Garde uniquement les versions supérieures à celle installée
@@ -960,8 +960,7 @@ function backup_glpi(){
         mkdir -p "${REP_BACKUP}/compress"
     fi
     # Créer l'archive compressée
-    tar -czf "${REP_BACKUP}/compress/backup_glpi_$(date +"%d-%m-%Y_%H-%M-%S").tar.gz" -C "${REP_BACKUP}" .
-    if [ $? -eq 0 ]; then
+    if tar -czf "${REP_BACKUP}/compress/backup_glpi_$(date +"%d-%m-%Y_%H-%M-%S").tar.gz" -C "${REP_BACKUP}" . ; then
         info "${MSG_COMPRESS_BACKUP_OK}"
         # Supprimer le répertoire de l'ancien site GLPI
         info "$MSG_REMOVE_OLD_GLPI_DIR"
@@ -1029,7 +1028,7 @@ function update(){
         sleep 1
     done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
     local exit_status=${PIPESTATUS[2]}
-    if [ $exit_status -ne 0 ]; then
+    if [ "$exit_status" -ne 0 ]; then
         warn "$MSG_ERROR_EXIT"
         return 1
     fi
