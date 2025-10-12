@@ -49,8 +49,7 @@ if declare -F ensure_dependencies >/dev/null 2>&1; then
 else
     echo "Warning: ensure_dependencies not available; skipping automatic install check." >> "${ERRORFILE}"
 fi
-if [ -f /etc/os-release ]; then # Détection de la distribution
-    . /etc/os-release
+if ./etc/os-release; then # Détection de la distribution
     DISTRO_ID=${ID}
     info "$MSG_DISTRO_DETECTED $DISTRO_ID ${VERSION_ID}"
 else
