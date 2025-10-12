@@ -17,7 +17,7 @@ export_display_env() {
     # Exporter un ensemble complet de variables (majuscules)
     # pouvant être référencées comme espaces réservés dans les fichiers de langue.
     # Les valeurs par défaut sont vides si elles ne sont pas définies.
-    local vars=(
+    local vars_maj=(
         ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID ID NAME PRETTY_NAME MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
         ERRORFILE LOGFILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS INTERFACE DOWNLOADLINK
         DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
@@ -25,8 +25,16 @@ export_display_env() {
         DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
         NEW_VERSION
     )
+    local vars_min=(
+        orig_user admin_group distro_id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
+        errorfile logfile task_index task_key language timezone ipadress interface downloadlink
+        db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd
+        rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output glpi_cli_version phpversion
+        debian_versions ubuntu_versions alma_versions centos_versions rocky_versions redhat_versions msg_upgrade_distro
+        new_version
+    )
     local v _val
-    for v in "${vars[@]}"; do
+    for v in "${vars_maj[@]}" "${vars_min[0]}"; do
         _val="${!v:-}"
         export "$v"="$_val"
     done
@@ -176,6 +184,109 @@ function glpi_install() {
         sleep 1
     done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
 }
+# Vérifie si la distribution est prise en compte pour l'installation de GLPI
+function check_distro(){
+    # Vérifie si le fichier os-release existe
+    if [ -f /etc/os-release ]; then
+    # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
+        if [[ "${ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
+            if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
+                info "$MSG_DISTRO_OK"
+            else
+                warn "$MSG_DISTRO_NONOK"
+                warn "$MSG_FORCE_DISTRO"
+                if [ -t 0 ]; then
+                    info "$MSG_FORCE_DISTRO_QUESTION"
+                    read -r RESPONSE
+                    case $RESPONSE in
+                        O|o|Y|y)
+                            info "$MSG_CONTINUING"
+                            ;;
+                        N|n)
+                            info "$MSG_EXITING"
+                            exit 1
+                            ;;
+                        *)
+                            warn "$MSG_INVALID_ANSWER"
+                            exit 1
+                            ;;
+                    esac
+                else
+                    warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO"
+                    exit 1
+                fi
+            fi
+            DISTRO_ID=${ID}
+            export DISTRO_ID
+        fi
+    else
+        warn "$MSG_DISTRO_INVALID"
+        exit 1
+    fi
+}
+# Chargement du fichier de langue
+function load_language() {
+    local syslang="${LC_ALL:-${LANG:-}}"
+    if [[ $syslang =~ ^fr ]]; then
+        LANG_FILE="$REP_SCRIPT/lang/fr.ini"
+        LANGUAGE="fr_FR"
+    else
+        LANG_FILE="$REP_SCRIPT/lang/en.ini"
+        LANGUAGE="en_US"
+    fi
+    if [[ -f $LANG_FILE ]]; then
+        # Ensure environment variables used in messages are exported for envsubst
+        export_display_env
+    # Lire le fichier ligne par ligne, gérer CRLF, commentaires, sections
+    # et valeurs entre guillemets
+        while IFS= read -r line || [ -n "$line" ]; do
+            # supprimer CR si présent (fichiers format Windows)
+            line="${line%%$'\r'}"
+            # skip empty lines and comments
+            # supprimer les espaces de tête
+            trimmed="${line#${line%%[![:space:]]*}}"
+            if [ -z "$trimmed" ]; then
+                continue
+            fi
+            case "$trimmed" in
+                "#"* | ";"*)
+                    continue
+                    ;;
+            esac
+            # ignorer les entêtes de section
+            [[ $line =~ ^[[:space:]]*\[.*\] ]] && continue
+            if [[ $line =~ ^[[:space:]]*([^=[:space:]]+)[[:space:]]*=(.*)$ ]]; then
+                local key="${BASH_REMATCH[1]}"
+                local value="${BASH_REMATCH[2]}"
+                # trim leading/trailing whitespace from value
+                value="${value#${value%%[![:space:]]*}}"
+                value="${value%${value##*[![:space:]]}}"
+                # remove surrounding single or double quotes if present
+                if [[ $value =~ ^\'(.*)\'$ ]]; then
+                    value="${BASH_REMATCH[1]}"
+                elif [[ $value =~ ^\"(.*)\"$ ]]; then
+                    value="${BASH_REMATCH[1]}"
+                fi
+                # Développer les espaces réservés dans la valeur avec envsubst
+                # (préféré) ou utiliser eval en secours
+                local expanded_value
+                if command -v envsubst >/dev/null 2>&1; then
+                    # envsubst reads from the environment, so ensure variables are exported
+                    expanded_value=$( ( set +u; printf '%s' "$value" | envsubst ) )
+                else
+                    # fallback : effectuer l'expansion de paramètres en toute sécurité
+                    # (autoriser les variables non définies)
+                    expanded_value=$( ( set +u; eval "printf '%s' \"$value\"" ) )
+                fi
+                # affecter en toute sécurité à une variable nommée par $key
+                printf -v "$key" '%s' "$expanded_value"
+            fi
+        done < "$LANG_FILE"
+        info "$MSG_LANG_LOADED ($LANGUAGE)"
+    else
+        warn "Language file not found: $LANG_FILE"
+    fi
+}
 # Demander à l'utilisateur de choisir la version de GLPI (4 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
     local tags
@@ -308,114 +419,11 @@ function prompt_install_options(){
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK tags
 }
-# Chargement du fichier de langue
-function load_language() {
-    local syslang="${LC_ALL:-${LANG:-}}"
-    if [[ $syslang =~ ^fr ]]; then
-        LANG_FILE="$REP_SCRIPT/lang/fr.ini"
-        LANGUAGE="fr_FR"
-    else
-        LANG_FILE="$REP_SCRIPT/lang/en.ini"
-        LANGUAGE="en_US"
-    fi
-    if [[ -f $LANG_FILE ]]; then
-        # Ensure environment variables used in messages are exported for envsubst
-        export_display_env
-    # Lire le fichier ligne par ligne, gérer CRLF, commentaires, sections
-    # et valeurs entre guillemets
-        while IFS= read -r line || [ -n "$line" ]; do
-            # supprimer CR si présent (fichiers format Windows)
-            line="${line%%$'\r'}"
-            # skip empty lines and comments
-            # supprimer les espaces de tête
-            trimmed="${line#${line%%[![:space:]]*}}"
-            if [ -z "$trimmed" ]; then
-                continue
-            fi
-            case "$trimmed" in
-                "#"* | ";"*)
-                    continue
-                    ;;
-            esac
-            # ignorer les entêtes de section
-            [[ $line =~ ^[[:space:]]*\[.*\] ]] && continue
-            if [[ $line =~ ^[[:space:]]*([^=[:space:]]+)[[:space:]]*=(.*)$ ]]; then
-                local key="${BASH_REMATCH[1]}"
-                local value="${BASH_REMATCH[2]}"
-                # trim leading/trailing whitespace from value
-                value="${value#${value%%[![:space:]]*}}"
-                value="${value%${value##*[![:space:]]}}"
-                # remove surrounding single or double quotes if present
-                if [[ $value =~ ^\'(.*)\'$ ]]; then
-                    value="${BASH_REMATCH[1]}"
-                elif [[ $value =~ ^\"(.*)\"$ ]]; then
-                    value="${BASH_REMATCH[1]}"
-                fi
-                # Développer les espaces réservés dans la valeur avec envsubst
-                # (préféré) ou utiliser eval en secours
-                local expanded_value
-                if command -v envsubst >/dev/null 2>&1; then
-                    # envsubst reads from the environment, so ensure variables are exported
-                    expanded_value=$( ( set +u; printf '%s' "$value" | envsubst ) )
-                else
-                    # fallback : effectuer l'expansion de paramètres en toute sécurité
-                    # (autoriser les variables non définies)
-                    expanded_value=$( ( set +u; eval "printf '%s' \"$value\"" ) )
-                fi
-                # affecter en toute sécurité à une variable nommée par $key
-                printf -v "$key" '%s' "$expanded_value"
-            fi
-        done < "$LANG_FILE"
-        info "$MSG_LANG_LOADED ($LANGUAGE)"
-    else
-        warn "Language file not found: $LANG_FILE"
-    fi
-}
 # Vérifie si la version est compatible
 function compatible() {
     local version="$1"
     local -n versions_array="$2"
     [[ ${versions_array[*]} =~ ${version} ]]
-}
-# Vérifie si la distribution est prise en compte pour l'installation de GLPI
-function check_distro(){
-    # Vérifie si le fichier os-release existe
-    if [ -f /etc/os-release ]; then
-    # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
-        if [[ "${ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
-            if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
-                info "$MSG_DISTRO_OK"
-            else
-                warn "$MSG_DISTRO_NONOK"
-                warn "$MSG_FORCE_DISTRO"
-                if [ -t 0 ]; then
-                    info "$MSG_FORCE_DISTRO_QUESTION"
-                    read -r RESPONSE
-                    case $RESPONSE in
-                        O|o|Y|y)
-                            info "$MSG_CONTINUING"
-                            ;;
-                        N|n)
-                            info "$MSG_EXITING"
-                            exit 1
-                            ;;
-                        *)
-                            warn "$MSG_INVALID_ANSWER"
-                            exit 1
-                            ;;
-                    esac
-                else
-                    warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO"
-                    exit 1
-                fi
-            fi
-            DISTRO_ID=${ID}
-            export DISTRO_ID
-        fi
-    else
-        warn "$MSG_DISTRO_INVALID"
-        exit 1
-    fi
 }
 # Vérifie si GLPI est installé ou pas
 function check_install(){
