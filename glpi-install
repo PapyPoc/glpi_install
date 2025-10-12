@@ -14,61 +14,21 @@ source "${REP_SCRIPT}/function" # Fichier de fonction
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
-ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}" # Détecte l'utilisateur réel
-if [ "$EUID" -eq 0 ]; then # Vérifie si root
-    info "$MSG_ROOT"
-else
-    if id -nG "${ORIG_USER}" 2>/dev/null | grep -Eqw "sudo|wheel"; then # Vérifie si l'utilisateur est déjà dans sudo ou wheel
-        exec sudo -- "$0" "$@"
-    else
-        warn "${MSG_USER_NOT_SUDO}"
-        exit 1
-    fi
-fi
-# shellcheck disable=SC1091
-if source /etc/os-release; then # Détection de la distribution
-    DISTRO_ID=${ID}
-    info "$MSG_DISTRO_DETECTED $DISTRO_ID ${VERSION_ID}"
-else
-    warn "$MSG_DISTRO_NONOK"
-    exit 1
-fi
-case "${DISTRO_ID}" in # Choix du groupe admin
-    debian|ubuntu)
-        ADMIN_GROUP="sudo";;
-    centos|rhel|rocky|almalinux|fedora)
-        ADMIN_GROUP="wheel";;
-    *)
-        ADMIN_GROUP="sudo"
-        info "$MSG_DISTRO_UNKNOWN";
-esac
-# Vérification de l'appartenance
-if ! id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
-    info "$MSG_ADD_USER_GROUP"
-    usermod -aG "${ADMIN_GROUP}" "${ORIG_USER}"
-    if [ $? -eq 0 ]; then
-        info "$MSG_USER_ADDED_SUCCESS"
-        info "$MSG_RECONNECT"
-    else
-        warn "$MSG_ADD_USER_FAILED"
-        exit 1
-    fi
-fi
 # Regarde si la distribution est conforme
 if ! check_distro; then
     dialog --title "Erreur" --msgbox "La vérification de la distribution a échoué." 6 50
-    echo "Distribution check failed" >> "${ERRORFILE}"
+    echo "Vérification de la distribution échouée" >> "${ERRORFILE}"
     exit 1
 fi
 # Demande les options d'installation
 if ! prompt_install_options; then
     dialog --title "Annulation" --msgbox "L'installation a été annulée par l'utilisateur." 6 50
-    echo "Prompt install options cancelled or failed" >> "${ERRORFILE}"
+    echo "Prompt des options d'installation annulé ou échoué" >> "${ERRORFILE}"
     exit 1
 fi
 if ! check_install "${REP_GLPI}"; then
     dialog --title "Erreur" --msgbox "La vérification de l'installation a échoué ou l'utilisateur a annulé." 6 60
-    echo "Check install failed or user aborted" >> "${ERRORFILE}"
+    echo "Vérification de l'installation échouée ou utilisateur a annulé" >> "${ERRORFILE}"
     exit 1
 fi
 display_result # Affiche le résultat de l'installation
