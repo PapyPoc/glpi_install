@@ -72,7 +72,7 @@ ensure_dependencies() {
         fi
     done
     if [ ${#missing[@]} -eq 0 ]; then
-        return 0
+        return 1
     fi
     echo "Dépendances manquantes : ${missing[*]}. Tentative d'installation..." >>  "${ERRORFILE}"
     # détecter le gestionnaire de paquets et construire la commande d'installation
@@ -323,9 +323,9 @@ function prompt_install_options(){
             return 1
         fi
     else
-    dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
-    warn "${MSG_GITHUB_VERSIONS_FAILED}"
-    return 1
+        dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
+        warn "${MSG_GITHUB_VERSIONS_FAILED}"
+        return 1
     fi
     echo "${tags}" >> "${ERRORFILE}"
     # Construire les arguments de la liste radio
@@ -340,8 +340,8 @@ function prompt_install_options(){
     local rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
-    warn "Sélection de la version annulée."
-    return 1
+        warn "Sélection de la version annulée."
+        return 1
     fi
     # Demander le répertoire d'installation, le nom de la base et l'utilisateur BDD
     exec 3>&1
@@ -366,8 +366,8 @@ function prompt_install_options(){
     rc=$?
     exec 3>&-
     if [ $rc -ne 0 ]; then
-    warn "Formulaire annulé."
-    return 1
+        warn "Formulaire annulé."
+        return 1
     fi
     # Analyser la sortie du formulaire (lignes)
     IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form" || true

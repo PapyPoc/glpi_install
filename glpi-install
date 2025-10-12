@@ -50,8 +50,7 @@ else
     echo "Warning: ensure_dependencies not available; skipping automatic install check." "${ERRORS_LOG}"
 fi
 if [ -f /etc/os-release ]; then # Détection de la distribution
-    # shellcheck disable=SC1091
-    source /etc/os-release
+    . /etc/os-release
     DISTRO_ID=${ID}
     info "$MSG_DISTRO_DETECTED$DISTRO_ID ${VERSION_ID}"
 else
