@@ -12,6 +12,7 @@ The installer analyzes the distribution's locale information to propose the defa
 ## Distribution and Web server
 
 >[!IMPORTANT]
+>
 >| OS | VERSION | COMPATIBILITY | WEB SERVER |
 >|:--:|:--:|:--:|:--:|
 >|Debian|11|✅|Apache|
