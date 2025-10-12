@@ -257,8 +257,8 @@ function prompt_install_options(){
         first=OFF
     done <<< "${tags}"
     exec 3>&1
-    VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" \
-    --clear --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 "${args[@]}" 3>&1 1>&2 2>&3)
+    VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" --clear \
+    --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 "${args[@]}" 3>&1 1>&2 2>&3)
     local rc=$?
     exec 3>&-
     if [ "${rc}" -ne 0 ]; then
@@ -267,9 +267,9 @@ function prompt_install_options(){
     fi
     exec 3>&1
     WIDTH=$(( ${#MSG_PARAM_DB_USER} + 1 ))
-    form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" \
+    form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
     --form "\nVersion sélectionnée : GLPI ${VERSION_SELECT}\n\n⚙️ Saisissez les paramètres :" \
-    20 80 8 \
+    18 80 8 \
     "📁 ${MSG_PARAM_REP}"     1 2 "${REP_GLPI:-/var/www/html/glpi/}" 1 ${WIDTH} 40 40 \
     "🗄️ ${MSG_PARAM_DB_HOST}" 3 2 "${DB_HOST:-localhost}"            3 ${WIDTH} 40 20 \
     "💾 ${MSG_PARAM_DB_NAME}" 5 2 "${DB_NAME:-glpi}"                 5 ${WIDTH} 40 20 \
