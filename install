@@ -92,20 +92,17 @@ ensure_dependencies() {
     export NEED_RESTART
     return 0
 }
+# Détecte la branche git à utiliser
 get_git_branch() {
-    local repo="$1"
-    local branch="unknown"
-    if git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
-        branch=$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || true)
-        if [ -z "$branch" ] || [ "$branch" = "HEAD" ]; then
-            branch=$(git -C "$repo" describe --tags --exact-match 2>/dev/null || true)
-            if [ -z "$branch" ]; then
-                branch=$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
-            fi
-        fi
+    local repo_url="$1"
+    local branch
+    branch=$(git ls-remote --heads "$repo_url" main | awk '{print $2}' | sed 's|refs/heads/||')
+    if [ -z "$branch" ]; then
+        branch=$(git ls-remote --heads "$repo_url" master | awk '{print $2}' | sed 's|refs/heads/||')
     fi
-    # Nettoyage : n'autorise que des caractères sûrs
-    branch="${branch//[^A-Za-z0-9._\\/-]/_}"
+    if [ -z "$branch" ]; then
+        branch="dev" # Valeur par défaut si ni main ni master n'existentt
+    fi
     printf '%s' "${branch:-unknown}"
 }
 
