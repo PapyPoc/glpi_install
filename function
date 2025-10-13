@@ -252,9 +252,11 @@ function prompt_install_options(){
     fi
     local args=()
     local first=ON
+    local number=1
     while IFS= read -r tag; do
-        args+=("${tag}" "GLPI ${tag}" "${first}")
+        args+=("${number}" "GLPI ${tag}" "${first}")
         first=OFF
+        number=$((number + 1))
     done <<< "${tags}"
     exec 3>&1
     VERSION_SELECT=$(dialog --aspect 5 --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" --clear \
@@ -266,6 +268,14 @@ function prompt_install_options(){
         return 1
     fi
     exec 3>&1
+    number=1
+    while IFS= read -r args; do
+        if [ "$number" -eq "$VERSION_SELECT" ]; then
+            VERSION_SELECT="${args[2]}"
+            break
+        fi
+        number=$((number + 1))
+    done <<< "${args[@]}"
     WIDTH=$(( ${#MSG_PARAM_DB_USER} + 6 ))
     form=$(dialog --aspect 12 --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
     --form "\nVersion sélectionnée : GLPI ${VERSION_SELECT}\n\n⚙️ Saisissez les paramètres :" \
@@ -313,7 +323,6 @@ function prompt_install_options(){
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK tags
 }
-
 # Vérifie si la version est compatible
 function compatible() {
     local version="$1"
