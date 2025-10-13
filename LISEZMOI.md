@@ -6,7 +6,7 @@
 
 ### Dernière version de GLPI : 11.0.1
 
-Ce script a été écrit pour installer rapidement et de façon automatique la dernière version de GLPI sur les serveurs Ubuntu, Debian, Alma Linux, Centos, Rocky Linux et Red Hat.
+Ce script a été écrit pour installer rapidement et de façon automatique la la version de GLPI que vous aurais choisie sur les serveurs Ubuntu, Debian, Alma Linux, Centos, Rocky Linux et Red Hat.
 Le programme d'installation analyse les informations de localisation de la distribution pour sélectionner la langue d'installation par défaut.
 
 ## Distribution et serveur Web
@@ -25,11 +25,17 @@ Le programme d'installation analyse les informations de localisation de la distr
 >|Rocky Linux|9.5|✅|Engine X (Nginx)|
 >|Red Hat|9.5|✅|Engine X (Nginx)|
 
-Le script fera la mise à jour du système hôte et installera le serveur Web (Apache ou Engine X), MariaDB, PHP et les dépendances, téléchargera et installera la dernière version de GLPI depuis le [Dépôt Officiel de GLPI](https://github.com/glpi-project/glpi) et configurera la base de données pour vous.
+## Installation
+
+Le script fera la mise à jour du système hôte et installera le serveur Web (Apache ou Engine X), MariaDB, PHP et les dépendances, téléchargera et installera la version de GLPI que vous aurais choisie depuis le [Dépôt Officiel de GLPI](https://github.com/glpi-project/glpi) et configurera la base de données pour vous.
 
 Une fois le script exécuté, la seule chose que vous aurez à faire sera de vous connecter à GLPI.
 
 L'installation de GLPI se fait sans SSL. Si vous avez besoin d'ouvrir l'accès à GLPI depuis l'extérieur et/ou d'un certificat SSL, je vous recommande d'utiliser un reverse proxy.
+
+## Mise à jour
+
+Pour la mise à jour il suffit de relancer le script présent sur votre machine et l'installeur vous proposera les versions vers lequelle vous pourrez mettre à jour votre serveur GLPI.
 
 ## Comptes par défaut
 
@@ -55,15 +61,7 @@ GLPI s'installe en lançant la commande suivante dans votre terminal.
 >[!IMPORTANT]
 >⚠️ Il est fortement recommandé d'exécuter ce script sur une nouvelle installation ou sur une installation faite avec ce script.
 >
->⚠️ S'assurer qu'il n'y a plus le script dans le répertoire ```/root```.
->
->⚠️ Vous devez etre connecté en compte 'root', pour ce faire taper dans la console ```su -```.
->
->⚠️ Git doit etre installé sur votre machine, pour l'installer faite :
->
->| Debian | Red Hat |
->|:--:|:--:|
->| ```apt install -y -qq git``` | ```dnf install -y -qq git``` |
+>⚠️ Vous devez etre connecté en compte 'root', pour ce faire taper dans la console ```sudo su -```.
 
 Pour les distribution Debian et Red Hat
 
