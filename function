@@ -225,9 +225,13 @@ function prompt_install_options(){
     installed_dir=$(find /var/www -type f -name 'console' -print -quit 2>/dev/null)
     if [ -n "${installed_dir}" ]; then
         if grep -qi "glpi" "$installed_dir"; then
-            installed_version=$(cat "$(dirname "$(dirname "${installed_dir}")")/version" 2>/dev/null | head -n 1)
+            # installed_dir points to bin/console — déterminer le répertoire racine de GLPI
+            local installed_root
+            installed_root=$(dirname "$(dirname "${installed_dir}")")
+            installed_version=$(sed -n '1p' "${installed_root}/version" 2>/dev/null || true)
             installed_version="${installed_version//[[:space:]]/}"
-            REP_GLPI="${installed_dir}"
+            # normaliser avec slash final
+            REP_GLPI="${installed_root%/}/"
         else
             dialog --title "${MSG_INFO}" --msgbox "Erreur : le fichier '${installed_dir}' ne semble pas appartenir à GLPI." 7 60
             return 1
@@ -263,13 +267,22 @@ function prompt_install_options(){
     exec 3>&1
     VERSION_SELECT=$(dialog --aspect 5 --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" --clear \
     --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 "${args[@]}" 3>&1 1>&2 2>&3)
-    rc=$?
+    local rc=$?
     exec 3>&-
     if [ "${rc}" -ne 0 ]; then
         warn "Sélection de la version annulée."
         return 1
     fi
-    index=$((VERSION_SELECT - 1))
+    # VERSION_SELECT retourne le tag choisi (ici nous utilisons des tags numériques mapping -> version_map)
+    if ! [[ "${VERSION_SELECT}" =~ ^[0-9]+$ ]]; then
+        warn "Valeur de version invalide retournée : ${VERSION_SELECT}"
+        return 1
+    fi
+    local index=$((VERSION_SELECT - 1))
+    if [ $index -lt 0 ] || [ $index -ge ${#version_map[@]} ]; then
+        warn "Index de version hors plage : ${index}"
+        return 1
+    fi
     VERSION_SELECT="${version_map[$index]}"
     WIDTH=$(( ${#MSG_PARAM_DB_USER} + 6 ))
     form=$(dialog --aspect 12 --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
