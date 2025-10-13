@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+#
+# GLPI install script
+api_url="https://api.github.com/repos/glpi-project/glpi/tags"
+tags=$(curl -s "${api_url}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
+if [ -n "${tags}" ]; then
+    if [ -n "${installed_version}" ]; then
+        tags=$(printf '%s\n' "${tags}" | sort -Vr | awk -v v="${installed_version}" '$0 > v' | uniq | head -n 16)
+    else
+        tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
+    fi
+    if [ -z "${tags}" ]; then
+        dialog --title "${MSG_INFO}" --msgbox "Aucune version plus récente que ${installed_version} n'est disponible." 7 60
+        return 1
+    fi
+else
+    dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
+    warn "${MSG_GITHUB_VERSIONS_FAILED}"
+    return 1
+fi
+args=()
+first=ON
+number=1
+while IFS= read -r tag; do
+    args+=("${number}" "GLPI ${tag}" "${first}")
+    first=OFF
+    number=$((number + 1))
+done <<< "${tags}"
+exec 3>&1
+VERSION_SELECT=$(dialog --aspect 5 --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" --clear \
+--radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 "${args[@]}" 3>&1 1>&2 2>&3)
+rc=$?
+exec 3>&-
+if [ "${rc}" -ne 0 ]; then
+    warn "Sélection de la version annulée."
+    return 1
+fi
+exec 3>&1
+number=1
+while IFS= read -r args; do
+    if [ "$number" -eq "$VERSION_SELECT" ]; then
+        VERSION_SELECT="${args[2]}"
+        break
+    fi
+    number=$((number + 1))
+done <<< "${args[@]}"
+echo "Version sélectionnée: ${VERSION_SELECT}"
