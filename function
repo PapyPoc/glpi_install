@@ -247,11 +247,13 @@ function prompt_install_options(){
         fi
         if [ -z "${tags}" ]; then
             dialog --title "${MSG_INFO}" --msgbox "Aucune version plus récente que ${installed_version} n'est disponible." 7 60
+            echo "DEBUG: tags after filtering is empty; installed_version='${installed_version}'" >> "${ERRORFILE}"
             return 1
         fi
     else
         dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
         warn "${MSG_GITHUB_VERSIONS_FAILED}"
+        echo "DEBUG: failed to fetch tags from GitHub API: api_url=${api_url}" >> "${ERRORFILE}"
         return 1
     fi
     local args=()
@@ -271,11 +273,13 @@ function prompt_install_options(){
     exec 3>&-
     if [ "${rc}" -ne 0 ]; then
         warn "Sélection de la version annulée."
+        echo "DEBUG: radiolist rc=${rc}" >> "${ERRORFILE}"
         return 1
     fi
     # VERSION_SELECT retourne le tag choisi (ici nous utilisons des tags numériques mapping -> version_map)
     if ! [[ "${VERSION_SELECT}" =~ ^[0-9]+$ ]]; then
         warn "Valeur de version invalide retournée : ${VERSION_SELECT}"
+        echo "DEBUG: radiolist ${VERSION_SELECT} =~ ^[0-9]+$" >> "${ERRORFILE}"
         return 1
     fi
     local index=$((VERSION_SELECT - 1))
@@ -284,6 +288,7 @@ function prompt_install_options(){
         return 1
     fi
     VERSION_SELECT="${version_map[$index]}"
+    echo "DEBUG: VERSION_SELECT=${VERSION_SELECT}" >> "${ERRORFILE}"
     WIDTH=$(( ${#MSG_PARAM_DB_USER} + 6 ))
     form=$(dialog --aspect 12 --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
     --form "\nVersion sélectionnée : GLPI ${VERSION_SELECT}\n\n⚙️ Saisissez les paramètres :" \
@@ -297,6 +302,7 @@ function prompt_install_options(){
     exec 3>&-
     if [ "${rc}" -ne 0 ]; then
         warn "Formulaire annulé."
+        echo "DEBUG: form rc=${rc}" >> "${ERRORFILE}"
         return 1
     fi
     IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form" || true
