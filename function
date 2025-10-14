@@ -405,7 +405,7 @@ function install_packages(){
         # shellcheck disable=SC1091
         . /etc/os-release || true
     fi
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering install_packages (ID=${ID:-unknown})" >> "${LOGFILE}"
+    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering install_packages (ID=${ID:-unknown})" >> "${LOGFILE}"
 
     if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
@@ -418,17 +418,17 @@ function install_packages(){
                 # continue, maybe cached; but log
             fi
         else
-            warn "apt-get not found, cannot install packages on Debian/Ubuntu branch"
+            warn "apt-get not found, cannot install packages on Debian/Ubuntu branch" >> "${ERRORFILE}"
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
         if ! sudo apt install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 2>>"${ERRORFILE}"; then
-            warn "$MSG_PHP_EXT_FAILED"
+            warn "$MSG_PHP_EXT_FAILED" >> "${ERRORFILE}"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
         if ! sudo apt install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 2>>"${ERRORFILE}"; then
-            warn "$MSG_LAMP_FAILED"
+            warn "$MSG_LAMP_FAILED" >> "${ERRORFILE}"
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
@@ -535,27 +535,21 @@ function mariadb_configure() {
     info "$MSG_BDD_CONFIG"
     # Détecter la commande MySQL/MariaDB
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
-    MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
     sleep 1
-    # Exécution sécurisée du bloc SQL
-    # Remarques:
-    # - utiliser un heredoc non indenté (EOF en colonne 1) pour éviter les problèmes de reconnaissance
-    # - ne pas utiliser de backticks `` à évaluer par le shell; DB_NAME et DB_USER sont nettoyés plus haut
-    : "${DB_NAME:=glpi}" "${DB_USER:=glpi_user}"
-    if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql --batch --silent <<EOF
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
-DELETE FROM mysql.user WHERE User='';
-DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
-DROP DATABASE IF EXISTS test;
-DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
-GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
-CREATE DATABASE IF NOT EXISTS ${DB_NAME};
-CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
-GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
-GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
-FLUSH PRIVILEGES;
-EOF
-    then
+    # Construire la commande SQL et l'exécuter avec -e (évite les problèmes d'heredoc et de quoting)
+    local _sql_root
+    _sql_root="ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';"
+    _sql_root+="\nDELETE FROM mysql.user WHERE User='';"
+    _sql_root+="\nDELETE FROM mysql.user WHERE User='root' AND Host!='localhost';"
+    _sql_root+="\nDROP DATABASE IF EXISTS test;"
+    _sql_root+="\nDELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';"
+    _sql_root+="\nGRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;"
+    _sql_root+="\nCREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;"
+    _sql_root+="\nCREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';"
+    _sql_root+="\nGRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';"
+    _sql_root+="\nGRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';"
+    _sql_root+="\nFLUSH PRIVILEGES;"
+    if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
@@ -773,33 +767,21 @@ function maj_user_glpi(){
     info "${MSG_CHANGE_MDP_GLPI}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
-    # Sanitize values used in SQL to avoid accidental SQL syntax errors (escape single quotes by doubling them)
-    local adm_esc post_esc tech_esc norm_esc tz_esc lang_esc ip_esc
-    adm_esc=$(printf '%s' "${ADMINGLPIPWD:-}" | sed "s/'/''/g")
-    post_esc=$(printf '%s' "${POSTGLPIPWD:-}" | sed "s/'/''/g")
-    tech_esc=$(printf '%s' "${TECHGLPIPWD:-}" | sed "s/'/''/g")
-    norm_esc=$(printf '%s' "${NORMGLPIPWD:-}" | sed "s/'/''/g")
-    tz_esc=$(printf '%s' "${TIMEZONE:-}" | sed "s/'/''/g")
-    lang_esc=$(printf '%s' "${LANGUAGE:-}" | sed "s/'/''/g")
-    ip_esc=$(printf '%s' "${IPADRESS:-}" | sed "s/'/''/g")
-
     # Verify mysql client exists
     if ! command -v "${MYSQL_CMD}" >/dev/null 2>&1; then
         warn "mysql client not found: ${MYSQL_CMD}"
         return 1
     fi
-
-    # Execute SQL statements securely (use MYSQL_PWD to avoid exposing password in argv)
-    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent "${DB_NAME}" <<EOF
-UPDATE glpi_users SET password = MD5('${adm_esc}') WHERE name = 'glpi';
-UPDATE glpi_users SET password = MD5('${post_esc}') WHERE name = 'post-only';
-UPDATE glpi_users SET password = MD5('${tech_esc}') WHERE name = 'tech';
-UPDATE glpi_users SET password = MD5('${norm_esc}') WHERE name = 'normal';
-UPDATE glpi_configs SET value = '${tz_esc}' WHERE context = 'core' AND name = 'timezone';
-UPDATE glpi_configs SET value = '${lang_esc}' WHERE context = 'core' AND name = 'language';
-UPDATE glpi_configs SET value = '${ip_esc}' WHERE context = 'core' AND name = 'url_base';
-EOF
-    then
+    # Construire la requête SQL et exécuter via -e
+    local _sql_user
+    _sql_user="UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
+    _sql_user+="\nUPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';"
+    _sql_user+="\nUPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';"
+    _sql_user+="\nUPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
+    _sql_user+="\nUPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
+    _sql_user+="\nUPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"
+    _sql_user+="\nUPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"
+    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" "${DB_NAME}"; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
@@ -903,6 +885,9 @@ function maintenance(){
 function backup_glpi(){
 	# Sauvergarde de la bdd
 	info "${MSG_MYSQL_DUMP}"
+    local MYSQLDUMP_CMD
+    MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
+    local PASSWORD
     PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' sauve_mdp.txt)
     ${MYSQLDUMP_CMD} -u root -p"$PASSWORD" --databases "$DB_NAME" > "${REP_BACKUP}${BDD_BACKUP}"
 	info "${MSG_DUMP_SUCCESS}"
