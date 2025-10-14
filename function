@@ -775,14 +775,13 @@ function maj_user_glpi(){
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
     # Execute SQL statements securely (use MYSQL_PWD to avoid exposing password in argv)
     if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent "${DB_NAME}" -e "
-        UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';
-        UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
-        UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';
-        UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';
-        UPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';
-        UPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';
-        UPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';
-    "; then
+UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';
+UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
+UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';
+UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';
+UPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';
+UPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';
+UPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base'; "; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
