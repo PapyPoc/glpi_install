@@ -421,15 +421,13 @@ function install_packages(){
             warn "apt-get not found, cannot install packages on Debian/Ubuntu branch"
             return 1
         fi
-
         info "$MSG_INSTALL_EXT_PHP"
-        
-        if ! sudo apt install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        if ! sudo apt install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 2>>"${ERRORFILE}"; then
             warn "$MSG_PHP_EXT_FAILED"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! sudo apt install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        if ! sudo apt install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 2>>"${ERRORFILE}"; then
             warn "$MSG_LAMP_FAILED"
             return 1
         fi
