@@ -477,12 +477,10 @@ function install_packages(){
         else
             warn "apt-get not found, cannot install packages on Debian/Ubuntu branch"
             return 1
-        fi
-
+        fiy
         info "$MSG_INSTALL_EXT_PHP"
-        
-        if ! install_dependencies php-bcmath,php-mysql,php-mbstring,php-curl,php-gd,php-xml,php-intl, \
-        php-ldap,php-apcu,php-opcache,php-xmlrpc,php-zip,php-bz2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        if ! install_dependencies php-bcmath php-mysql php-mbstring php-curl php-gd php-xml php-intl \
+        php-ldap php-apcu php-opcache php-xmlrpc php-zip php-bz2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_PHP_EXT_FAILED"
             return 1
         fi
