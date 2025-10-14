@@ -622,7 +622,8 @@ EOF
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
 EOF
-    if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
+    echo "${ID} ${VERSION_ID} ${ID}" >> "${LOGFILE}"
+    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         network_info
         # Setup vhost
         sudo tee /etc/apache2/sites-available/glpi.conf > /dev/null <<'EOF'
