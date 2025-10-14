@@ -774,7 +774,8 @@ function maj_user_glpi(){
     fi
     # Construire la requête SQL et exécuter via -e
     local _sql_user
-    _sql_user="UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
+    _sql_user="USE '${DB_NAME}';"
+    _sql_user+="\nUPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';"
     _sql_user+="\nUPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';"
     _sql_user+="\nUPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';"
     _sql_user+="\nUPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';"
@@ -783,7 +784,7 @@ function maj_user_glpi(){
     _sql_user+="\nUPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"
     echo "${_sql_user}" >> "${LOGFILE}"
     # Execute the SQL commands
-    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" "${DB_NAME}" >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
