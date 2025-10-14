@@ -399,60 +399,89 @@ function network_info(){
 }
 # Installation des éléments nécessaire
 function install_packages(){
-    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
+    # Ensure distro variables are available; try to source /etc/os-release if missing
+    if [ -z "${ID:-}" ] && [ -f /etc/os-release ]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release || true
+    fi
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering install_packages (ID=${ID:-unknown})" >> "${LOGFILE}"
+
+    if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
+        export DEBIAN_FRONTEND=noninteractive
+        # update cache first
+        if command -v apt-get >/dev/null 2>&1; then
+            echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get update" >> "${LOGFILE}"
+            if ! apt-get update >/dev/null 2>>"${ERRORFILE}"; then
+                warn "apt-get update failed"
+                # continue, maybe cached; but log
+            fi
+        else
+            warn "apt-get not found, cannot install packages on Debian/Ubuntu branch"
+            return 1
+        fi
+
         info "$MSG_INSTALL_EXT_PHP"
-        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
+        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_PHP_EXT_FAILED"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! apt-get install -y --no-install-recommends wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php; then
+        if ! apt-get install -y --no-install-recommends wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_LAMP_FAILED"
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
-        if ! systemctl enable mariadb; then
-            echo "Échec de l'activation de MariaDB."
+        if ! systemctl enable mariadb >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+            echo "Échec de l'activation de MariaDB." >>"${ERRORFILE}"
             return 1
         fi
-        if ! systemctl restart mariadb; then
-            echo "Échec du redémarrage de MariaDB."
+        if ! systemctl restart mariadb >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+            echo "Échec du redémarrage de MariaDB." >>"${ERRORFILE}"
             return 1
         fi
         info "$MSG_ACTIVE_START_WEB"
-        if ! systemctl enable apache2; then
-            echo "Échec de l'activation d'Apache2."
+        if ! systemctl enable apache2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+            echo "Échec de l'activation d'Apache2." >>"${ERRORFILE}"
             return 1
         fi
-        if ! systemctl restart apache2; then
-            echo "Échec du redémarrage d'Apache2."
+        if ! systemctl restart apache2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+            echo "Échec du redémarrage d'Apache2." >>"${ERRORFILE}"
             return 1
         fi
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
+    elif [[ "${ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
         sleep 1
-        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm; then
+        if ! command -v dnf >/dev/null 2>&1; then
+            warn "dnf not found, cannot install packages on RHEL-like branch"
+            return 1
+        fi
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: dnf makecache" >> "${LOGFILE}"
+        if ! dnf makecache --refresh >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+            warn "$MSG_EPEL_FAILED"
+            # continue; attempt install may still work
+        fi
+        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_EPEL_FAILED"
             return 1
         fi
-        if ! dnf module reset -y php nginx mariadb composer; then
+        if ! dnf module reset -y php nginx mariadb composer >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_MODULES_RESET_FAILED"
             return 1
         fi
-        if ! dnf module install -y php:8.2; then
+        if ! dnf module install -y php:8.2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_PHP_INSTALL_FAILED"
             return 1
         fi
-        if ! dnf module install -y nginx:1.24; then
+        if ! dnf module install -y nginx:1.24 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_NGINX_INSTALL_FAILED"
             return 1
         fi
-        if ! dnf module install -y mariadb:10.11; then
+        if ! dnf module install -y mariadb:10.11 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_MARIADB_INSTALL_FAILED"
             return 1
         fi
         info "$MSG_AUTO_UPDATES"
-        if ! dnf install dnf-automatic -y; then
+        if ! dnf install dnf-automatic -y >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_DNF_AUTO_FAILED"
             return 1
         fi
@@ -474,32 +503,33 @@ OnCalendar=*-*-* 6:00
 RandomizedDelaySec=60m
 Persistent=true
 EOF
-        if ! systemctl enable --now dnf-automatic.timer; then
+        if ! systemctl enable --now dnf-automatic.timer >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_DNF_AUTO_ACTIVATE_FAILED"
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
-        if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
+        if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_PHP_EXT_FAILED"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE lamp..."
-        if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release; then
+        if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_LAMP_FAILED"
             return 1
         fi
         sed -i 's/^\(;\?\)\(user =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         sed -i 's/^\(;\?\)\(group =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         info "$MSG_ACTIVE_START_WEB MariaDB, d'ENGINE X et de PHP-FPM"
-        if ! systemctl enable --now mariadb nginx php-fpm; then
+        if ! systemctl enable --now mariadb nginx php-fpm >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_SERVICES_START_FAILED"
             return 1
         fi
-        if ! firewall-cmd --permanent --zone=public --add-service=http || ! firewall-cmd --reload; then
+        if ! firewall-cmd --permanent --zone=public --add-service=http || ! firewall-cmd --reload >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_FIREWALL_FAILED"
             return 1
         fi
-    fi }
+    fi
+}
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
     info "$MSG_BDD_CONFIG"
