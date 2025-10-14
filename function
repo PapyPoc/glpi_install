@@ -89,7 +89,6 @@ function run_task() {
     return 0;
 }
 install_dependencies(){
-    NEED_RESTART=0
     local missing=""
     local list
     if [ $# -ge 1 ] && [ -n "$1" ]; then
