@@ -359,7 +359,7 @@ function check_install(){
                 case $REP_EXISTE in
                     0)
                         info "$MSG_CONTINUING"
-                        #update
+                        update
                         ;;
                     1)
                         dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_EXITING}" 10 50
