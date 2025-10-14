@@ -422,12 +422,12 @@ function install_packages(){
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
-        if ! sudo apt install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 2>>"${ERRORFILE}"; then
+        if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 2>>"${ERRORFILE}"; then
             warn "$MSG_PHP_EXT_FAILED" >> "${ERRORFILE}"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! sudo apt install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 2>>"${ERRORFILE}"; then
+        if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 2>>"${ERRORFILE}"; then
             warn "$MSG_LAMP_FAILED" >> "${ERRORFILE}"
             return 1
         fi
@@ -609,13 +609,13 @@ function setup_glpi(){
     mkdir -p /etc/glpi/config
     mkdir -p /var/lib/glpi/files
     mv -f "${REP_GLPI}"files /var/lib/glpi
-    cat > /etc/glpi/config/local_define.php << EOF
+    tee /etc/glpi/config/local_define.php > /dev/null <<'EOF'
 <?php
     define('GLPI_VAR_DIR', '/var/lib/glpi/files');
     define('GLPI_LOG_DIR', '/var/log/glpi');
 EOF
     sleep 1
-    cat > "${REP_GLPI}"inc/downstream.php << EOF
+    tee "${REP_GLPI}"inc/downstream.php > /dev/null <<'EOF'
 <?php
     define('GLPI_CONFIG_DIR', '/etc/glpi/config');
     if (file_exists(GLPI_CONFIG_DIR . '/local_define.php')) {
@@ -625,7 +625,7 @@ EOF
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         network_info
         # Setup vhost
-         cat > /etc/apache2/sites-available/glpi.conf << EOF
+        tee /etc/apache2/sites-available/glpi.conf > /dev/null <<'EOF'
 <VirtualHost *:80>
     ServerName ${IPADRESS}
     DocumentRoot ${REP_GLPI}public
@@ -683,7 +683,7 @@ EOF
         echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         network_info
-        cat > /etc/nginx/conf.d/glpi.conf << EOF
+        tee /etc/nginx/conf.d/glpi.conf > /dev/null << EOF
 server {
     listen 80;
     server_name "${IPADRESS}";
@@ -700,7 +700,7 @@ server {
     }
 }
 EOF
-        cat > /etc/logrotate.d/glpi << EOF
+        tee /etc/logrotate.d/glpi > /dev/null << EOF
 # Rotate GLPI logs daily, only if not empty
 # Save 14 days old logs under compressed mode
 /var/lib/glpi/files/_log/*.log {
