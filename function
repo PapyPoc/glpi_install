@@ -88,6 +88,64 @@ function run_task() {
     fi
     return 0;
 }
+install_dependencies(){
+    NEED_RESTART=0
+    local missing=""
+    local list
+    if [ $# -ge 1 ] && [ -n "$1" ]; then
+        list="$1"
+    fi
+    for cmd in $list; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            missing="${missing:+$missing }$cmd"
+        fi
+    done
+    if [ -z "$missing" ]; then
+        return 0
+    fi
+    echo "Dépendances manquantes : ${missing}. Tentative d'installation..."
+    local pkgmgr install_cmd
+    local pkgs="$missing"
+    if command -v apt-get >/dev/null 2>&1; then
+        pkgmgr="apt-get"
+        install_cmd="${pkgmgr} update -qq && ${pkgmgr} install -y -qq ${pkgs}"
+    elif command -v dnf >/dev/null 2>&1; then
+        pkgmgr="dnf"
+        install_cmd="${pkgmgr} install -y -q ${pkgs}"
+    elif command -v yum >/dev/null 2>&1; then
+        pkgmgr="yum"
+        install_cmd="${pkgmgr} install -y -q ${pkgs}"
+    elif command -v apk >/dev/null 2>&1; then
+        pkgmgr="apk"
+        install_cmd="${pkgmgr} add --no-cache ${pkgs}"
+    elif command -v pacman >/dev/null 2>&1; then
+        pkgmgr="pacman"
+        install_cmd="${pkgmgr} -Syu --noconfirm ${pkgs}"
+    elif command -v zypper >/dev/null 2>&1; then
+        pkgmgr="zypper"
+        install_cmd="${pkgmgr} install -y ${pkgs}"
+    else
+        warn "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
+        return 1
+    fi
+    info "Installation via ${pkgmgr} : ${pkgs}"
+    if ! bash -c "$install_cmd"; then
+        warn "Échec de l'installation des dépendances : ${pkgs}"
+        return 1
+    fi
+    local still_missing=""
+    for cmd in $list; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            still_missing="${still_missing:+$still_missing }$cmd"
+        fi
+    done
+    if [ -n "$still_missing" ]; then
+        warn "Commandes toujours manquantes après l'installation : ${still_missing}"
+        sleep 3
+        return 1
+    fi
+    return 0
+}
 # Exécuter les tâches avec barre de progression
 function glpi_install() {
     declare -A tasks=(
@@ -387,6 +445,7 @@ function update_distro(){
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
            info "$MSG_UPGRADE_DISTRO"
            chronyc makestep # Synchronise l'heure
+           sleep 5
            yum update -y && yum upgrade -y
 	fi
 }
@@ -422,17 +481,18 @@ function install_packages(){
         fi
 
         info "$MSG_INSTALL_EXT_PHP"
-        if ! apt-get install -y --no-install-recommends php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        
+        if ! install_dependencies php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_PHP_EXT_FAILED"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! apt-get install -y --no-install-recommends wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        if ! install_dependencies wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_LAMP_FAILED"
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
-        if ! systemctl enable mariadb >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        if ! systemctl enable mariadb 1>>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             echo "Échec de l'activation de MariaDB." >>"${ERRORFILE}"
             return 1
         fi
@@ -441,7 +501,7 @@ function install_packages(){
             return 1
         fi
         info "$MSG_ACTIVE_START_WEB"
-        if ! systemctl enable apache2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        if ! systemctl enable apache2 1>>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             echo "Échec de l'activation d'Apache2." >>"${ERRORFILE}"
             return 1
         fi
@@ -774,7 +834,7 @@ function maj_user_glpi(){
     # Ensure we have a mysql client command; fallback to detecting it if not set
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
     # Execute SQL statements securely (use MYSQL_PWD to avoid exposing password in argv)
-    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent "${DB_NAME}" -e <<EOF
+    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent "${DB_NAME}" <<EOF
 UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';
 UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
 UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';
