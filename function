@@ -682,22 +682,10 @@ EOF
         systemctl restart apache2
         rights_glpi
         # Installation de GLPI en ligne de commande
-        CMD=(
-        php "${REP_GLPI}/bin/console" db:install
-        --db-host "localhost"
-        --db-port 3306
-        --db-name "${DB_NAME}"
-        --db-user "${DB_USER}"
-        --db-password "${SQLGLPIPWD}"
-        --default-language "${LANGUAGE}"
-        --force
-        --no-telemetry
-        --quiet
-        --no-interaction
-        )
-        echo "sudo -u www-data ${CMD}" | sudo tee -a "${LOGFILE}" > /dev/null || true
+        CMD="${REP_GLPI}/bin/console db:install --db-host \"localhost\" --db-port=3306 --db-name=\"${DB_NAME}\" --db-user=\"${DB_USER}\" --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --quiet --no-interaction"
+        echo "sudo -u www-data php ${CMD}" | sudo tee -a "${LOGFILE}" > /dev/null || true
         # Exécuter la commande en tant que www-data. Utiliser sudo tee pour écrire vers les fichiers protégés.
-        if sudo -u www-data "${CMD[@]}" 2> >(sudo tee -a "${ERRORFILE}" >&2) | sudo tee -a "${LOGFILE}" > /dev/null; then
+        if sudo -u www-data php "${CMD}" 2> >(sudo tee -a "${ERRORFILE}" >&2) | sudo tee -a "${LOGFILE}" > /dev/null; then
             info "Installation GLPI terminée avec succès." | sudo tee -a "${LOGFILE}" > /dev/null
         else
             warn "Échec de l'installation GLPI via console." | sudo tee -a "${ERRORFILE}" > /dev/null
