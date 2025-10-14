@@ -896,19 +896,24 @@ function maintenance(){
 function backup_glpi(){
 	# Sauvergarde de la bdd
 	info "${MSG_MYSQL_DUMP}"
+    local DB_NAME
+    DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}"/sauve_mdp.txt)
     local MYSQLDUMP_CMD
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
     local PASSWORD
-    PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' sauve_mdp.txt)
+    PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}"/sauve_mdp.txt)
+    local BDD_BACKUP
+    REP_BACKUP="${INVOKING_HOME}/backup_glpi_$(date +"%d-%m-%Y")/"
+    BDD_BACKUP="bdd_glpi_$(date +"%d-%m-%Y_%H:%M:%S").sql"
+    # Vérifie si le répertoire existe, sinon le crée
+	if [ ! -d "${REP_BACKUP}" ]; then
+		#info "$MSG_DIR_SERVICE_CREATE"
+		mkdir "${REP_BACKUP}"
+	fi
     ${MYSQLDUMP_CMD} -u root -p"$PASSWORD" --databases "$DB_NAME" > "${REP_BACKUP}${BDD_BACKUP}"
 	info "${MSG_DUMP_SUCCESS}"
 	# Sauvegarde des fichiers
 	info "${MSG_SITE_COPY}"
-    # Vérifie si le répertoire existe
-	if [ ! -d "${REP_BACKUP}" ]; then
-		info "$MSG_DIR_SERVICE_CREATE"
-		mkdir "${REP_BACKUP}"
-	fi
     # Copiez la Configuration
     cp -Rf /etc/glpi/config "${REP_BACKUP}"
     # Copiez les Fichiers
