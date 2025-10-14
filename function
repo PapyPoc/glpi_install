@@ -88,63 +88,6 @@ function run_task() {
     fi
     return 0;
 }
-install_dependencies(){
-    local missing=""
-    local list
-    if [ $# -ge 1 ] && [ -n "$1" ]; then
-        list="$1"
-    fi
-    for cmd in $list; do
-        if ! command -v "$cmd" >/dev/null 2>&1; then
-            missing="${missing:+$missing }$cmd"
-        fi
-    done
-    if [ -z "$missing" ]; then
-        return 0
-    fi
-    echo "Dépendances manquantes : ${missing}. Tentative d'installation..."
-    local pkgmgr install_cmd
-    local pkgs="$missing"
-    if command -v apt-get >/dev/null 2>&1; then
-        pkgmgr="apt-get"
-        install_cmd="${pkgmgr} update -qq && ${pkgmgr} install -y -qq ${pkgs}"
-    elif command -v dnf >/dev/null 2>&1; then
-        pkgmgr="dnf"
-        install_cmd="${pkgmgr} install -y -q ${pkgs}"
-    elif command -v yum >/dev/null 2>&1; then
-        pkgmgr="yum"
-        install_cmd="${pkgmgr} install -y -q ${pkgs}"
-    elif command -v apk >/dev/null 2>&1; then
-        pkgmgr="apk"
-        install_cmd="${pkgmgr} add --no-cache ${pkgs}"
-    elif command -v pacman >/dev/null 2>&1; then
-        pkgmgr="pacman"
-        install_cmd="${pkgmgr} -Syu --noconfirm ${pkgs}"
-    elif command -v zypper >/dev/null 2>&1; then
-        pkgmgr="zypper"
-        install_cmd="${pkgmgr} install -y ${pkgs}"
-    else
-        warn "Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
-        return 1
-    fi
-    info "Installation via ${pkgmgr} : ${pkgs}"
-    if ! bash -c "$install_cmd"; then
-        warn "Échec de l'installation des dépendances : ${pkgs}"
-        return 1
-    fi
-    local still_missing=""
-    for cmd in $list; do
-        if ! command -v "$cmd" >/dev/null 2>&1; then
-            still_missing="${still_missing:+$still_missing }$cmd"
-        fi
-    done
-    if [ -n "$still_missing" ]; then
-        warn "Commandes toujours manquantes après l'installation : ${still_missing}"
-        sleep 3
-        return 1
-    fi
-    return 0
-}
 # Exécuter les tâches avec barre de progression
 function glpi_install() {
     declare -A tasks=(
@@ -478,15 +421,15 @@ function install_packages(){
             warn "apt-get not found, cannot install packages on Debian/Ubuntu branch"
             return 1
         fi
+
         info "$MSG_INSTALL_EXT_PHP"
-        if ! install_dependencies php-bcmath php-mysql php-mbstring php-curl php-gd php-xml php-intl \
-        php-ldap php-apcu php-opcache php-xmlrpc php-zip php-bz2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        
+        if ! sudo apt install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_PHP_EXT_FAILED"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! install_dependencies wget tar apache2 apache2-bin mariadb-server mariadb-client \
-        perl php >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        if ! sudo apt install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_LAMP_FAILED"
             return 1
         fi
