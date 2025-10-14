@@ -622,7 +622,9 @@ EOF
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
 EOF
-    echo "${ID} ${VERSION_ID} ${ID}" >> "${LOGFILE}"
+    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering setup_glpi (ID=${ID:-unknown})" >> "${LOGFILE}"
+    . /etc/os-release || true
+    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering setup_glpi (ID=${ID:-unknown})" >> "${LOGFILE}"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         network_info
         # Setup vhost
@@ -671,7 +673,7 @@ EOF
         find /var/log/glpi -type f -exec chmod 644 {} \;
         find /var/log/glpi -type d -exec chmod 755 {} \;
         # Changement du propriétaire des fichiers GLPI
-        chown -Rc apache:apache "${REP_GLPI}"
+        chown -Rc www-data:www-data "${REP_GLPI}"
         # Changement des permissions des fichiers GLPI
         find "${REP_GLPI}" -type d -exec chmod 755 {} \;
         find "${REP_GLPI}" -type f -exec chmod 644 {} \;
