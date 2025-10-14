@@ -110,7 +110,18 @@ function glpi_install() {
         echo "XXX"
         echo "$task_index/$total_tasks - $task_key"
         echo "XXX"
-        run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks" || break
+        if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
+                echo "$progress"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_OK}"
+                echo "XXX"
+            else
+                echo "100"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+                echo "XXX"
+                exit 1   # <-- remonte l'erreur au parent
+            fi
         sleep 1
     done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
 }
@@ -359,7 +370,14 @@ function check_install(){
                 case $REP_EXISTE in
                     0)
                         info "$MSG_CONTINUING"
-                        update
+                        if update; then
+                            info "Mise à jour terminée." >> "${LOGFILE}"
+                            return 0
+                        else
+                            dialog --title "Erreur" --msgbox "La mise à jour a échoué ou l'utilisateur a annulé." 6 60
+                            warn "Mise à jour échouée." >> "${ERRORFILE}"
+                            return 1
+                        fi
                         ;;
                     1)
                         dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_EXITING}" 10 50
@@ -373,7 +391,14 @@ function check_install(){
             fi
         else
             dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
-            glpi_install
+            if glpi_install; then
+                info "Installation de GLPI terminée." >> "${LOGFILE}"
+                return 0
+            else
+                dialog --title "Erreur" --msgbox "L'installation a échoué ou l'utilisateur a annulé." 6 60
+                warn "Installation de GLPI échouée." >> "${ERRORFILE}"
+                return 1
+            fi
     fi
 }
 # Mise à jour de la distribution
@@ -1032,9 +1057,9 @@ function update_glpi() {
     sleep 2
 }
 # Fonction principale pour exécuter les tâches avec barre de progression
-function update(){
+function update() {
     declare -A tasks=(
-		["$MSG_T20"]="maintenance 1"
+        ["$MSG_T20"]="maintenance 1"
         ["$MSG_T21"]="update_distro"
         ["$MSG_T22"]="backup_glpi"
         ["$MSG_T23"]="install_glpi"
@@ -1044,14 +1069,33 @@ function update(){
     task_order=("$MSG_T20" "$MSG_T21" "$MSG_T22" "$MSG_T23" "$MSG_T24" "$MSG_T25")
     total_tasks=${#task_order[@]}
     task_index=0
-    (for task_key in "${task_order[@]}"; do
-        task_index=$((task_index + 1))
-        progress=$((task_index * 100 / total_tasks))
-        echo "$progress"
-        echo "XXX"
-        echo "$task_index/$total_tasks - $task_key"
-        echo "XXX"
-        run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks" || break
-        sleep 1
-    done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
+    (
+        for task_key in "${task_order[@]}"; do
+            task_index=$((task_index + 1))
+            progress=$((task_index * 100 / total_tasks))
+            echo "$progress"
+            echo "XXX"
+            echo "$task_index/$total_tasks - $task_key"
+            echo "XXX"
+            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
+                echo "$progress"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_OK}"
+                echo "XXX"
+            else
+                echo "100"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+                echo "XXX"
+                exit 1   # <-- remonte l'erreur au parent
+            fi
+            sleep 0.5
+        done
+    ) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
+    # Récupérer le code de retour du sous-shell
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then
+        warn "Une tâche a échoué pendant l'exécution de update()." >>"${ERRORFILE}"
+        return 1
+    fi
+    info "Toutes les tâches ont été exécutées avec succès." >>"${LOGFILE}"
 }
