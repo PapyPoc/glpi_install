@@ -549,7 +549,7 @@ function mariadb_configure() {
     _sql_root+="\nGRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';"
     _sql_root+="\nGRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';"
     _sql_root+="\nFLUSH PRIVILEGES;"
-    if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
+    if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
@@ -781,7 +781,9 @@ function maj_user_glpi(){
     _sql_user+="\nUPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
     _sql_user+="\nUPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"
     _sql_user+="\nUPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"
-    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" "${DB_NAME}"; then
+    echo "${_sql_user}" >> "${LOGFILE}"
+    # Execute the SQL commands
+    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" "${DB_NAME}" >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
