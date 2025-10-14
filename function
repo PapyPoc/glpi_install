@@ -662,30 +662,29 @@ EOF
         sudo a2ensite glpi.conf
         # Restart d'apache
         systemctl restart apache2
-        # Changer le propriétaire des fichiers de configuration
-        chown -Rc www-data:www-data /etc/glpi
-        # Changer les permissions des fichiers de configuration
-        find /etc/glpi -type f -exec chmod 644 {} \;
-        find /etc/glpi -type d -exec chmod 755 {} \;
-        # Changer le propriétaire des fichiers de GLPI
-        chown -Rc www-data:www-data /var/lib/glpi
-        # Changer les permissions des fichiers de GLPI
-        find /var/lib/glpi -type f -exec chmod 644 {} \;
-        find /var/lib/glpi -type d -exec chmod 755 {} \;
-        # Changer le propriétaire des fichiers de logs
-        chown -Rc www-data:www-data /var/log/glpi
-        # Changer les permissions des fichiers de logs
-        find /var/log/glpi -type f -exec chmod 644 {} \;
-        find /var/log/glpi -type d -exec chmod 755 {} \;
-        # Changement du propriétaire des fichiers GLPI
-        chown -Rc www-data:www-data "${REP_GLPI}"
-        # Changement des permissions des fichiers GLPI
-        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+        rights_glpi
         # Installation de GLPI en ligne de commande
-        CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --quiet --no-interaction"
-        echo "sudo -u www-data ${CMD}" >> "${LOGFILE}"
-        eval sudo -u www-data "${CMD}"
+        CMD=(
+        php "${REP_GLPI}/bin/console" db:install
+        --db-host "localhost"
+        --db-port 3306
+        --db-name "${DB_NAME}"
+        --db-user "${DB_USER}"
+        --db-password "${SQLGLPIPWD}"
+        --default-language "${LANGUAGE}"
+        --force
+        --no-telemetry
+        --quiet
+        --no-interaction
+        )
+        echo "sudo -u www-data ${CMD}" | sudo tee -a "${LOGFILE}" > /dev/null || true
+        # Exécuter la commande en tant que www-data. Utiliser sudo tee pour écrire vers les fichiers protégés.
+        if sudo -u www-data "${CMD[@]}" 2> >(sudo tee -a "${ERRORFILE}" >&2) | sudo tee -a "${LOGFILE}" > /dev/null; then
+            info "Installation GLPI terminée avec succès." | sudo tee -a "${LOGFILE}" > /dev/null
+        else
+            warn "Échec de l'installation GLPI via console." | sudo tee -a "${ERRORFILE}" > /dev/null
+            return 1
+        fi
         systemctl restart apache2
         # Configuration de la tâche Cron
         echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
@@ -725,43 +724,10 @@ EOF
         chown root:root /etc/logrotate.d/glpi
         chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi
         sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini
-        setsebool -P httpd_can_network_connect on
-        setsebool -P httpd_can_network_connect_db on
-        setsebool -P httpd_can_sendmail on
-        semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
-        semanage fcontext -a -t httpd_sys_rw_content_t "/var/lib/glpi(/.*)?"
-        semanage fcontext -a -t httpd_sys_rw_content_t "/var/log/glpi(/.*)?"
-        semanage fcontext -a -t httpd_sys_rw_content_t "/etc/glpi(/.*)?"
-        semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
-        restorecon -R "${REP_GLPI}"
-        restorecon -R /var/lib/glpi
-        restorecon -R /var/log/glpi
-        restorecon -R /etc/glpi
-        restorecon -R "${REP_GLPI}"marketplace
         # Restart de Nginx et php-fpm
         systemctl restart nginx php-fpm
         # Change permissions
-        chown -R nginx:nginx /etc/glpi
-        # Changer le propriétaire des fichiers de configuration
-        chown -Rc www-data:www-data /etc/glpi
-        # Changer les permissions des fichiers de configuration
-        find /etc/glpi -type f -exec chmod 644 {} \;
-        find /etc/glpi -type d -exec chmod 755 {} \;
-        # Changer le propriétaire des fichiers de GLPI
-        chown -Rc www-data:www-data /var/lib/glpi
-        # Changer les permissions des fichiers de GLPI
-        find /var/lib/glpi -type f -exec chmod 644 {} \;
-        find /var/lib/glpi -type d -exec chmod 755 {} \;
-        # Changer le propriétaire des fichiers de logs
-        chown -Rc www-data:www-data /var/log/glpi
-        # Changer les permissions des fichiers de logs
-        find /var/log/glpi -type f -exec chmod 644 {} \;
-        find /var/log/glpi -type d -exec chmod 755 {} \;
-        # Changement du propriétaire des fichiers GLPI
-        chown -Rc apache:apache "${REP_GLPI}"
-        # Changement des permissions des fichiers GLPI
-        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+        rights_glpi
         # Installation de GLPI en ligne de commande
         CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
         eval sudo -u nginx "${CMD}"
@@ -795,6 +761,42 @@ function maj_user_glpi(){
     if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
+    fi
+}
+function rights_glpi(){
+    info "$MSG_RIGHTS_GLPI"
+    find /etc/glpi -type f -exec chmod 644 {} \;
+    find /etc/glpi -type d -exec chmod 755 {} \;
+    find /var/lib/glpi -type f -exec chmod 644 {} \;
+    find /var/lib/glpi -type d -exec chmod 755 {} \;
+    find /var/log/glpi -type f -exec chmod 644 {} \;
+    find /var/log/glpi -type d -exec chmod 755 {} \;
+    find "${REP_GLPI}" -type d -exec chmod 755 {} \;
+    find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
+        chown -Rc www-data:www-data /etc/glpi
+        chown -Rc www-data:www-data /var/lib/glpi
+        chown -Rc www-data:www-data /var/log/glpi
+        chown -Rc www-data:www-data "${REP_GLPI}"
+    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+        chown -Rc nginx:nginx /etc/glpi
+        chown -Rc nginx:nginx /var/lib/glpi
+        chown -Rc nginx:nginx /var/log/glpi
+        chown -Rc nginx:nginx "${REP_GLPI}"
+        # SELinux
+        setsebool -P httpd_can_network_connect on
+        setsebool -P httpd_can_network_connect_db on
+        setsebool -P httpd_can_sendmail on
+        semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
+        semanage fcontext -a -t httpd_sys_rw_content_t "/var/lib/glpi(/.*)?"
+        semanage fcontext -a -t httpd_sys_rw_content_t "/var/log/glpi(/.*)?"
+        semanage fcontext -a -t httpd_sys_rw_content_t "/etc/glpi(/.*)?"
+        semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
+        restorecon -R "${REP_GLPI}"
+        restorecon -R /var/lib/glpi
+        restorecon -R /var/log/glpi
+        restorecon -R /etc/glpi
+        restorecon -R "${REP_GLPI}"marketplace
     fi
 }
 # Afficher le résultat final
@@ -893,137 +895,118 @@ function maintenance(){
 	sleep 2;
 }
 # Sauvegarde de la base de donnée et des fichiers de GLPI
-function backup_glpi(){
-	# Sauvergarde de la bdd
-	info "${MSG_MYSQL_DUMP}"
-    local DB_NAME
-    DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}"/sauve_mdp.txt)
+function backup_glpi() {
+    info "=== Démarrage de la sauvegarde GLPI ===" >>"${LOGFILE}"
+    # Vérification préliminaire
+    if [ -z "${REP_GLPI}" ] || [ -z "${REP_BACKUP_COMPRESS}" ] || [ -z "${INVOKING_HOME}" ]; then
+        warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" >>"${ERRORFILE}"
+        return 1
+    fi
+    # Lecture des informations MySQL
+    local DB_NAME PASSWORD
+    DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
+    PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
+    if [ -z "${DB_NAME}" ] || [ -z "${PASSWORD}" ]; then
+        warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt" >>"${ERRORFILE}"
+        return 1
+    fi
+    # Détermination de l’outil de dump
     local MYSQLDUMP_CMD
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
-    local PASSWORD
-    PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}"/sauve_mdp.txt)
-    local BDD_BACKUP
-    REP_BACKUP="${INVOKING_HOME}/backup_glpi_$(date +"%d-%m-%Y")/"
-    local BDD_BACKUP
-    BDD_BACKUP="bdd_glpi_$(date +"%d-%m-%Y_%H:%M:%S").sql"
-    local REP_BACKUP_COMPRESS
-    REP_BACKUP_COMPRESS="${INVOKING_HOME}/tar_backup_glpi_$(date +"%d-%m-%Y")"
-    # Vérifie si le répertoire existe, sinon le crée
-	if [ ! -d "${REP_BACKUP}" ]; then
-		#info "$MSG_DIR_SERVICE_CREATE"
-		mkdir "${REP_BACKUP}"
-	fi
-    ${MYSQLDUMP_CMD} -u root -p"$PASSWORD" --databases "$DB_NAME" > "${REP_BACKUP}${BDD_BACKUP}"
-	info "${MSG_DUMP_SUCCESS}"
-	# Sauvegarde des fichiers
-	info "${MSG_SITE_COPY}"
-    # Copiez la Configuration
-    cp -Rf /etc/glpi/config "${REP_BACKUP}"
-    # Copiez les Fichiers
-    cp -Rf /var/lib/glpi/files "${REP_BACKUP}"
-    # Copiez les Plugins
-	cp -Rf "${REP_GLPI}plugins" "${REP_BACKUP}"
-    # Copiez le Marketplace
-	cp -Rf "${REP_GLPI}marketplace" "${REP_BACKUP}"
-    # Copiez le fichier de downstream.php
-    cp -Rf "${REP_GLPI}inc/downstream.php" "${REP_BACKUP}"
-	info "${MSG_SITE_COPY_OK}"
-    # Compresse la sauvegarde
-    info "${MSG_COMPRESS_BACKUP}"
-    # Créer le dossier compress si nécessaire
-    if [ ! -d "${REP_BACKUP}/compress" ]; then
-        mkdir -p "${REP_BACKUP}/compress"
+    # Répertoires de sauvegarde
+    REP_BACKUP="${INVOKING_HOME}/backup_glpi_$(date +"%Y-%m-%d")"
+    local BDD_BACKUP="bdd_glpi_$(date +"%Y-%m-%d_%H-%M-%S").sql"
+    mkdir -p "${REP_BACKUP}"
+    # --- Sauvegarde BDD ---
+    info "${MSG_MYSQL_DUMP}" >>"${LOGFILE}"
+    if ${MYSQLDUMP_CMD} -u root -p"${PASSWORD}" --databases "${DB_NAME}" > "${REP_BACKUP}/${BDD_BACKUP}" 2>>"${ERRORFILE}"; then
+        info "${MSG_DUMP_SUCCESS}" >>"${LOGFILE}"
+    else
+        warn "Échec de la sauvegarde de la base ${DB_NAME}" >>"${ERRORFILE}"
+        return 1
     fi
-    # Créer l'archive compressée
-    if tar -czf "${REP_BACKUP_COMPRESS}/backup_glpi_$(date +"%d-%m-%Y_%H:%M:%S").tar.gz" -C "${REP_BACKUP}" . ; then
-        info "${MSG_COMPRESS_BACKUP_OK}"
-        # Supprimer le répertoire de l'ancien site GLPI
-        info "$MSG_REMOVE_OLD_GLPI_DIR"
-        if [ -d "${REP_GLPI}" ]; then
-            rm -Rf "${REP_GLPI}"
+    # --- Sauvegarde des fichiers ---
+    info "${MSG_SITE_COPY}" >>"${LOGFILE}"
+    for SRC in "/etc/glpi/config" "/var/lib/glpi/files" "${REP_GLPI}/plugins" "${REP_GLPI}/marketplace" "${REP_GLPI}/inc/downstream.php"; do
+        if [ -e "${SRC}" ]; then
+            cp -Rf "${SRC}" "${REP_BACKUP}/" >>"${LOGFILE}" 2>>"${ERRORFILE}"
+        else
+            warn "Source manquante : ${SRC}" >>"${ERRORFILE}"
+        fi
+    done
+    info "${MSG_SITE_COPY_OK}" >>"${LOGFILE}"
+    # --- Compression ---
+    info "${MSG_COMPRESS_BACKUP}" >>"${LOGFILE}"
+    mkdir -p "${REP_BACKUP_COMPRESS}"
+    local BACKUP_FILE="${REP_BACKUP_COMPRESS}/backup_glpi_$(date +"%Y-%m-%d_%H-%M-%S").tar.gz"
+    if tar -czf "${BACKUP_FILE}" -C "${REP_BACKUP}" . 2>>"${ERRORFILE}"; then
+        info "${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})" >>"${LOGFILE}"
+        # Vérifier que le fichier compressé n'est pas vide
+        if [ ! -s "${BACKUP_FILE}" ]; then
+            warn "Fichier de sauvegarde vide, suppression annulée." >>"${ERRORFILE}"
+            return 1
+        fi
+        # Suppression sécurisée de l’ancien GLPI
+        info "${MSG_REMOVE_OLD_GLPI_DIR}"
+        if [ -n "${REP_GLPI}" ] && [ -d "${REP_GLPI}" ]; then
+            rm -rf "${REP_GLPI:?}/"
+            info "Répertoire ${REP_GLPI} supprimé." >>"${LOGFILE}"
+        else
+            warn "Répertoire GLPI introuvable : ${REP_GLPI}" >>"${ERRORFILE}"
         fi
     else
-        warn "${MSG_COMPRESS_BACKUP_FAILED}"
+        warn "${MSG_COMPRESS_BACKUP_FAILED}" >>"${ERRORFILE}"
+        return 1
     fi
-    sleep 2;
+    info "=== Sauvegarde GLPI terminée avec succès ===" >>"${LOGFILE}"
+    sleep 2
 }
 # Mise à jour de GLPI
 function update_glpi(){
-    # Restauration des fichiers de configuration et des plugins
-	info "$MSG_CP_MARKET_PLUGIN"
-    if [ -d "${REP_BACKUP}/config" ]; then
-        mkdir -p /etc/glpi/config
-        cp -Rf "${REP_BACKUP}/config/"* /etc/glpi/config/
-    fi
-    if [ -d "${REP_BACKUP}/files" ]; then
-        mkdir -p /var/lib/glpi/files
-        cp -Rf "${REP_BACKUP}/files/"* /var/lib/glpi/files/
-    fi
-	if [ -d "${REP_BACKUP}/plugins" ]; then
-        mkdir -p "${REP_GLPI}/plugins"
-        cp -Rf "${REP_BACKUP}/plugins/"* "${REP_GLPI}/plugins/"
-    fi
-	if [ -d "${REP_BACKUP}/marketplace" ]; then
-        mkdir -p "${REP_GLPI}/marketplace"
-        cp -Rf "${REP_BACKUP}/marketplace/"* "${REP_GLPI}/marketplace/"
-    fi
-    if [ -f "${REP_BACKUP}/inc/downstream.php" ]; then
-        if [ ! -d "${REP_GLPI}/inc" ]; then
-            mkdir -p "${REP_GLPI}/inc"
+    # Restauration GLPI complète depuis ${REP_BACKUP}
+    for DIR in config files plugins marketplace; do
+        SRC="${REP_BACKUP}/${DIR}"
+        if [ -d "${SRC}" ]; then
+            case "${DIR}" in
+                config)
+                    DEST="/etc/glpi/config"
+                    ;;
+                files)
+                    DEST="/var/lib/glpi/files"
+                    ;;
+                plugins)
+                    DEST="${REP_GLPI}/plugins"
+                    ;;
+                marketplace)
+                    DEST="${REP_GLPI}/marketplace"
+                    ;;
+            esac
+            mkdir -p "${DEST}"
+            if cp -Rf "${SRC}/"* "${DEST}/" 2>>"${ERRORFILE}"; then
+                info "Restauration du répertoire ${DIR} terminée vers ${DEST}" >>"${LOGFILE}"
+            else
+                warn "Erreur lors de la restauration de ${DIR}" >>"${ERRORFILE}"
+            fi
         fi
-        cp -Rf "${REP_BACKUP}/inc/downstream.php" "${REP_GLPI}/inc/downstream.php"
+    done
+    # Fichier spécifique downstream.php
+    if [ -f "${REP_BACKUP}/inc/downstream.php" ]; then
+        mkdir -p "${REP_GLPI}/inc"
+        if cp -Rf "${REP_BACKUP}/inc/downstream.php" "${REP_GLPI}/inc/" 2>>"${ERRORFILE}"; then
+            info "Fichier downstream.php restauré." >>"${LOGFILE}"
+        else
+            warn "Erreur lors de la restauration de downstream.php" >>"${ERRORFILE}"
+        fi
     fi
     # Suppression des anciens fichiers de GLPI
     info "$MSG_REMOVE_OLD_FILES"
-    rm -Rf "${REP_BACKUP:?}"
+    rm -Rf "${REP_BACKUP:?}" >>"${LOGFILE}" 2>>"${ERRORFILE}"
 	info "$MSG_UPDATE_GLPI_DATABASE"
 	if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-		# Changer le propriétaire des fichiers de configuration
-        chown -Rc www-data:www-data /etc/glpi
-        # Changer les permissions des fichiers de configuration
-        find /etc/glpi -type f -exec chmod 644 {} \;
-        find /etc/glpi -type d -exec chmod 755 {} \;
-        # Changer le propriétaire des fichiers de GLPI
-        chown -Rc www-data:www-data /var/lib/glpi
-        # Changer les permissions des fichiers de GLPI
-        find /var/lib/glpi -type f -exec chmod 644 {} \;
-        find /var/lib/glpi -type d -exec chmod 755 {} \;
-        # Changer le propriétaire des fichiers de logs
-        chown -Rc www-data:www-data /var/log/glpi
-        # Changer les permissions des fichiers de logs
-        find /var/log/glpi -type f -exec chmod 644 {} \;
-        find /var/log/glpi -type d -exec chmod 755 {} \;
-        # Changement du propriétaire des fichiers GLPI
-        chown -Rc www-data:www-data "${REP_GLPI}"
-        # Changement des permissions des fichiers GLPI
-        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+		rights_glpi
 		sudo -u www-data php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force
 	elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-		# Changer le propriétaire des fichiers de configuration
-        chown -Rc nginx:nginx /etc/glpi
-        # Changer les permissions des fichiers de configuration
-        find /etc/glpi -type f -exec chmod 644 {} \;
-        find /etc/glpi -type d -exec chmod 755 {} \;
-        # Changer le propriétaire des fichiers de GLPI
-        chown -Rc nginx:nginx /var/lib/glpi
-        # Changer les permissions des fichiers de GLPI
-        find /var/lib/glpi -type f -exec chmod 644 {} \;
-        find /var/lib/glpi -type d -exec chmod 755 {} \;
-        # Changer le propriétaire des fichiers de logs
-        chown -Rc nginx:nginx /var/log/glpi
-        # Changer les permissions des fichiers de logs
-        find /var/log/glpi -type f -exec chmod 644 {} \;
-        find /var/log/glpi -type d -exec chmod 755 {} \;
-        # Changement du propriétaire des fichiers GLPI
-        chown -Rc nginx:nginx "${REP_GLPI}"
-        # Changement des permissions des fichiers GLPI
-        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
-        semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
-		semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
-		restorecon -Rv "${REP_GLPI}"
-		restorecon -Rv "${REP_GLPI}"marketplace
+		rights_glpi
 		sudo -u nginx php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force
 	fi
 	info "$MSG_UPDATE_CLEAN"
