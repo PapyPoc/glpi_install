@@ -481,12 +481,14 @@ function install_packages(){
 
         info "$MSG_INSTALL_EXT_PHP"
         
-        if ! install_dependencies php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        if ! install_dependencies php-bcmath,php-mysql,php-mbstring,php-curl,php-gd,php-xml,php-intl, \
+        php-ldap,php-apcu,php-opcache,php-xmlrpc,php-zip,php-bz2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_PHP_EXT_FAILED"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! install_dependencies wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+        if ! install_dependencies wget tar apache2 apache2-bin mariadb-server mariadb-client \
+        perl php >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             warn "$MSG_LAMP_FAILED"
             return 1
         fi
