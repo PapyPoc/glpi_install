@@ -41,7 +41,7 @@ export_display_env() {
     # pouvant être référencées comme espaces réservés dans les fichiers de langue.
     # Les valeurs par défaut sont vides si elles ne sont pas définies.
     local vars_maj=(
-        ORIG_USER ADMIN_GROUP DISTRO_ID VERSION_ID ID NAME PRETTY_NAME MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
+        ORIG_USER ADMIN_GROUP ID VERSION_ID ID NAME PRETTY_NAME MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
         ERRORFILE LOGFILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS INTERFACE DOWNLOADLINK
         DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
         REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT GLPI_CLI_VERSION PHPVERSION
@@ -49,7 +49,7 @@ export_display_env() {
         NEW_VERSION TAGS VERSION_SELECT
     )
     local vars_min=(
-        orig_user admin_group distro_id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
+        orig_user admin_group id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
         errorfile logfile task_index task_key language timezone ipadress interface downloadlink
         db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd
         rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output glpi_cli_version phpversion
@@ -146,8 +146,7 @@ function check_distro(){
                     return 1
                 fi
             fi
-            DISTRO_ID=${ID}
-            export DISTRO_ID VERSION_ID ID
+            export VERSION_ID ID
         fi
     else
         warn "$MSG_DISTRO_INVALID"
@@ -379,12 +378,12 @@ function check_install(){
 }
 # Mise à jour de la distribution
 function update_distro(){
-    if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
+    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
            info "$MSG_UPGRADE_DISTRO"
            timedatectl set-ntp true # Synchronise l'heure
            sleep 5
            apt-get update && apt-get upgrade -y
-    elif [[ "${DISTRO_ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
            info "$MSG_UPGRADE_DISTRO"
            chronyc makestep # Synchronise l'heure
            sleep 5
@@ -690,7 +689,7 @@ EOF
         systemctl restart apache2
         # Configuration de la tâche Cron
         echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
-    elif [[ "${DISTRO_ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         network_info
         sudo tee /etc/nginx/conf.d/glpi.conf > /dev/null << EOF
 server {
@@ -878,16 +877,16 @@ EOF
 function maintenance(){
     if [ "$1" == "1" ]; then
         warn "${MSG_ACTIVE_SERVICE}"
-        if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
+        if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
             sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable
-        elif [[ "${DISTRO_ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+        elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
             sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable
         fi
     elif [ "$1" == "0" ]; then
         info "$MSG_DEACTIVE_SERVICE"
-        if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
+        if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
             sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable
-        elif [[ "${DISTRO_ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+        elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
             sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable
         fi
     fi
@@ -956,10 +955,10 @@ function update_glpi(){
 	rm -Rf "${REP_BACKUP}marketplace" "${REP_GLPI}"
     rm -f "${REP_BACKUP}inc/downstream.php"
 	info "$MSG_UPDATE_GLPI_DATABASE"
-	if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
+	if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
 		chown -R www-data:www-data "${REP_GLPI}"
 		sudo -u www-data php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force
-	elif [[ "${DISTRO_ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+	elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
 		chown -R nginx:nginx "${REP_GLPI}"
 		semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
 		semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
