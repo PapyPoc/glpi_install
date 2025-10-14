@@ -628,7 +628,7 @@ EOF
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         network_info
         # Setup vhost
-        sudo tee /etc/apache2/sites-available/glpi.conf > /dev/null <<'EOF'
+        cat /etc/apache2/sites-available/glpi.conf <<EOF
 <VirtualHost *:80>
     ServerName ${IPADRESS}
     DocumentRoot ${REP_GLPI}public
