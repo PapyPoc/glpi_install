@@ -147,7 +147,7 @@ function check_distro(){
                 fi
             fi
             DISTRO_ID=${ID}
-            export DISTRO_ID
+            export DISTRO_ID VERSION_ID ID
         fi
     else
         warn "$MSG_DISTRO_INVALID"
