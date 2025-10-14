@@ -423,30 +423,30 @@ function install_packages(){
         fi
         info "$MSG_INSTALL_EXT_PHP"
         if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 2>>"${ERRORFILE}"; then
-            warn "$MSG_PHP_EXT_FAILED" >> "${ERRORFILE}"
+            warn "$MSG_PHP_EXT_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
         if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 2>>"${ERRORFILE}"; then
-            warn "$MSG_LAMP_FAILED" >> "${ERRORFILE}"
+            warn "$MSG_LAMP_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
-        if ! systemctl enable mariadb 1>>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            echo "Échec de l'activation de MariaDB." >>"${ERRORFILE}"
+        if ! systemctl enable mariadb ; then
+            echo "Échec de l'activation de MariaDB." 2>>"${ERRORFILE}"
             return 1
         fi
-        if ! systemctl restart mariadb >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            echo "Échec du redémarrage de MariaDB." >>"${ERRORFILE}"
+        if ! systemctl restart mariadb > /dev/null; then
+            echo "Échec du redémarrage de MariaDB." 2>>"${ERRORFILE}"
             return 1
         fi
         info "$MSG_ACTIVE_START_WEB"
-        if ! systemctl enable apache2 1>>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            echo "Échec de l'activation d'Apache2." >>"${ERRORFILE}"
+        if ! systemctl enable apache2 ; then
+            echo "Échec de l'activation d'Apache2." 2>>"${ERRORFILE}"
             return 1
         fi
-        if ! systemctl restart apache2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            echo "Échec du redémarrage d'Apache2." >>"${ERRORFILE}"
+        if ! systemctl restart apache2 > /dev/null; then
+            echo "Échec du redémarrage d'Apache2." 2>>"${ERRORFILE}"
             return 1
         fi
     elif [[ "${ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
@@ -622,9 +622,15 @@ EOF
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
 EOF
-    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering setup_glpi (ID=${ID:-unknown})" >> "${LOGFILE}"
-    . /etc/os-release || true
-    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering setup_glpi (ID=${ID:-unknown})" >> "${LOGFILE}"
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+    elif [[ -f /etc/lsb-release ]]; then
+        . /etc/lsb-release
+    fi
+    if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
+        warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${ERRORFILE}"
+        return 1
+    fi
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         network_info
         # Setup vhost
