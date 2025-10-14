@@ -915,7 +915,7 @@ function backup_glpi() {
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
     # Répertoires de sauvegarde
     REP_BACKUP="${INVOKING_HOME}/backup_glpi_$(date +"%Y-%m-%d")"
-    local BDD_BACKUP="bdd_glpi_$(date +"%Y-%m-%d_%H-%M-%S").sql"
+    local BDD_BACKUP; BDD_BACKUP="bdd_glpi_$(date +"%Y-%m-%d_%H-%M-%S").sql"
     mkdir -p "${REP_BACKUP}"
     # --- Sauvegarde BDD ---
     info "${MSG_MYSQL_DUMP}" >>"${LOGFILE}"
@@ -938,7 +938,7 @@ function backup_glpi() {
     # --- Compression ---
     info "${MSG_COMPRESS_BACKUP}" >>"${LOGFILE}"
     mkdir -p "${REP_BACKUP_COMPRESS}"
-    local BACKUP_FILE="${REP_BACKUP_COMPRESS}/backup_glpi_$(date +"%Y-%m-%d_%H-%M-%S").tar.gz"
+    local BACKUP_FILE; BACKUP_FILE="${REP_BACKUP_COMPRESS}/backup_glpi_$(date +"%Y-%m-%d_%H-%M-%S").tar.gz"
     if tar -czf "${BACKUP_FILE}" -C "${REP_BACKUP}" . 2>>"${ERRORFILE}"; then
         info "${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})" >>"${LOGFILE}"
         # Vérifier que le fichier compressé n'est pas vide
@@ -960,36 +960,39 @@ function backup_glpi() {
     fi
     info "=== Sauvegarde GLPI terminée avec succès ===" >>"${LOGFILE}"
     sleep 2
+    export REP_BACKUP
 }
 # Mise à jour de GLPI
-function update_glpi(){
-    # Restauration GLPI complète depuis ${REP_BACKUP}
+function update_glpi() {
+    info "=== Début de la mise à jour GLPI ===" >>"${LOGFILE}"
+    # Vérification de base
+    if [ -z "${REP_BACKUP}" ] || [ -z "${REP_GLPI}" ]; then
+        warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." >>"${ERRORFILE}"
+        return 1
+    fi
+    # --- Étape 1 : restauration des dossiers ---
     for DIR in config files plugins marketplace; do
         SRC="${REP_BACKUP}/${DIR}"
         if [ -d "${SRC}" ]; then
             case "${DIR}" in
-                config)
-                    DEST="/etc/glpi/config"
-                    ;;
-                files)
-                    DEST="/var/lib/glpi/files"
-                    ;;
-                plugins)
-                    DEST="${REP_GLPI}/plugins"
-                    ;;
-                marketplace)
-                    DEST="${REP_GLPI}/marketplace"
-                    ;;
+                config) DEST="/etc/glpi/config" ;;
+                files) DEST="/var/lib/glpi/files" ;;
+                plugins) DEST="${REP_GLPI}/plugins" ;;
+                marketplace) DEST="${REP_GLPI}/marketplace" ;;
             esac
             mkdir -p "${DEST}"
-            if cp -Rf "${SRC}/"* "${DEST}/" 2>>"${ERRORFILE}"; then
-                info "Restauration du répertoire ${DIR} terminée vers ${DEST}" >>"${LOGFILE}"
+            if compgen -G "${SRC}/*" > /dev/null; then
+                if cp -Rf "${SRC}/"* "${DEST}/" 2>>"${ERRORFILE}"; then
+                    info "Restauration de ${DIR} vers ${DEST} terminée." >>"${LOGFILE}"
+                else
+                    warn "Erreur lors de la copie de ${DIR}." >>"${ERRORFILE}"
+                fi
             else
-                warn "Erreur lors de la restauration de ${DIR}" >>"${ERRORFILE}"
+                warn "Répertoire ${SRC} vide, rien à copier." >>"${ERRORFILE}"
             fi
         fi
     done
-    # Fichier spécifique downstream.php
+    # --- Étape 2 : fichier spécifique downstream.php ---
     if [ -f "${REP_BACKUP}/inc/downstream.php" ]; then
         mkdir -p "${REP_GLPI}/inc"
         if cp -Rf "${REP_BACKUP}/inc/downstream.php" "${REP_GLPI}/inc/" 2>>"${ERRORFILE}"; then
@@ -998,21 +1001,35 @@ function update_glpi(){
             warn "Erreur lors de la restauration de downstream.php" >>"${ERRORFILE}"
         fi
     fi
-    # Suppression des anciens fichiers de GLPI
-    info "$MSG_REMOVE_OLD_FILES"
-    rm -Rf "${REP_BACKUP:?}" >>"${LOGFILE}" 2>>"${ERRORFILE}"
-	info "$MSG_UPDATE_GLPI_DATABASE"
-	if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-		rights_glpi
-		sudo -u www-data php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force
-	elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-		rights_glpi
-		sudo -u nginx php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force
-	fi
-	info "$MSG_UPDATE_CLEAN"
-	rm -Rf "${REP_GLPI}"install/install.php
-	rm -Rf "$REP_BACKUP"backup_glpi
-	sleep 2;
+    # --- Étape 3 : suppression de la sauvegarde ---
+    info "${MSG_REMOVE_OLD_FILES}"
+    if [ -d "${REP_BACKUP}" ]; then
+        rm -rf "${REP_BACKUP:?}"
+        info "Répertoire ${REP_BACKUP} supprimé avec succès." >>"${LOGFILE}"
+    else
+        warn "Répertoire ${REP_BACKUP} introuvable." >>"${ERRORFILE}"
+    fi
+    # --- Étape 4 : mise à jour de la base GLPI ---
+    info "${MSG_UPDATE_GLPI_DATABASE}"
+    rights_glpi
+    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
+        sudo -u www-data php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force >>"${LOGFILE}" 2>>"${ERRORFILE}"
+    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+        sudo -u nginx php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force >>"${LOGFILE}" 2>>"${ERRORFILE}"
+    fi
+    if [ $? -eq 0 ]; then
+        info "Mise à jour de la base GLPI réussie." >>"${LOGFILE}"
+    else
+        warn "Échec de la mise à jour de la base GLPI." >>"${ERRORFILE}"
+        return 1
+    fi
+    # --- Étape 5 : nettoyage final ---
+    info "${MSG_UPDATE_CLEAN}"
+    rm -f "${REP_GLPI}/install/install.php" 2>>"${ERRORFILE}"
+    rm -rf "${REP_BACKUP}/backup_glpi" 2>>"${ERRORFILE}"
+
+    info "=== Fin de la mise à jour GLPI ===" >>"${LOGFILE}"
+    sleep 2
 }
 # Fonction principale pour exécuter les tâches avec barre de progression
 function update(){
