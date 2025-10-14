@@ -833,15 +833,31 @@ function maj_user_glpi(){
     info "${MSG_CHANGE_MDP_GLPI}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
+    # Sanitize values used in SQL to avoid accidental SQL syntax errors (escape single quotes by doubling them)
+    local adm_esc post_esc tech_esc norm_esc tz_esc lang_esc ip_esc
+    adm_esc=$(printf '%s' "${ADMINGLPIPWD:-}" | sed "s/'/''/g")
+    post_esc=$(printf '%s' "${POSTGLPIPWD:-}" | sed "s/'/''/g")
+    tech_esc=$(printf '%s' "${TECHGLPIPWD:-}" | sed "s/'/''/g")
+    norm_esc=$(printf '%s' "${NORMGLPIPWD:-}" | sed "s/'/''/g")
+    tz_esc=$(printf '%s' "${TIMEZONE:-}" | sed "s/'/''/g")
+    lang_esc=$(printf '%s' "${LANGUAGE:-}" | sed "s/'/''/g")
+    ip_esc=$(printf '%s' "${IPADRESS:-}" | sed "s/'/''/g")
+
+    # Verify mysql client exists
+    if ! command -v "${MYSQL_CMD}" >/dev/null 2>&1; then
+        warn "mysql client not found: ${MYSQL_CMD}"
+        return 1
+    fi
+
     # Execute SQL statements securely (use MYSQL_PWD to avoid exposing password in argv)
     if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent "${DB_NAME}" <<EOF
-UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';
-UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
-UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';
-UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';
-UPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';
-UPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';
-UPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';
+UPDATE glpi_users SET password = MD5('${adm_esc}') WHERE name = 'glpi';
+UPDATE glpi_users SET password = MD5('${post_esc}') WHERE name = 'post-only';
+UPDATE glpi_users SET password = MD5('${tech_esc}') WHERE name = 'tech';
+UPDATE glpi_users SET password = MD5('${norm_esc}') WHERE name = 'normal';
+UPDATE glpi_configs SET value = '${tz_esc}' WHERE context = 'core' AND name = 'timezone';
+UPDATE glpi_configs SET value = '${lang_esc}' WHERE context = 'core' AND name = 'language';
+UPDATE glpi_configs SET value = '${ip_esc}' WHERE context = 'core' AND name = 'url_base';
 EOF
     then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
