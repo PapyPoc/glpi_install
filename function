@@ -622,7 +622,7 @@ EOF
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
 EOF
-    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
+    if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
         network_info
         # Setup vhost
         sudo tee /etc/apache2/sites-available/glpi.conf > /dev/null <<'EOF'
@@ -681,9 +681,9 @@ EOF
         systemctl restart apache2
         # Configuration de la tâche Cron
         echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+    elif [[ "${DISTRO_ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         network_info
-        tee /etc/nginx/conf.d/glpi.conf > /dev/null << EOF
+        sudo tee /etc/nginx/conf.d/glpi.conf > /dev/null << EOF
 server {
     listen 80;
     server_name "${IPADRESS}";
@@ -700,7 +700,7 @@ server {
     }
 }
 EOF
-        tee /etc/logrotate.d/glpi > /dev/null << EOF
+        sudo tee /etc/logrotate.d/glpi > /dev/null << EOF
 # Rotate GLPI logs daily, only if not empty
 # Save 14 days old logs under compressed mode
 /var/lib/glpi/files/_log/*.log {
