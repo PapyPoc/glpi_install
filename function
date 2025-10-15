@@ -642,11 +642,11 @@ EOF
     elif [[ -f /etc/lsb-release ]]; then
         source /etc/lsb-release
     fi
-    echo "System: ${ID} ${VERSION_ID}" >> "${LOGFILE}"
     if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
         warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${ERRORFILE}"
         return 1
     fi
+    export ID VERSION_ID
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         network_info
         # Setup vhost
@@ -681,13 +681,23 @@ EOF
         systemctl restart apache2
         rights_glpi
         # Installation de GLPI en ligne de commande
-        CMD="${REP_GLPI}/bin/console db:install --db-host \"localhost\" --db-port=3306 --db-name=\"${DB_NAME}\" --db-user=\"${DB_USER}\" --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --quiet --no-interaction"
-        echo "sudo -u www-data php ${CMD}" | sudo tee -a "${LOGFILE}" > /dev/null || true
+        CMD="${REP_GLPI}/bin/console db:install \
+ --db-host localhost \
+ --db-port=3306 \
+ --db-name=${DB_NAME} \
+ --db-user=${DB_USER} \
+ --db-password=${SQLGLPIPWD} \
+ --default-language=${LANGUAGE} \
+ --force \
+ --no-telemetry \
+ --quiet \
+ --no-interaction"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - [INFO] Exécution : sudo -u www-data php ${CMD}" |  tee -a "${LOGFILE}" > /dev/null || true
         # Exécuter la commande en tant que www-data. Utiliser sudo tee pour écrire vers les fichiers protégés.
-        if sudo -u www-data php "${CMD}" 2> >(sudo tee -a "${ERRORFILE}" >&2) | sudo tee -a "${LOGFILE}" > /dev/null; then
-            info "Installation GLPI terminée avec succès." | sudo tee -a "${LOGFILE}" > /dev/null
+        if eval "sudo -u www-data php ${CMD}" 2> >(tee -a "${ERRORFILE}" >&2) | tee -a "${LOGFILE}" > /dev/null; then
+            info "Installation GLPI terminée avec succès." >>"${LOGFILE}"
         else
-            warn "Échec de l'installation GLPI via console." | sudo tee -a "${ERRORFILE}" > /dev/null
+            warn "Échec de l'installation GLPI via console." >>"${ERRORFILE}"
             return 1
         fi
         systemctl restart apache2
@@ -969,10 +979,10 @@ function backup_glpi() {
 }
 # Mise à jour de GLPI
 function update_glpi() {
-    info "=== Début de la mise à jour GLPI ===" >>"${LOGFILE}"
+    info "=== Début de la mise à jour GLPI ===" 1>>"${LOGFILE}"
     # Vérification de base
     if [ -z "${REP_BACKUP}" ] || [ -z "${REP_GLPI}" ]; then
-        warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." >>"${ERRORFILE}"
+        warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." 1>>"${ERRORFILE}"
         return 1
     fi
     # --- Étape 1 : restauration des dossiers ---
@@ -988,12 +998,12 @@ function update_glpi() {
             mkdir -p "${DEST}"
             if compgen -G "${SRC}/*" > /dev/null; then
                 if cp -Rf "${SRC}/"* "${DEST}/" 2>>"${ERRORFILE}"; then
-                    info "Restauration de ${DIR} vers ${DEST} terminée." >>"${LOGFILE}"
+                    info "Restauration de ${DIR} vers ${DEST} terminée." 1>>"${LOGFILE}"
                 else
-                    warn "Erreur lors de la copie de ${DIR}." >>"${ERRORFILE}"
+                    warn "Erreur lors de la copie de ${DIR}." 2>>"${ERRORFILE}"
                 fi
             else
-                warn "Répertoire ${SRC} vide, rien à copier." >>"${ERRORFILE}"
+                warn "Répertoire ${SRC} vide, rien à copier." 2>>"${ERRORFILE}"
             fi
         fi
     done
@@ -1001,31 +1011,31 @@ function update_glpi() {
     if [ -f "${REP_BACKUP}/inc/downstream.php" ]; then
         mkdir -p "${REP_GLPI}/inc"
         if cp -Rf "${REP_BACKUP}/inc/downstream.php" "${REP_GLPI}/inc/" 2>>"${ERRORFILE}"; then
-            info "Fichier downstream.php restauré." >>"${LOGFILE}"
+            info "Fichier downstream.php restauré." 1>>"${LOGFILE}"
         else
-            warn "Erreur lors de la restauration de downstream.php" >>"${ERRORFILE}"
+            warn "Erreur lors de la restauration de downstream.php" 2>>"${ERRORFILE}"
         fi
     fi
     # --- Étape 3 : suppression de la sauvegarde ---
     info "${MSG_REMOVE_OLD_FILES}"
     if [ -d "${REP_BACKUP}" ]; then
         rm -rf "${REP_BACKUP:?}"
-        info "Répertoire ${REP_BACKUP} supprimé avec succès." >>"${LOGFILE}"
+        info "Répertoire ${REP_BACKUP} supprimé avec succès." 1>>"${LOGFILE}"
     else
-        warn "Répertoire ${REP_BACKUP} introuvable." >>"${ERRORFILE}"
+        warn "Répertoire ${REP_BACKUP} introuvable." 2>>"${ERRORFILE}"
     fi
     # --- Étape 4 : mise à jour de la base GLPI ---
     info "${MSG_UPDATE_GLPI_DATABASE}"
     rights_glpi
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        sudo -u www-data php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force >>"${LOGFILE}" 2>>"${ERRORFILE}"
+        sudo -u www-data php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force 1>"${LOGFILE}" 2>>"${ERRORFILE}"
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        sudo -u nginx php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force >>"${LOGFILE}" 2>>"${ERRORFILE}"
+        sudo -u nginx php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force 1>"${LOGFILE}" 2>>"${ERRORFILE}"
     fi
     if [ $? -eq 0 ]; then
-        info "Mise à jour de la base GLPI réussie." >>"${LOGFILE}"
+        info "Mise à jour de la base GLPI réussie." 1>>"${LOGFILE}"
     else
-        warn "Échec de la mise à jour de la base GLPI." >>"${ERRORFILE}"
+        warn "Échec de la mise à jour de la base GLPI." 2>>"${ERRORFILE}"
         return 1
     fi
     # --- Étape 5 : nettoyage final ---
@@ -1033,7 +1043,7 @@ function update_glpi() {
     rm -f "${REP_GLPI}/install/install.php" 2>>"${ERRORFILE}"
     rm -rf "${REP_BACKUP}/backup_glpi" 2>>"${ERRORFILE}"
 
-    info "=== Fin de la mise à jour GLPI ===" >>"${LOGFILE}"
+    info "=== Fin de la mise à jour GLPI ===" 1>>"${LOGFILE}"
     sleep 2
 }
 # Fonction principale pour exécuter les tâches avec barre de progression
