@@ -71,19 +71,21 @@ function run_task() {
     local total="$4"
     info "Tâche: $index/$total - $task_key"
     info "$MSG_COMMAND: $task_cmd"
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" | sudo tee -a "$LOGFILE"
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR | sudo tee -a "$LOGFILE"
+    echo "$(date '+%F %T') [INFO] START: $task_cmd" >> "${LOGFILE}"
     local output
-    output=$(eval "$task_cmd")
+    output=$(eval "$task_cmd" 2>&1)
     local exit_code=$?
-    if [ $exit_code -eq 0 ]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" | sudo tee -a "$LOGFILE"
-        echo "$output" | sudo tee -a "$LOGFILE" 2>> "${ERRORFILE}"
+    if [[ $exit_code -eq 0 ]]; then
+        echo "$(date '+%F %T') [INFO] SUCCESS: $task_cmd" >> "${LOGFILE}"
+        echo "$output" >> "${LOGFILE}"
     else
-        warn "$MSG_ERROR_TASK: $task_key" 2>> "${ERRORFILE}" 1>>"${ERRORFILE}"
-    fi  
+        echo "$(date '+%F %T') [ERROR] $MSG_ERROR_TASK: $task_key (exit=$exit_code)" >> "${ERRORFILE}"
+        echo "$output" >> "${ERRORFILE}"
+        return 1
+    fi
     echo "$(date '+%F %T') [$$][DEBUG:run_task] Fin de la fonction" >> "${LOGFILE}"
 }
+
 # Exécuter les tâches avec barre de progression
 function glpi_install() {
     echo "$(date '+%F %T') [$$][DEBUG:glpi_install] Entrée dans la fonction" >> "${LOGFILE}"
