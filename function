@@ -119,10 +119,8 @@ function glpi_install() {
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
-                sleep 5
                 exit 1   # <-- remonte l'erreur au parent
             fi
-        sleep 0.5
     done) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
