@@ -70,17 +70,17 @@ function run_task() {
     local total="$4"
     info "Tâche: $index/$total - $task_key"
     info "$MSG_COMMAND: $task_cmd"
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" >> "${LOGFILE}"
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR >> "$LOGFILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" | tee -a "$LOGFILE"
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR | tee -a "$LOGFILE"
     local output
     output=$(eval "$task_cmd")
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" >> "${LOGFILE}"
-        echo "$output" >> "${LOGFILE}" 2>> "${ERRORFILE}"
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" | tee -a "$LOGFILE"
+        echo "$output" | tee -a "$LOGFILE" 2>> "${ERRORFILE}"
     else
         { echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd"; 
-        echo "$output" >> "${ERRORFILE}"; 
+        echo "$output" | tee -a "$ERRORFILE"; 
         warn "$MSG_ERROR_TASK: $task_key"; } 2>> "${ERRORFILE}" 1>>"${ERRORFILE}";
         return 1
     fi
@@ -101,22 +101,23 @@ function glpi_install() {
     task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
     total_tasks=${#task_order[@]}
     task_index=0
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR >> "$LOGFILE"
     (for task_key in "${task_order[@]}"; do
         task_index=$((task_index + 1))
         progress=$((task_index * 100 / total_tasks))
         echo "$progress"
         echo "XXX"
-        echo "$task_index/$total_tasks - $task_key"
+        echo "$task_index/$total_tasks - $task_key : ${MSG_START}"; sleep 1
         echo "XXX"
         if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
                 echo "$progress"
                 echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_OK}"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_END}"; sleep 1
                 echo "XXX"
             else
                 echo "100"
                 echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"; sleep 2
                 echo "XXX"
                 exit 1   # <-- remonte l'erreur au parent
             fi
@@ -782,61 +783,63 @@ function maj_user_glpi(){
 function source_os_release(){
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release
-    elif [[ -f /etc/lsb-release ]]; then
+    fi
+    if [[ -f /etc/lsb-release ]]; then
         source /etc/lsb-release
+    fi
+    if [[ -z "${ID:-}" ]]; then
+        ID=$(uname -s | tr '[:upper:]' '[:lower:]')
+    fi
+    if [[ -z "${VERSION_ID:-}" ]]; then
+        VERSION_ID=$(uname -r)
     fi
     if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
         warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${ERRORFILE}"
         return 1
     fi
+    echo "$(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}" >> "${LOGFILE}"
+    return 0
 }
 function rights_glpi(){
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering rights_glpi (ID=${ID:-unknown})" >> "${LOGFILE}"
     source_os_release
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: after source_os_release (ID=${ID:-unknown})" >> "${LOGFILE}"
+    echo "$(date '+%F %T'): INFO: after source_os_release (ID=${ID:-unknown})" >> "${LOGFILE}"
     # Changer les droits des répertoires et fichiers
     {
         info "$MSG_RIGHTS_GLPI"
-        find /etc/glpi -type f -exec chmod 644 {} \;
-        find /etc/glpi -type d -exec chmod 755 {} \;
-        find /var/lib/glpi -type f -exec chmod 644 {} \;
-        find /var/lib/glpi -type d -exec chmod 755 {} \;
-        find /var/log/glpi -type f -exec chmod 644 {} \;
-        find /var/log/glpi -type d -exec chmod 755 {} \;
-        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+        for dir in /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"; do
+            [[ -d "$dir" ]] || continue
+            find "$dir" -type d -exec chmod 755 {} \; 2>/dev/null
+            find "$dir" -type f -exec chmod 644 {} \; 2>/dev/null
+        done
     } >> "${LOGFILE}" 2>> "${ERRORFILE}"
     # Changer le propriétaire des répertoires
-    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        {
-            chown -Rc www-data:www-data /etc/glpi
-            chown -Rc www-data:www-data /var/lib/glpi
-            chown -Rc www-data:www-data /var/log/glpi
-            chown -Rc www-data:www-data "${REP_GLPI}"
-        } >> "${LOGFILE}" 2>> "${ERRORFILE}"
-    fi
-    if [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        {
-            chown -Rc nginx:nginx /etc/glpi
-            chown -Rc nginx:nginx /var/lib/glpi
-            chown -Rc nginx:nginx /var/log/glpi
-            chown -Rc nginx:nginx "${REP_GLPI}"
-            # SELinux
-            setsebool -P httpd_can_network_connect on
-            setsebool -P httpd_can_network_connect_db on
-            setsebool -P httpd_can_sendmail on
-            semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
-            semanage fcontext -a -t httpd_sys_rw_content_t "/var/lib/glpi(/.*)?"
-            semanage fcontext -a -t httpd_sys_rw_content_t "/var/log/glpi(/.*)?"
-            semanage fcontext -a -t httpd_sys_rw_content_t "/etc/glpi(/.*)?"
-            semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
-            restorecon -R "${REP_GLPI}"
-            restorecon -R /var/lib/glpi
-            restorecon -R /var/log/glpi
-            restorecon -R /etc/glpi
-            restorecon -R "${REP_GLPI}"marketplace
-        } >> "${LOGFILE}" 2>> "${ERRORFILE}"
-    fi
+    case "${ID}" in
+        debian|ubuntu)
+            {
+                sudo chown -Rc www-data:www-data /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}" 2>/dev/null
+            } >> "${LOGFILE}" 2>> "${ERRORFILE}"
+            ;;
+        almalinux|centos|rocky|rhel)
+            {
+                sudo chown -Rc nginx:nginx /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}" 2>/dev/null
+                if command -v semanage >/dev/null 2>&1; then
+                    setsebool -P httpd_can_network_connect on
+                    setsebool -P httpd_can_network_connect_db on
+                    setsebool -P httpd_can_sendmail on
+                    for p in "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}/marketplace"; do
+                        semanage fcontext -a -t httpd_sys_rw_content_t "${p}(/.*)?"
+                    done
+                    restorecon -R "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}/marketplace"
+                else
+                    echo "$(date '+%F %T'): WARN: semanage non disponible — SELinux non configuré" >> "${ERRORFILE}"
+                fi
+            } >> "${LOGFILE}" 2>> "${ERRORFILE}"
+            ;;
+        *)
+            echo "$(date '+%F %T'): WARN: Distribution ${ID:-unknown} non reconnue — aucun changement propriétaire" >> "${ERRORFILE}"
+            ;;
+    esac
+    echo "$(date '+%F %T'): INFO: Fin de rights_glpi pour ${ID}" >> "${LOGFILE}"
 }
 # Afficher le résultat final
 function display_result() {
