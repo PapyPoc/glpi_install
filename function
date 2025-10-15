@@ -406,7 +406,9 @@ function check_install() {
     else
         # --- Pas d'installation détectée ---
         dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
-        if glpi_install; then
+        glpi_install
+        if [ $? -eq 0 ]; then
+            dialog --title "GLPI" --sleep 5 --infobox "Installation de GLPI ${VERSION_SELECT} terminée." 10 50
             info "Installation de GLPI ${VERSION_SELECT} terminée." >> "${LOGFILE}"
             return 0
         else
