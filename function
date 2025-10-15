@@ -80,12 +80,9 @@ function run_task() {
         echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" | sudo tee -a "$LOGFILE"
         echo "$output" | sudo tee -a "$LOGFILE" 2>> "${ERRORFILE}"
     else
-        { echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd"; 
-        echo "$output" | sudo tee -a "$ERRORFILE"; 
-        warn "$MSG_ERROR_TASK: $task_key"; } 2>> "${ERRORFILE}" 1>>"${ERRORFILE}";
+        warn "$MSG_ERROR_TASK: $task_key" 2>> "${ERRORFILE}" 1>>"${ERRORFILE}"
         return 1
-    fi
-    return 0;
+    fi  
     echo "$(date '+%F %T') [$$][DEBUG:run_task] Fin de la fonction" >> "${LOGFILE}"
 }
 # Exécuter les tâches avec barre de progression
