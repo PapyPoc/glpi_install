@@ -81,7 +81,6 @@ function run_task() {
         echo "$output" | sudo tee -a "$LOGFILE" 2>> "${ERRORFILE}"
     else
         warn "$MSG_ERROR_TASK: $task_key" 2>> "${ERRORFILE}" 1>>"${ERRORFILE}"
-        return 1
     fi  
     echo "$(date '+%F %T') [$$][DEBUG:run_task] Fin de la fonction" >> "${LOGFILE}"
 }
