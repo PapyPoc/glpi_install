@@ -802,7 +802,6 @@ function source_os_release(){
         return 1
     fi
     echo "$(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}" >> "${LOGFILE}"
-    return 0
 }
 function rights_glpi(){
     source_os_release
