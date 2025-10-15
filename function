@@ -791,40 +791,51 @@ function source_os_release(){
     fi
 }
 function rights_glpi(){
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering rights_glpi (ID=${ID:-unknown})" >> "${LOGFILE}"
     source_os_release
-    info "$MSG_RIGHTS_GLPI"
-    find /etc/glpi -type f -exec chmod 644 {} \;
-    find /etc/glpi -type d -exec chmod 755 {} \;
-    find /var/lib/glpi -type f -exec chmod 644 {} \;
-    find /var/lib/glpi -type d -exec chmod 755 {} \;
-    find /var/log/glpi -type f -exec chmod 644 {} \;
-    find /var/log/glpi -type d -exec chmod 755 {} \;
-    find "${REP_GLPI}" -type d -exec chmod 755 {} \;
-    find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: after source_os_release (ID=${ID:-unknown})" >> "${LOGFILE}"
+    # Changer les droits des répertoires et fichiers
+    {
+        info "$MSG_RIGHTS_GLPI"
+        find /etc/glpi -type f -exec chmod 644 {} \;
+        find /etc/glpi -type d -exec chmod 755 {} \;
+        find /var/lib/glpi -type f -exec chmod 644 {} \;
+        find /var/lib/glpi -type d -exec chmod 755 {} \;
+        find /var/log/glpi -type f -exec chmod 644 {} \;
+        find /var/log/glpi -type d -exec chmod 755 {} \;
+        find "${REP_GLPI}" -type d -exec chmod 755 {} \;
+        find "${REP_GLPI}" -type f -exec chmod 644 {} \;
+    } >> "${LOGFILE}" 2>> "${ERRORFILE}"
+    # Changer le propriétaire des répertoires
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        chown -Rc www-data:www-data /etc/glpi
-        chown -Rc www-data:www-data /var/lib/glpi
-        chown -Rc www-data:www-data /var/log/glpi
-        chown -Rc www-data:www-data "${REP_GLPI}"
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        chown -Rc nginx:nginx /etc/glpi
-        chown -Rc nginx:nginx /var/lib/glpi
-        chown -Rc nginx:nginx /var/log/glpi
-        chown -Rc nginx:nginx "${REP_GLPI}"
-        # SELinux
-        setsebool -P httpd_can_network_connect on
-        setsebool -P httpd_can_network_connect_db on
-        setsebool -P httpd_can_sendmail on
-        semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
-        semanage fcontext -a -t httpd_sys_rw_content_t "/var/lib/glpi(/.*)?"
-        semanage fcontext -a -t httpd_sys_rw_content_t "/var/log/glpi(/.*)?"
-        semanage fcontext -a -t httpd_sys_rw_content_t "/etc/glpi(/.*)?"
-        semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
-        restorecon -R "${REP_GLPI}"
-        restorecon -R /var/lib/glpi
-        restorecon -R /var/log/glpi
-        restorecon -R /etc/glpi
-        restorecon -R "${REP_GLPI}"marketplace
+        {
+            chown -Rc www-data:www-data /etc/glpi
+            chown -Rc www-data:www-data /var/lib/glpi
+            chown -Rc www-data:www-data /var/log/glpi
+            chown -Rc www-data:www-data "${REP_GLPI}"
+        } >> "${LOGFILE}" 2>> "${ERRORFILE}"
+    fi
+    if [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+        {
+            chown -Rc nginx:nginx /etc/glpi
+            chown -Rc nginx:nginx /var/lib/glpi
+            chown -Rc nginx:nginx /var/log/glpi
+            chown -Rc nginx:nginx "${REP_GLPI}"
+            # SELinux
+            setsebool -P httpd_can_network_connect on
+            setsebool -P httpd_can_network_connect_db on
+            setsebool -P httpd_can_sendmail on
+            semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
+            semanage fcontext -a -t httpd_sys_rw_content_t "/var/lib/glpi(/.*)?"
+            semanage fcontext -a -t httpd_sys_rw_content_t "/var/log/glpi(/.*)?"
+            semanage fcontext -a -t httpd_sys_rw_content_t "/etc/glpi(/.*)?"
+            semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
+            restorecon -R "${REP_GLPI}"
+            restorecon -R /var/lib/glpi
+            restorecon -R /var/log/glpi
+            restorecon -R /etc/glpi
+            restorecon -R "${REP_GLPI}"marketplace
+        } >> "${LOGFILE}" 2>> "${ERRORFILE}"
     fi
 }
 # Afficher le résultat final
