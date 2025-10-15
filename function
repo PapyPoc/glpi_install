@@ -89,40 +89,53 @@ function run_task() {
 # Exécuter les tâches avec barre de progression
 function glpi_install() {
     declare -A tasks=(
-		["$MSG_T01"]="update_distro"
+        ["$MSG_T01"]="update_distro"
         ["$MSG_T02"]="install_packages"
         ["$MSG_T03"]="network_info"
         ["$MSG_T04"]="mariadb_configure"
         ["$MSG_T05"]="install_glpi"
         ["$MSG_T06"]="setup_glpi"
         ["$MSG_T07"]="maj_user_glpi"
-		["$MSG_T08"]="write_credentials"
-	)
-    task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
-    total_tasks=${#task_order[@]}
-    task_index=0
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR >> "$LOGFILE"
-    (for task_key in "${task_order[@]}"; do
-        task_index=$((task_index + 1))
-        progress=$((task_index * 100 / total_tasks))
-        echo "$progress"
-        echo "XXX"
-        echo "$task_index/$total_tasks - $task_key"
-        echo "XXX"
-        if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
+        ["$MSG_T08"]="write_credentials"
+    )
+    local task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
+    local total_tasks=${#task_order[@]}
+    local task_index=0
+    (
+        trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
+        for task_key in "${task_order[@]}"; do
+            task_index=$((task_index + 1))
+            progress=$((task_index * 100 / total_tasks))
+            echo "$progress"
+            echo "XXX"
+            echo "$task_index/$total_tasks - $task_key : ${MSG_START}"
+            echo "XXX"
+            # Exécution et logging
+            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
                 echo "$progress"
                 echo "XXX"
-                echo "$task_index/$total_tasks - $task_key"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_END}"
                 echo "XXX"
+                echo "$(date '+%F %T'): [OK] $task_key terminé." >> "${LOGFILE}"
             else
                 echo "100"
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
+                echo "$(date '+%F %T'): [ERREUR] $task_key a échoué." >> "${ERRORFILE}"
                 echo "$MSG_ERROR_INSTALL" >> "${ERRORFILE}"
-                exit 1   # <-- remonte l'erreur au parent
+                sleep 1
+                exit 1
             fi
-    done) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
+            sleep 0.3
+        done
+    ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
+    # Message de fin
+    if [[ $? -eq 0 ]]; then
+        dialog --title "GLPI" --msgbox "\n${MSG_INSTALL_DONE}\n\nLogs : ${LOGFILE}" 8 70
+    else
+        dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
+    fi
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
