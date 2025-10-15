@@ -107,28 +107,29 @@ function glpi_install() {
         progress=$((task_index * 100 / total_tasks))
         echo "$progress"
         echo "XXX"
-        echo "$task_index/$total_tasks - $task_key : ${MSG_START}"; sleep 1
+        echo "$task_index/$total_tasks - $task_key"
         echo "XXX"
         if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
                 echo "$progress"
                 echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_END}"; sleep 1
+                echo "$task_index/$total_tasks - $task_key"
                 echo "XXX"
             else
                 echo "100"
                 echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"; sleep 2
+                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
+                sleep 5
                 exit 1   # <-- remonte l'erreur au parent
             fi
-        sleep 1
-    done) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
+        sleep 0.5
+    done) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
     # Vérifie si le fichier os-release existe
-    if [ -f /etc/os-release ]; then
-    # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
+    if source_os_release; then
+        # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
         if [[ "${ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
             if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
                 info "$MSG_DISTRO_OK"
@@ -416,11 +417,7 @@ function network_info(){
 }
 # Installation des éléments nécessaire
 function install_packages(){
-    # Ensure distro variables are available; try to source /etc/os-release if missing
-    if [ -z "${ID:-}" ] && [ -f /etc/os-release ]; then
-        # shellcheck disable=SC1091
-        . /etc/os-release || true
-    fi
+    source_os_release
     warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering install_packages (ID=${ID:-unknown})" >> "${LOGFILE}"
 
     if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
@@ -639,18 +636,14 @@ EOF
     }
 EOF
     source_os_release
-    if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
-        warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${ERRORFILE}"
-        return 1
-    fi
+    network_info
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        network_info
         # Configuration d'Apache pour GLPI
-        tee "/etc/apache2/sites-available/glpi.conf" > /dev/null <<'EOF'
+        sudo tee /etc/apache2/sites-available/glpi.conf > /dev/null <<EOF
 <VirtualHost *:80>
     ServerName ${IPADRESS}
-    DocumentRoot ${REP_GLPI}public
-    <Directory ${REP_GLPI}public>
+    DocumentRoot ${REP_GLPI}/public
+    <Directory ${REP_GLPI}/public>
         Require all granted
         RewriteEngine On
         RewriteCond %{HTTP:Authorization} ^(.+)$
@@ -680,8 +673,14 @@ EOF
             # Recharger la configuration d'Apache
             systemctl reload apache2;
             # Change permissions
-            rights_glpi
-        } 1>>"${LOGFILE}" 2>>"${ERRORFILE}"
+            rights_glpi || { 
+                warn "Échec de la modification des droits pour GLPI." >>"${ERRORFILE}"
+                return 1
+            }
+        } 1>>"${LOGFILE}" 2>>"${LOGFILE}" || {
+            warn "Échec de la configuration d'Apache pour GLPI." >>"${ERRORFILE}"
+            return 1
+        }
         # Installation de GLPI en ligne de commande
         CMD="${REP_GLPI}/bin/console db:install \
  --db-host localhost \
@@ -741,10 +740,14 @@ EOF
         chown root:root /etc/logrotate.d/glpi
         chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi
         sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini
-        # Restart de Nginx et php-fpm
-        systemctl restart nginx php-fpm
         # Change permissions
-        rights_glpi
+        rights_glpi || { 
+            warn "Échec de la modification des droits pour GLPI." >>"${ERRORFILE}"
+            return 1
+        }
+        # Recharger la configuration de Nginx
+        systemctl reload nginx php-fpm
+        sleep 2
         # Installation de GLPI en ligne de commande
         CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
         eval sudo -u nginx "${CMD}"
@@ -752,7 +755,8 @@ EOF
     fi
     sleep 5
     rm -Rf "${REP_GLPI}"install/install.php
-	sleep 2; }
+	sleep 2;
+}
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){
     info "${MSG_CHANGE_MDP_GLPI}"
