@@ -396,6 +396,8 @@ function check_install(){
 }
 # Mise à jour de la distribution
 function update_distro(){
+    source_os_release
+    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering update_distro (ID=${ID:-unknown})" >> "${LOGFILE}"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
            info "$MSG_UPGRADE_DISTRO"
            timedatectl set-ntp true # Synchronise l'heure
@@ -409,17 +411,28 @@ function update_distro(){
 	fi
 }
 # Adresse IP de la machine
-function network_info(){
-    INTERFACE=$(ip route | awk 'NR==1 {print $5}')
-    IPADRESS=$(ip addr show "$INTERFACE" | grep inet | awk '{ print $2; }' | sed 's/\/.*$//' | head -n 1)
-	export IPADRESS
-    sleep 2;
+function network_info() {
+    # Détection de l’interface principale (hors loopback et interfaces virtuelles)
+    INTERFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/dev/ {print $5; exit}')
+    if [[ -z "$INTERFACE" ]]; then
+        INTERFACE=$(ip -o link show | awk -F': ' '!/lo|docker|vir|veth/ {print $2; exit}')
+    fi
+    # Récupération de l’adresse IP associée
+    IPADRESS=$(ip -4 addr show "$INTERFACE" 2>/dev/null | awk '/inet / {print $2}' | cut -d'/' -f1 | head -n1)
+    # Vérification et export
+    if [[ -n "$IPADRESS" ]]; then
+        export IPADRESS
+        echo "$(date '+%F %T'): INFO: Interface détectée : ${INTERFACE}, IP : ${IPADRESS}" >> "${LOGFILE}"
+    else
+        warn "Impossible de déterminer l’adresse IP du serveur via l’interface ${INTERFACE:-inconnue}" >> "${ERRORFILE}"
+        IPADRESS="127.0.0.1"
+        export IPADRESS
+    fi
 }
 # Installation des éléments nécessaire
 function install_packages(){
     source_os_release
     warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering install_packages (ID=${ID:-unknown})" >> "${LOGFILE}"
-
     if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
         export DEBIAN_FRONTEND=noninteractive
@@ -545,9 +558,14 @@ EOF
 }
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
-    info "$MSG_BDD_CONFIG"
+    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering mariadb_configure (ID=${ID:-unknown})" >> "${LOGFILE}"
+    info "$MSG_BDD_CONFIG" >> "${LOGFILE}"
     # Détecter la commande MySQL/MariaDB
-    MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
+    MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql) 
+    if [ -z "$MYSQL_CMD" ]; then 
+        warn "Commande MySQL/MariaDB introuvable" >> "${ERRORFILE}"
+        return 1
+    fi
     sleep 1
     # Construire la commande SQL et l'exécuter avec -e (évite les problèmes d'heredoc et de quoting)
     local _sql_root
@@ -617,6 +635,7 @@ function install_glpi(){
 }
 # Mise en place des réglage pour GLPI
 function setup_glpi(){
+    source_os_release
     info "$MSG_CONFIG_GLPI" >> "${LOGFILE}"
     mkdir -p /var/log/glpi
     mkdir -p /etc/glpi/config
@@ -635,7 +654,6 @@ EOF
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
 EOF
-    source_os_release
     network_info
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         # Configuration d'Apache pour GLPI
