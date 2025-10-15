@@ -356,40 +356,62 @@ function compatible() {
     [[ ${versions_array[*]} =~ ${version} ]]
 }
 # Vérifie si GLPI est installé ou pas
-function check_install(){
-    # Vérifie si le répertoire existe
-    if [ -d /var/www ]; then
-        FIND_REP_GLPI=$(find /var/www -type d -name "glpi" -print -quit)
-        if [ -n "$FIND_REP_GLPI" ]; then
-            echo "Répertoire GLPI trouvé : $FIND_REP_GLPI"
-            installed_version=$(sed -n '1p' "${FIND_REP_GLPI}/version" 2>/dev/null || true)
-            installed_version="${installed_version//[[:space:]]/}"
-            # normaliser avec slash final
-            FIND_REP_GLPI="${FIND_REP_GLPI%/}/"
-            # Si la version de GLPI que vous voulez installer est plus récente, avertir l'utilisateur et lancer la mise à jour
-            if [ -n "$installed_version" ] && [ -n "$VERSION_SELECT" ] && [ "$installed_version" != "$VERSION_SELECT" ]; then
-                if [[ "$(printf '%s\n%s\n' "$VERSION_SELECT" "$installed_version" | sort -V | head -n1)" != "$VERSION_SELECT" ]]; then
-                    dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_UPDATE}\n\nGLPI ${installed_version} -> ${VERSION_SELECT}" 10 50
-                    info "$MSG_CONTINUING"
-                    if update; then
-                        info "Mise à jour terminée." >> "${LOGFILE}"
-                        return 0
-                    else
-                        dialog --title "Erreur" --msgbox "La mise à jour a échoué ou l'utilisateur a annulé." 6 60
-                        warn "Mise à jour échouée." >> "${ERRORFILE}"
-                        return 1
-                    fi
+function check_install() {
+    set +e  # ne pas casser le script sur une erreur ici
+    local FIND_REP_GLPI=""
+    local installed_version=""
+    local version_file=""
+    # Recherche du répertoire GLPI
+    for path in /var/www /srv /opt /usr/share; do
+        FIND_REP_GLPI=$(find "$path" -maxdepth 3 -type d -name "glpi" -print -quit 2>/dev/null)
+        [[ -n "$FIND_REP_GLPI" ]] && break
+    done
+    # Si GLPI est déjà installé
+    if [[ -n "$FIND_REP_GLPI" ]]; then
+        FIND_REP_GLPI="${FIND_REP_GLPI%/}/"
+        echo "Répertoire GLPI trouvé : $FIND_REP_GLPI" | tee -a "${LOGFILE}"
+        version_file="${FIND_REP_GLPI}/version"
+        if [[ -f "$version_file" ]]; then
+            installed_version=$(head -n1 "$version_file" | tr -d '[:space:]')
+            echo "$(date '+%F %T'): Version GLPI détectée : ${installed_version}" >> "${LOGFILE}"
+        else
+            warn "Fichier version introuvable dans ${FIND_REP_GLPI}" >> "${ERRORFILE}"
+        fi
+        # Comparaison avec la version à installer
+        if [[ -n "$installed_version" && -n "$VERSION_SELECT" && "$installed_version" != "$VERSION_SELECT" ]]; then
+            echo "$(date '+%F %T'): Version cible : ${VERSION_SELECT}" >> "${LOGFILE}"
+            
+            if [[ "$(printf '%s\n%s\n' "$installed_version" "$VERSION_SELECT" | sort -V | head -n1)" == "$installed_version" ]]; then
+                dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_UPDATE}\n\nGLPI ${installed_version} → ${VERSION_SELECT}" 10 50
+                info "$MSG_CONTINUING" >> "${LOGFILE}"
+
+                if update; then
+                    dialog --title "GLPI" --sleep 5 --infobox "Mise à jour GLPI ${installed_version} → ${VERSION_SELECT} terminée." 10 50
+                    info "Mise à jour GLPI ${installed_version} → ${VERSION_SELECT} terminée." >> "${LOGFILE}"
+                    return 0
+                else
+                    dialog --title "Erreur" --msgbox "La mise à jour a échoué ou a été annulée." 6 60
+                    warn "Échec de la mise à jour GLPI." >> "${ERRORFILE}"
+                    return 1
                 fi
+            else
+                dialog --title "GLPI" --sleep 5 --infobox "Version actuelle (${installed_version}) plus récente que la cible (${VERSION_SELECT}), aucune mise à jour." 10 50
+                info "Version actuelle (${installed_version}) plus récente que la cible (${VERSION_SELECT}), aucune mise à jour." >> "${LOGFILE}"
+                return 0
             fi
+        else
+            info "GLPI ${installed_version:-inconnue} déjà installé, aucune action requise." >> "${LOGFILE}"
+            return 0
         fi
     else
+        # --- Pas d'installation détectée ---
         dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
         if glpi_install; then
-            info "Installation de GLPI terminée." >> "${LOGFILE}"
+            info "Installation de GLPI ${VERSION_SELECT} terminée." >> "${LOGFILE}"
             return 0
         else
-            dialog --title "Erreur" --msgbox "L'installation a échoué ou l'utilisateur a annulé." 6 60
-            warn "Installation de GLPI échouée." >> "${ERRORFILE}"
+            dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
+            warn "Échec de l'installation GLPI." >> "${ERRORFILE}"
             return 1
         fi
     fi
