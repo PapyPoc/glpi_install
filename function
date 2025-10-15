@@ -619,7 +619,7 @@ function install_glpi(){
 }
 # Mise en place des réglage pour GLPI
 function setup_glpi(){
-    info "$MSG_CONFIG_GLPI"
+    info "$MSG_CONFIG_GLPI" >> "${LOGFILE}"
     mkdir -p /var/log/glpi
     mkdir -p /etc/glpi/config
     mkdir -p /var/lib/glpi/files
@@ -646,10 +646,9 @@ EOF
         warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${ERRORFILE}"
         return 1
     fi
-    export ID VERSION_ID
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         network_info
-        # Setup vhost
+        # Configuration d'Apache pour GLPI
         tee "/etc/apache2/sites-available/glpi.conf" > /dev/null <<'EOF'
 <VirtualHost *:80>
     ServerName ${IPADRESS}
@@ -673,13 +672,19 @@ EOF
         echo "ServerSignature Off" >> /etc/apache2/apache2.conf
         echo "ServerTokens Prod" >> /etc/apache2/apache2.conf
         # Activation du module rewrite d'apache
-        sudo a2enmod rewrite
-        # Déactivation du site par défaut et activation site glpi
-        sudo a2dissite 000-default.conf
-        sudo a2ensite glpi.conf
-        # Restart d'apache
-        systemctl restart apache2
-        rights_glpi
+        {
+            # Enable Apache modules and site configuration
+            # Mode rewrite activé
+            a2enmod rewrite;
+            # Déactiver le site par défaut
+            a2dissite 000-default.conf;
+            # Activer le site GLPI
+            a2ensite glpi.conf;
+            # Recharger la configuration d'Apache
+            systemctl reload apache2;
+            # Change permissions
+            rights_glpi;
+        } 1>>"${LOGFILE}" 2>>"${ERRORFILE}"
         # Installation de GLPI en ligne de commande
         CMD="${REP_GLPI}/bin/console db:install \
  --db-host localhost \
@@ -692,9 +697,9 @@ EOF
  --no-telemetry \
  --quiet \
  --no-interaction"
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - [INFO] Exécution : sudo -u www-data php ${CMD}" |  tee -a "${LOGFILE}" > /dev/null || true
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - [INFO] Exécution : sudo -u www-data php ${CMD}" 1>>"${LOGFILE}" || true
         # Exécuter la commande en tant que www-data. Utiliser sudo tee pour écrire vers les fichiers protégés.
-        if eval "sudo -u www-data php ${CMD}" 2> >(tee -a "${ERRORFILE}" >&2) | tee -a "${LOGFILE}" > /dev/null; then
+        if eval "sudo -u www-data php ${CMD}" 2>>"${ERRORFILE}" 1>>"${LOGFILE}"; then
             info "Installation GLPI terminée avec succès." >>"${LOGFILE}"
         else
             warn "Échec de l'installation GLPI via console." >>"${ERRORFILE}"
