@@ -79,11 +79,9 @@ function run_task() {
         echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" >> "${LOGFILE}"
         echo "$output" >> "${LOGFILE}" 2>> "${ERRORFILE}"
     else
-        : "${ERRORFILE:=$(mktemp /tmp/glpi_error.XXXXXX)}"
-        # shellcheck disable=SC2129
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd" >> "${ERRORFILE}"
-        echo "$output" >> "${ERRORFILE}"
-        warn "$MSG_ERROR_TASK: $task_key" 2>> "${ERRORFILE}" 1>>"${ERRORFILE}"
+        { echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd"; 
+        echo "$output" >> "${ERRORFILE}"; 
+        warn "$MSG_ERROR_TASK: $task_key"; } 2>> "${ERRORFILE}" 1>>"${ERRORFILE}";
         return 1
     fi
     return 0;
