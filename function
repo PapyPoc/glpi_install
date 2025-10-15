@@ -128,37 +128,38 @@ function glpi_install() {
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
     # Vérifie si le fichier os-release existe
-    if source_os_release; then
-        # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
-        if [[ "${ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
-            if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
-                info "$MSG_DISTRO_OK"
+    source_os_release
+    # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
+    if [[ "${ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
+        if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
+            info "$MSG_DISTRO_OK"
+            return 0
+        else
+            warn "$MSG_DISTRO_NONOK"
+            warn "$MSG_FORCE_DISTRO"
+            if [ -t 0 ]; then
+                info "$MSG_FORCE_DISTRO_QUESTION"
+                read -r RESPONSE
+                case $RESPONSE in
+                    O|o|Y|y)
+                        info "$MSG_CONTINUING"
+                        ;;
+                    N|n)
+                        info "$MSG_EXITING"
+                        return 1
+                        ;;
+                    *)
+                        warn "$MSG_INVALID_ANSWER"
+                        return 1
+                        ;;
+                esac
             else
-                warn "$MSG_DISTRO_NONOK"
-                warn "$MSG_FORCE_DISTRO"
-                if [ -t 0 ]; then
-                    info "$MSG_FORCE_DISTRO_QUESTION"
-                    read -r RESPONSE
-                    case $RESPONSE in
-                        O|o|Y|y)
-                            info "$MSG_CONTINUING"
-                            ;;
-                        N|n)
-                            info "$MSG_EXITING"
-                            return 1
-                            ;;
-                        *)
-                            warn "$MSG_INVALID_ANSWER"
-                            return 1
-                            ;;
-                    esac
-                else
-                    warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO"
-                    return 1
-                fi
+                warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO"
+                return 1
             fi
-            export VERSION_ID ID
         fi
+        export VERSION_ID ID
+        return 0
     else
         warn "$MSG_DISTRO_INVALID"
         return 1
