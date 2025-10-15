@@ -57,7 +57,7 @@ export_display_env() {
         new_version tags version_select
     )
     local v _val
-    for v in "${vars_maj[@]}" "${vars_min[0]}"; do
+    for v in "${vars_maj[@]}" "${vars_min[@]}"; do
         _val="${!v:-}"
         export "$v"="$_val"
     done
@@ -677,14 +677,14 @@ function setup_glpi(){
     mkdir -p /var/log/glpi
     mkdir -p /etc/glpi/config
     mkdir -p /var/lib/glpi/files
-    mv -f "${REP_GLPI}"files /var/lib/glpi
-    tee /etc/glpi/config/local_define.php > /dev/null <<'EOF'
+    mv -f "${REP_GLPI}"/files /var/lib/glpi
+    tee /etc/glpi/config/local_define.php > /dev/null <<EOF
 <?php
     define('GLPI_VAR_DIR', '/var/lib/glpi/files');
     define('GLPI_LOG_DIR', '/var/log/glpi');
 EOF
     sleep 1
-    tee "${REP_GLPI}"inc/downstream.php > /dev/null <<'EOF'
+    tee "${REP_GLPI}"/inc/downstream.php > /dev/null <<EOF
 <?php
     define('GLPI_CONFIG_DIR', '/etc/glpi/config');
     if (file_exists(GLPI_CONFIG_DIR . '/local_define.php')) {
@@ -710,7 +710,7 @@ EOF
     CustomLog /var/log/glpi/access.log combined
 </VirtualHost>
 EOF
-        phpversion=$(php -v | grep -i '(cli)' | awk '{print $2}' | cut -c 1,2,3)
+        phpversion=$(php -v | grep -i '(cli)' | awk '{print $2}' | cut -d. -f1,2)
         sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 =on/' /etc/php/"$phpversion"/apache2/php.ini
         sleep 1
         # Disable Apache Web Server Signature
@@ -758,7 +758,8 @@ EOF
         fi
         systemctl restart apache2
         # Configuration de la tâche Cron
-        echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
+        echo "*/2 * * * * www-data /usr/bin/php ${REP_GLPI}/front/cron.php &>/dev/null" \
+        | sudo tee /etc/cron.d/glpi > /dev/null
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         network_info
         sudo tee /etc/nginx/conf.d/glpi.conf > /dev/null << EOF
