@@ -119,6 +119,7 @@ function glpi_install() {
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
+                echo "$MSG_ERROR_INSTALL" >> "${ERRORFILE}"
                 exit 1   # <-- remonte l'erreur au parent
             fi
     done) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120;

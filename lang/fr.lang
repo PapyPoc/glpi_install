@@ -32,6 +32,7 @@ MSG_EPEL_FAILED=Échec de l'installation du dépôt EPEL
 MSG_ERROR_EXIT=Action non reconnue. Sortie du programme.
 MSG_ERROR_FICHIER_MSG=Erreur : Le fichier ${FICHIER_MSG} est introuvable.
 MSG_ERROR_TASK=Erreur lors de la tâche
+MSG_ERROR_INSTALL=----- Installation en erreur -----
 MSG_EXIT=Sortie du programme.
 MSG_EXITING=Sortie...
 MSG_FILE_MSG=Fichier de sauvegarde enregistré dans ${FICHIER_MSG} avec droit root
