@@ -123,6 +123,7 @@ function glpi_install() {
                 echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
                 echo "$(date '+%F %T'): [ERREUR] $task_key a échoué." >> "${ERRORFILE}"
+                echo "$MSG_ERROR_INSTALL" >> "${ERRORFILE}"
                 sleep 1
                 exit 1
             fi
@@ -134,7 +135,6 @@ function glpi_install() {
         dialog --title "GLPI" --msgbox "\n${MSG_INSTALL_DONE}\n\nLogs : ${LOGFILE}" 8 70
     else
         dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
-        echo "$MSG_ERROR_INSTALL" >> "${ERRORFILE}"
     fi
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
@@ -678,7 +678,7 @@ function setup_glpi(){
     mkdir -p /etc/glpi/config
     mkdir -p /var/lib/glpi/files
     mv -f "${REP_GLPI}"/files /var/lib/glpi
-    tee /etc/glpi/config/local_define.php > /dev/null <<EOF
+    tee /etc/glpi/config/local_define.php > /dev/null <<'EOF'
 <?php
     define('GLPI_VAR_DIR', '/var/lib/glpi/files');
     define('GLPI_LOG_DIR', '/var/log/glpi');
@@ -758,8 +758,7 @@ EOF
         fi
         systemctl restart apache2
         # Configuration de la tâche Cron
-        echo "*/2 * * * * www-data /usr/bin/php ${REP_GLPI}/front/cron.php &>/dev/null" \
-        | sudo tee /etc/cron.d/glpi > /dev/null
+        echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         network_info
         sudo tee /etc/nginx/conf.d/glpi.conf > /dev/null << EOF
