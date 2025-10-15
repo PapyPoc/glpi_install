@@ -637,11 +637,7 @@ EOF
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
 EOF
-    if [[ -f /etc/os-release ]]; then
-        source /etc/os-release
-    elif [[ -f /etc/lsb-release ]]; then
-        source /etc/lsb-release
-    fi
+    source_os_release
     if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
         warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${ERRORFILE}"
         return 1
@@ -683,7 +679,7 @@ EOF
             # Recharger la configuration d'Apache
             systemctl reload apache2;
             # Change permissions
-            rights_glpi;
+            rights_glpi
         } 1>>"${LOGFILE}" 2>>"${ERRORFILE}"
         # Installation de GLPI en ligne de commande
         CMD="${REP_GLPI}/bin/console db:install \
@@ -783,7 +779,19 @@ function maj_user_glpi(){
         return 1
     fi
 }
+function source_os_release(){
+    if [[ -f /etc/os-release ]]; then
+        source /etc/os-release
+    elif [[ -f /etc/lsb-release ]]; then
+        source /etc/lsb-release
+    fi
+    if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
+        warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${ERRORFILE}"
+        return 1
+    fi
+}
 function rights_glpi(){
+    source_os_release
     info "$MSG_RIGHTS_GLPI"
     find /etc/glpi -type f -exec chmod 644 {} \;
     find /etc/glpi -type d -exec chmod 755 {} \;
