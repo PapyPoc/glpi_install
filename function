@@ -123,7 +123,6 @@ function glpi_install() {
                 echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
                 echo "$(date '+%F %T'): [ERREUR] $task_key a échoué." >> "${ERRORFILE}"
-                echo "$MSG_ERROR_INSTALL" >> "${ERRORFILE}"
                 sleep 1
                 exit 1
             fi
@@ -135,6 +134,7 @@ function glpi_install() {
         dialog --title "GLPI" --msgbox "\n${MSG_INSTALL_DONE}\n\nLogs : ${LOGFILE}" 8 70
     else
         dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
+        echo "$MSG_ERROR_INSTALL" >> "${ERRORFILE}"
     fi
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
