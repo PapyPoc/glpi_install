@@ -64,7 +64,7 @@ export_display_env() {
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
-echo "$(date '+%F %T') [$$][DEBUG:run_task] Entrée dans la fonction" >> "${LOGFILE}"
+    echo "$(date '+%F %T') [$$][DEBUG:run_task] Entrée dans la fonction" >> "${LOGFILE}"
     local task_key="$1"
     local task_cmd="$2"
     local index="$3"
