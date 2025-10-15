@@ -71,17 +71,17 @@ function run_task() {
     local total="$4"
     info "Tâche: $index/$total - $task_key"
     info "$MSG_COMMAND: $task_cmd"
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" | tee -a "$LOGFILE"
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR | tee -a "$LOGFILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" | sudo tee -a "$LOGFILE"
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée"; exit 1' ERR | sudo tee -a "$LOGFILE"
     local output
     output=$(eval "$task_cmd")
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" | tee -a "$LOGFILE"
-        echo "$output" | tee -a "$LOGFILE" 2>> "${ERRORFILE}"
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" | sudo tee -a "$LOGFILE"
+        echo "$output" | sudo tee -a "$LOGFILE" 2>> "${ERRORFILE}"
     else
         { echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd"; 
-        echo "$output" | tee -a "$ERRORFILE"; 
+        echo "$output" | sudo tee -a "$ERRORFILE"; 
         warn "$MSG_ERROR_TASK: $task_key"; } 2>> "${ERRORFILE}" 1>>"${ERRORFILE}";
         return 1
     fi
@@ -395,7 +395,7 @@ function check_install() {
     # Si GLPI est déjà installé
     if [[ -n "$FIND_REP_GLPI" ]]; then
         FIND_REP_GLPI="${FIND_REP_GLPI%/}/"
-        echo "Répertoire GLPI trouvé : $FIND_REP_GLPI" | tee -a "${LOGFILE}"
+        echo "Répertoire GLPI trouvé : $FIND_REP_GLPI" | sudo tee -a "${LOGFILE}"
         version_file="${FIND_REP_GLPI}/version"
         if [[ -f "$version_file" ]]; then
             installed_version=$(head -n1 "$version_file" | tr -d '[:space:]')
@@ -574,7 +574,7 @@ function install_packages(){
             warn "$MSG_DNF_AUTO_DIR_FAILED"
             return 1
         fi
-        tee /etc/systemd/system/dnf-automatic.timer.d/override.conf > /dev/null << 'EOF'
+        sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf > /dev/null << 'EOF'
 [Unit]
 Description=dnf-automatic timer
 ConditionPathExists=!/run/ostree-booted
@@ -703,13 +703,13 @@ function setup_glpi(){
     mkdir -p /etc/glpi/config
     mkdir -p /var/lib/glpi/files
     mv -f "${REP_GLPI}"/files /var/lib/glpi
-    tee /etc/glpi/config/local_define.php > /dev/null <<'EOF'
+    sudo tee /etc/glpi/config/local_define.php > /dev/null <<'EOF'
 <?php
     define('GLPI_VAR_DIR', '/var/lib/glpi/files');
     define('GLPI_LOG_DIR', '/var/log/glpi');
 EOF
     sleep 1
-    tee "${REP_GLPI}"/inc/downstream.php > /dev/null <<EOF
+    sudo tee "${REP_GLPI}"/inc/downstream.php > /dev/null <<EOF
 <?php
     define('GLPI_CONFIG_DIR', '/etc/glpi/config');
     if (file_exists(GLPI_CONFIG_DIR . '/local_define.php')) {
