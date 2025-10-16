@@ -11,7 +11,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo -e "Ce fichier doit être sourcé, pas exécuté.\n">> "${ERRORFILE}"
     return 1
 fi
-# Affichage d'erreur
+# Affichage d'erreur en rouge
 function error(){
     trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "${ERRORFILE}"; exit 1' ERR
     local msg="$1"
@@ -37,7 +37,7 @@ function warn(){
     fi
     echo -e "${ORANGE}${expanded}${NC}" # Couleur orange
 }
-# Affichage d'information
+# Affichage d'information en bleu
 function info(){
     trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "${ERRORFILE}"; exit 1' ERR
     local msg="$1"
@@ -443,17 +443,17 @@ function check_install() {
                 info "Version actuelle (${installed_version}) plus récente que la cible (${VERSION_SELECT})." >> "${LOGFILE}"
                 exit 1
             fi
-            info "GLPI ${installed_version:-inconnue} déjà installé, aucune action requise." >> "${LOGFILE}"
+        fi
+    info "GLPI ${installed_version:-inconnue} déjà installé, aucune action requise." >> "${LOGFILE}"
+    else
+        dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
+        if glpi_install; then
+            dialog --title "Information" --msgbox "L'installation de GLPI est terminée." 6 60
+            info "Installation de GLPI ${VERSION_SELECT} terminée." >> "${LOGFILE}"
         else
-            dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
-            if glpi_install; then
-                dialog --title "Information" --msgbox "L'installation de GLPI est terminée." 6 60
-                info "Installation de GLPI ${VERSION_SELECT} terminée." >> "${LOGFILE}"
-            else
-                dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
-                error "Échec de l'installation GLPI." >> "${ERRORFILE}"
-                exit 1
-            fi
+            dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
+            error "Échec de l'installation GLPI." >> "${ERRORFILE}"
+            exit 1
         fi
     fi
     warn "$(date '+%F %T') [$$][DEBUG:check_install] Fin de la fonction" >> "${LOGFILE}"
