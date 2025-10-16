@@ -13,6 +13,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 # Affichage d'erreur
 function error(){
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "${ERRORFILE}"; exit 1' ERR
     local msg="$1"
     export_display_env
     local expanded
@@ -38,6 +39,7 @@ function warn(){
 }
 # Affichage d'information
 function info(){
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "${ERRORFILE}"; exit 1' ERR
     local msg="$1"
     export_display_env
     local expanded
@@ -98,6 +100,7 @@ function run_task() {
         echo "$output" >> "${ERRORFILE}"
         return 1
     fi
+    warn "$(date '+%F %T') [INFO] END: $task_cmd" >> "${WARNINGFILE}"
     warn "$(date '+%F %T') [$$][DEBUG:run_task] Fin de la fonction" >> "${LOGFILE}"
 }
 # Exécuter les tâches avec barre de progression
