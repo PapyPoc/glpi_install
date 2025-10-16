@@ -76,7 +76,7 @@ export_display_env() {
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
-    warn "$(date '+%F %T') [$$][DEBUG:run_task] Entrée dans la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:run_task] Entrée dans la fonction" >> "${WARNINGFILE}"
     trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
     local task_key="$1"
     local task_cmd="$2"
@@ -84,7 +84,7 @@ function run_task() {
     local total="$4"
     info "Tâche: $index/$total - $task_key"
     info "$MSG_COMMAND: $task_cmd"
-    warn "$(date '+%F %T') [INFO] START: $task_cmd" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [INFO] START: $task_cmd" >> "${WARNINGFILE}"
     local output
     output=$(eval "$task_cmd" )
     local exit_code=$?
@@ -934,21 +934,21 @@ function rights_glpi(){
 }
 # Afficher le résultat final
 function display_result() {
-    warn "$(date '+%F %T') [$$][DEBUG:display_result] Entrée dans la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:display_result] Entrée dans la fonction" >> "${WARNINGFILE}"
     MESSAGE=""
-	if [[ -f "$FICHIER_MSG" ]]; then
+	if [[ -f "${FICHIER_MSG}" ]]; then
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
-        done < "$FICHIER_MSG"
-        dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_OK" --msgbox "$MESSAGE" 0 0
+        done < "${FICHIER_MSG}"
+        dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_OK}" --msgbox "${MESSAGE}" 0 0
     else
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
-        done < "$ERRORFILE"
-        dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_NONOK" --msgbox "$MSG_NONOK\n\n$MESSAGE" 0 0
+        done < "${ERRORFILE}"
+        dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_NONOK}" --msgbox "${MSG_NONOK}\n\n${MESSAGE}" 0 0
         warn "$MSG_ERROR_FICHIER_MSG"
     fi
-    warn "$(date '+%F %T') [$$][DEBUG:display_result] Fin de la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:display_result] Fin de la fonction" >> "${WARNINGFILE}"
 }
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
 function write_credentials(){

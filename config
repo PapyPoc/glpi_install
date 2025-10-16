@@ -49,6 +49,7 @@ NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 REP_BACKUP_COMPRESS="${INVOKING_HOME}/Archive_GLPI"
 FICHIER_MSG="${INVOKING_HOME}/sauve_mdp.txt"
 ERRORFILE="${INVOKING_HOME}/error.log"
+WARNINGFILE="${INVOKING_HOME}/warning.log"
 LOGFILE="${INVOKING_HOME}/install.log"
 export ROUGE ORANGE CYAN NC
 export DOWNLOADLINK NEW_VERSION REP_BACKUP_COMPRESS
@@ -56,4 +57,28 @@ export DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSI
 export REP_BACKUP REP_GLPI
 export SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
 export DB_NAME DB_USER BDD_BACKUP
-export FICHIER_MSG ERRORFILE LOGFILE
+export FICHIER_MSG ERRORFILE LOGFILE WARNINGFILE
+export INVOKING_USER INVOKING_HOME
+# Initialisation des fichiers de log
+: > "$LOGFILE"
+: > "$ERRORFILE"
+: > "$WARNINGFILE"
+# Messages
+#MSG_CHECK_OS="Vérification du système d'exploitation"
+#MSG_CHECK_DEP="Vérification des dépendances"
+#MSG_INSTALL_DEP="Installation des dépendances"
+#MSG_CHECK_DB="Vérification de la base de données"
+#MSG_CREATE_DB="Création de la base de données"
+#MSG_CREATE_USER_DB="Création de l'utilisateur de la base de données"
+#MSG_SET_PRIV_DB="Attribution des privilèges à l'utilisateur de la base de données"
+#MSG_DOWNLOAD_GLPI="Téléchargement de GLPI"
+#MSG_EXTRACT_GLPI="Extraction de GLPI"
+#MSG_CONFIG_GLPI="Configuration de GLPI"
+#MSG_SET_PERM="Définition des permissions"
+#MSG_CREATE_ADMIN="Création de l'utilisateur admin de GLPI"
+#MSG_CLEANUP="Nettoyage"
+#MSG_RESTORE_BACKUP="Restauration de la sauvegarde"
+#MSG_BACKUP="Sauvegarde de GLPI"
+#MSG_BACKUP_DB="Sauvegarde de la base de données"
+#MSG_FINALIZE="Finalisation de l'installation"
+#MSG_COMMAND="Exécution de la commande"          
