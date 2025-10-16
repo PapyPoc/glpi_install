@@ -395,7 +395,7 @@ function compatible() {
 # Vérifie si GLPI est installé ou pas
 function check_install() {
     warn "$(date '+%F %T') [$$][DEBUG:check_install] Entrée dans la fonction" >> "${LOGFILE}"
-    set +e  # ne pas casser le script sur une erreur ici
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
     local FIND_REP_GLPI=""
     local installed_version=""
     local version_file=""
@@ -446,7 +446,6 @@ function check_install() {
             fi
         fi
     fi
-    set -e  # réactiver le mode strict
     warn "$(date '+%F %T') [$$][DEBUG:check_install] Fin de la fonction" >> "${LOGFILE}"
 }
 # Mise à jour de la distribution
