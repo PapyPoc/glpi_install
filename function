@@ -96,7 +96,7 @@ function run_task() {
         info "$(date '+%F %T') [INFO] SUCCESS: $task_cmd" >> "${LOGFILE}"
         echo "$output" >> "${LOGFILE}"
     elif [[ $exit_code -ne 0 ]]; then
-        error "$(date '+%F %T') [ERROR] $MSG_ERROR_TASK: $task_key (exit=$exit_code)" >> "${ERRORFILE}"
+    error "$(date '+%F %T') [ERROR] $MSG_ERROR_TASK: $task_key (exit=$exit_code)" >> "${ERRORFILE}"
         echo "$output" >> "${ERRORFILE}"
         return 1
     fi
@@ -135,7 +135,7 @@ function glpi_install() {
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_END}"
                 echo "XXX"
-                warn "$(date '+%F %T'): [OK] $task_key terminé." >> "${LOGFILE}"
+                warn "$(date '+%F %T'): [OK] $task_key terminé." >> "${WARNINGFILE  }"
             #else
             #    echo "100"
             #    echo "XXX"
@@ -155,11 +155,11 @@ function glpi_install() {
     else
         dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
     fi
-    warn "$(date '+%F %T') [$$][DEBUG:glpi_install] Fin de la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:glpi_install] Fin de la fonction" >> "${WARNINGFILE}"
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
-    warn "$(date '+%F %T') [$$][DEBUG:check_distro] Entrée dans la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:check_distro] Entrée dans la fonction" >> "${WARNINGFILE}"
     # Vérifie si le fichier os-release existe
     source_os_release
     # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
@@ -197,11 +197,11 @@ function check_distro(){
         warn "$MSG_DISTRO_INVALID"
         return 1
     fi
-    warn "$(date '+%F %T') [$$][DEBUG:check_distro] Fin de la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:check_distro] Fin de la fonction" >> "${WARNINGFILE}"
 }
 # Chargement du fichier de langue
 function load_language() {
-    warn "$(date '+%F %T') [$$][DEBUG:load_language] Entrée dans la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:load_language] Entrée dans la fonction" >> "${WARNINGFILE}"
     local syslang="${LC_ALL:-${LANG:-}}"
     if [[ $syslang =~ ^fr ]]; then
         LANG_FILE="$REP_SCRIPT/lang/fr.lang"
@@ -892,7 +892,7 @@ function source_os_release(){
     warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${WARNINGFILE}"
         return 1
     fi
-    error "$(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}" >> "${LOGFILE}"
+    error "$(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}" >> "${ERRORFILE}"
     warn "$(date '+%F %T') [$$][DEBUG:source_os_release] Fin de la fonction" >> "${LOGFILE}"
 }
 function rights_glpi(){
