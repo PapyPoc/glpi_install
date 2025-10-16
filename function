@@ -25,6 +25,7 @@ function error(){
 }
 # Affichage d'alerte en orange
 function warn(){
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "${ERRORFILE}"; exit 1' ERR
     local msg="$1"
     export_display_env
     local expanded
