@@ -118,6 +118,7 @@ function glpi_install() {
     (
         trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
         for task_key in "${task_order[@]}"; do
+        trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
             task_index=$((task_index + 1))
             progress=$((task_index * 100 / total_tasks))
             echo "$progress"
