@@ -486,7 +486,7 @@ function network_info() {
         export IPADRESS
         info "$(date '+%F %T'): INFO: Interface détectée : ${INTERFACE}, IP : ${IPADRESS}" >> "${LOGFILE}"
     else
-        warn "Impossible de déterminer l’adresse IP du serveur via l’interface ${INTERFACE:-inconnue}" >> "${ERRORFILE}"
+    warn "Impossible de déterminer l’adresse IP du serveur via l’interface ${INTERFACE:-inconnue}" >> "${WARNINGFILE}"
         IPADRESS="127.0.0.1"
         export IPADRESS
     fi
@@ -508,17 +508,17 @@ function install_packages(){
                 # continue, maybe cached; but log
             fi
         else
-            warn "apt-get not found, cannot install packages on Debian/Ubuntu branch" >> "${ERRORFILE}"
+            warn "apt-get not found, cannot install packages on Debian/Ubuntu branch" >> "${WARNINGFILE}"
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
         if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 2>>"${ERRORFILE}"; then
-            warn "$MSG_PHP_EXT_FAILED" 2>>"${ERRORFILE}"
+            warn "$MSG_PHP_EXT_FAILED" 2>>"${WARNINGFILE}"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
         if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 2>>"${ERRORFILE}"; then
-            warn "$MSG_LAMP_FAILED" 2>>"${ERRORFILE}"
+            warn "$MSG_LAMP_FAILED" 2>>"${WARNINGFILE}"
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
@@ -628,7 +628,7 @@ function mariadb_configure() {
     # Détecter la commande MySQL/MariaDB
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql) 
     if [ -z "$MYSQL_CMD" ]; then 
-        warn "Commande MySQL/MariaDB introuvable" >> "${ERRORFILE}"
+    warn "Commande MySQL/MariaDB introuvable" >> "${WARNINGFILE}"
         return 1
     fi
     sleep 1
@@ -761,11 +761,11 @@ EOF
             systemctl reload apache2;
             # Change permissions
             rights_glpi || { 
-                warn "Échec de la modification des droits pour GLPI." >>"${ERRORFILE}"
+                warn "Échec de la modification des droits pour GLPI." >>"${WARNINGFILE}"
                 return 1
             }
         } 1>>"${LOGFILE}" 2>>"${LOGFILE}" || {
-            warn "Échec de la configuration d'Apache pour GLPI." >>"${ERRORFILE}"
+            warn "Échec de la configuration d'Apache pour GLPI." >>"${WARNINGFILE}"
             return 1
         }
         # Installation de GLPI en ligne de commande
@@ -785,7 +785,7 @@ EOF
         if eval "sudo -u www-data php ${CMD}" 2>>"${ERRORFILE}" 1>>"${LOGFILE}"; then
             info "Installation GLPI terminée avec succès." >>"${LOGFILE}"
         else
-            warn "Échec de l'installation GLPI via console." >>"${ERRORFILE}"
+            warn "Échec de l'installation GLPI via console." >>"${WARNINGFILE}"
             return 1
         fi
         systemctl restart apache2
@@ -829,7 +829,7 @@ EOF
         sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini
         # Change permissions
         rights_glpi || { 
-            warn "Échec de la modification des droits pour GLPI." >>"${ERRORFILE}"
+            warn "Échec de la modification des droits pour GLPI." >>"${WARNINGFILE}"
             return 1
         }
         # Recharger la configuration de Nginx
@@ -889,7 +889,7 @@ function source_os_release(){
         VERSION_ID=$(uname -r)
     fi
     if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
-        warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${ERRORFILE}"
+    warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${WARNINGFILE}"
         return 1
     fi
     error "$(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}" >> "${LOGFILE}"
@@ -1058,7 +1058,7 @@ function update() {
     ) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
     # Récupérer le code de retour du sous-shell
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
-        warn "Une tâche a échoué pendant l'exécution de update()." >>"${ERRORFILE}"
+    warn "Une tâche a échoué pendant l'exécution de update()." >>"${WARNINGFILE}"
         return 1
     fi
     info "Toutes les tâches ont été exécutées avec succès." >>"${LOGFILE}"
@@ -1091,7 +1091,7 @@ function backup_glpi() {
     info "=== Démarrage de la sauvegarde GLPI ===" >>"${LOGFILE}"
     # Vérification préliminaire
     if [ -z "${REP_GLPI}" ] || [ -z "${REP_BACKUP_COMPRESS}" ] || [ -z "${INVOKING_HOME}" ]; then
-        warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" >>"${ERRORFILE}"
+    warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" >>"${WARNINGFILE}"
         return 1
     fi
     # Lecture des informations MySQL
@@ -1099,7 +1099,7 @@ function backup_glpi() {
     DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     if [ -z "${DB_NAME}" ] || [ -z "${PASSWORD}" ]; then
-        warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt" >>"${ERRORFILE}"
+    warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt" >>"${WARNINGFILE}"
         return 1
     fi
     # Détermination de l’outil de dump
@@ -1114,7 +1114,7 @@ function backup_glpi() {
     if ${MYSQLDUMP_CMD} -u root -p"${PASSWORD}" --databases "${DB_NAME}" > "${REP_BACKUP}/${BDD_BACKUP}" 2>>"${ERRORFILE}"; then
         info "${MSG_DUMP_SUCCESS}" >>"${LOGFILE}"
     else
-        warn "Échec de la sauvegarde de la base ${DB_NAME}" >>"${ERRORFILE}"
+    warn "Échec de la sauvegarde de la base ${DB_NAME}" >>"${WARNINGFILE}"
         return 1
     fi
     # --- Sauvegarde des fichiers ---
@@ -1123,7 +1123,7 @@ function backup_glpi() {
         if [ -e "${SRC}" ]; then
             cp -Rf "${SRC}" "${REP_BACKUP}/" >>"${LOGFILE}" 2>>"${ERRORFILE}"
         else
-            warn "Source manquante : ${SRC}" >>"${ERRORFILE}"
+            warn "Source manquante : ${SRC}" >>"${WARNINGFILE}"
         fi
     done
     info "${MSG_SITE_COPY_OK}" >>"${LOGFILE}"
@@ -1135,7 +1135,7 @@ function backup_glpi() {
         info "${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})" >>"${LOGFILE}"
         # Vérifier que le fichier compressé n'est pas vide
         if [ ! -s "${BACKUP_FILE}" ]; then
-            warn "Fichier de sauvegarde vide, suppression annulée." >>"${ERRORFILE}"
+            warn "Fichier de sauvegarde vide, suppression annulée." >>"${WARNINGFILE}"
             return 1
         fi
         # Suppression sécurisée de l’ancien GLPI
@@ -1144,10 +1144,10 @@ function backup_glpi() {
             rm -rf "${REP_GLPI:?}/"
             info "Répertoire ${REP_GLPI} supprimé." >>"${LOGFILE}"
         else
-            warn "Répertoire GLPI introuvable : ${REP_GLPI}" >>"${ERRORFILE}"
+            warn "Répertoire GLPI introuvable : ${REP_GLPI}" >>"${WARNINGFILE}"
         fi
     else
-        warn "${MSG_COMPRESS_BACKUP_FAILED}" >>"${ERRORFILE}"
+    warn "${MSG_COMPRESS_BACKUP_FAILED}" >>"${WARNINGFILE}"
         return 1
     fi
     info "=== Sauvegarde GLPI terminée avec succès ===" >>"${LOGFILE}"
@@ -1161,7 +1161,7 @@ function update_glpi() {
     info "=== Début de la mise à jour GLPI ===" 1>>"${LOGFILE}"
     # Vérification de base
     if [ -z "${REP_BACKUP}" ] || [ -z "${REP_GLPI}" ]; then
-        warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." 1>>"${ERRORFILE}"
+    warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." 1>>"${WARNINGFILE}"
         return 1
     fi
     # --- Étape 1 : restauration des dossiers ---
@@ -1179,10 +1179,10 @@ function update_glpi() {
                 if cp -Rf "${SRC}/"* "${DEST}/" 2>>"${ERRORFILE}"; then
                     info "Restauration de ${DIR} vers ${DEST} terminée." 1>>"${LOGFILE}"
                 else
-                    warn "Erreur lors de la copie de ${DIR}." 2>>"${ERRORFILE}"
+                    warn "Erreur lors de la copie de ${DIR}." 2>>"${WARNINGFILE}"
                 fi
             else
-                warn "Répertoire ${SRC} vide, rien à copier." 2>>"${ERRORFILE}"
+                warn "Répertoire ${SRC} vide, rien à copier." 2>>"${WARNINGFILE}"
             fi
         fi
     done
