@@ -15,7 +15,7 @@ source "${REP_SCRIPT}/function" # Fichier de fonction
 source "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
 
-trap 'on_error "$LINENO" "$?" >> "${ERRORFILE}"' ERR
+trap 'on_error "$LINENO" "$?" 2>> "${ERRORFILE}"' ERR
 
 echo "Démarrage..."
 ls /chemin/inexistant
