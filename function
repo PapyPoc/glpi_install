@@ -875,6 +875,7 @@ function maj_user_glpi(){
     warn "$(date '+%F %T') [$$][DEBUG:maj_user_glpi] Fin de la fonction" >> "${LOGFILE}"
 }
 function source_os_release(){
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
     warn "$(date '+%F %T') [$$][DEBUG:source_os_release] Entrée dans la fonction" >> "${LOGFILE}"
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release
