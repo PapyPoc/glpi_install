@@ -49,7 +49,7 @@ function info(){
     echo -e "${CYAN}${expanded}${NC}" # Couleur cyan
 }
 # Exporter une liste blanche de variables utilisées dans les fichiers de langue pour que envsubst puisse les remplacer
-export_display_env() {
+function export_display_env() {
     # Exporter un ensemble complet de variables (majuscules et minuscules)
     # pouvant être référencées comme espaces réservés dans les fichiers de langue.
     # Les valeurs par défaut sont vides si elles ne sont pas définies.
@@ -76,19 +76,15 @@ export_display_env() {
     done
 }
 # Gestion des erreurs avec trap
-on_error() {
+function on_error() {
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" >> "${WARNINGFILE}"
-    local line="$1"
-    local code="$2"
-    echo "💥 Erreur détectée !"
-    echo "  → Fichier : ${BASH_SOURCE[1]}"
-    echo "  → Fonction : ${FUNCNAME[1]:-main}"
-    echo "  → Ligne : $line"
-    echo "  → Commande : ${BASH_COMMAND}"
-    echo "  → Code retour : $code"
-    echo "  → Consultez le fichier de log pour plus de détails : ${ERRORFILE}"
+    local i
+    echo "Erreur : ${BASH_COMMAND} (code=$?) à la ligne $LINENO"
+    echo "Pile d’appels :"
+    for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
+        echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}"
+    done
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >> "${WARNINGFILE}"
-    exit "$code"
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
