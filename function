@@ -395,7 +395,6 @@ function compatible() {
 # Vérifie si GLPI est installé ou pas
 function check_install() {
     warn "$(date '+%F %T') [$$][DEBUG:check_install] Entrée dans la fonction" >> "${LOGFILE}"
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
     local FIND_REP_GLPI=""
     local installed_version=""
     local version_file=""
@@ -414,6 +413,7 @@ function check_install() {
             installed_version=$(head -n1 "${version_file}" | tr -d '[:space:]')
             info "Version GLPI détectée : ${installed_version}" >> "${LOGFILE}"
         else
+            dialog --title "Erreur" --msgbox "Fichier version introuvable dans ${FIND_REP_GLPI}" 6 60
             error "Fichier version introuvable dans ${FIND_REP_GLPI}" >> "${ERRORFILE}"
         fi
         # --- Comparaison ---
@@ -935,6 +935,7 @@ function rights_glpi(){
 # Afficher le résultat final
 function display_result() {
     warn "$(date '+%F %T') [$$][DEBUG:display_result] Entrée dans la fonction" >> "${WARNINGFILE}"
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
     MESSAGE=""
 	if [[ -f "${FICHIER_MSG}" ]]; then
         while IFS= read -r ligne; do
@@ -947,6 +948,7 @@ function display_result() {
         done < "${ERRORFILE}"
         dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_NONOK}" --msgbox "${MSG_NONOK}\n\n${MESSAGE}" 0 0
         warn "$MSG_ERROR_FICHIER_MSG"
+        exit 1
     fi
     warn "$(date '+%F %T') [$$][DEBUG:display_result] Fin de la fonction" >> "${WARNINGFILE}"
 }
@@ -1219,4 +1221,3 @@ function update_glpi() {
     sleep 2
     warn "$(date '+%F %T') [$$][DEBUG:update_glpi] Fin de la fonction" >> "${LOGFILE}"
 }
-
