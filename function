@@ -90,8 +90,7 @@ on_error() {
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
-    warn "$(date '+%F %T') [$$][DEBUG:run_task] Entrée dans la fonction" >> "${WARNINGFILE}"
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
+    warn "$(date '+%F %T') [$$][DEBUG:run_task] Entrée dans la fonction ${FUNCNAME[1]:-main}" >> "${WARNINGFILE}"
     local task_key="$1"
     local task_cmd="$2"
     local index="$3"
@@ -112,11 +111,11 @@ function run_task() {
         return 1
     fi
     warn "$(date '+%F %T') [INFO] END: $task_cmd" >> "${WARNINGFILE}"
-    warn "$(date '+%F %T') [$$][DEBUG:run_task] Fin de la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:run_task] Fin de la fonction ${FUNCNAME[1]:-main}" >> "${LOGFILE}"
 }
 # Exécuter les tâches avec barre de progression
 function glpi_install() {
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
+    trap 'on_error "$LINENO" "$?"' ERR
     warn "$(date '+%F %T') [$$][DEBUG:glpi_install] Entrée dans la fonction" >> "${LOGFILE}"
     declare -A tasks=(
         ["$MSG_T01"]="update_distro"
@@ -171,7 +170,7 @@ function glpi_install() {
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
+    ls /ddd
     warn "$(date '+%F %T') [$$][DEBUG:check_distro] Entrée dans la fonction" >> "${WARNINGFILE}"
     # Vérifie si le fichier os-release existe
     source_os_release

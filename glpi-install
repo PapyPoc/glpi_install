@@ -14,12 +14,7 @@ source "${REP_SCRIPT}/function" # Fichier de fonction
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
-
-trap 'on_error "$LINENO" "$?" 2>> "${ERRORFILE}"' ERR
-
-echo "Démarrage..."
-ls /chemin/inexistant
-
+trap 'on_error 2>> "${ERRORFILE}"' ERR
 # Regarde si la distribution est conforme
 if ! check_distro; then
     dialog --title "Erreur" --msgbox "La vérification de la distribution a échoué." 6 50
@@ -37,8 +32,8 @@ if ! check_install "${REP_GLPI}"; then
     echo "Vérification de l'installation échouée ou utilisateur a annulé" >> "${ERRORFILE}"
     exit 1
 fi
-display_result # Affiche le résultat de l'installation
-if [ "$?" -ne 0 ]; then
+ # Affiche le résultat de l'installation
+if ! display_result; then
     dialog --title "Erreur" --msgbox "L'affichage du résultat a échoué." 6 50
     echo "Affichage du résultat échoué" >> "${ERRORFILE}"
     exit 1
