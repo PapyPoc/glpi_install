@@ -77,6 +77,7 @@ export_display_env() {
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
     warn "$(date '+%F %T') [$$][DEBUG:run_task] Entrée dans la fonction" >> "${LOGFILE}"
+    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
     local task_key="$1"
     local task_cmd="$2"
     local index="$3"
@@ -85,7 +86,7 @@ function run_task() {
     info "$MSG_COMMAND: $task_cmd"
     warn "$(date '+%F %T') [INFO] START: $task_cmd" >> "${LOGFILE}"
     local output
-    output=$(eval "$task_cmd" 2>&1)
+    output=$(eval "$task_cmd" )
     local exit_code=$?
     echo "Code d'exit : $exit_code" >> "${LOGFILE}"
     if [[ $exit_code -eq 0 ]]; then
@@ -403,56 +404,48 @@ function check_install() {
         [[ -n "$FIND_REP_GLPI" ]] && break
     done
     # Si GLPI est déjà installé
-    if [[ -n "$FIND_REP_GLPI" ]]; then
+    if [[ -n "${FIND_REP_GLPI}" ]]; then
         FIND_REP_GLPI="${FIND_REP_GLPI%/}/"
-        echo "Répertoire GLPI trouvé : $FIND_REP_GLPI" | sudo tee -a "${LOGFILE}"
+        echo "Répertoire GLPI trouvé : ${FIND_REP_GLPI}" | sudo tee -a "${LOGFILE}"
         version_file="${FIND_REP_GLPI}/version"
-        if [[ -f "$version_file" ]]; then
-            installed_version=$(head -n1 "$version_file" | tr -d '[:space:]')
-            warn "$(date '+%F %T'): Version GLPI détectée : ${installed_version}" >> "${LOGFILE}"
+        #version_file= mysql -u glpi_user -p glpi_database -e "SELECT value FROM glpi_configs WHERE context='core' AND name='version';"php 
+        if [[ -f "${version_file}" ]]; then
+            installed_version=$(head -n1 "${version_file}" | tr -d '[:space:]')
+            info "Version GLPI détectée : ${installed_version}" >> "${LOGFILE}"
         else
-            warn "Fichier version introuvable dans ${FIND_REP_GLPI}" >> "${ERRORFILE}"
+            error "Fichier version introuvable dans ${FIND_REP_GLPI}" >> "${ERRORFILE}"
         fi
-        # Comparaison avec la version à installer
-        if [[ -n "$installed_version" && -n "$VERSION_SELECT" && "$installed_version" != "$VERSION_SELECT" ]]; then
-            warn "$(date '+%F %T'): Version cible : ${VERSION_SELECT}" >> "${LOGFILE}"
-            
-            if [[ "$(printf '%s\n%s\n' "$installed_version" "$VERSION_SELECT" | sort -V | head -n1)" == "$installed_version" ]]; then
+        # --- Comparaison ---
+        if [[ -n "${installed_version}" && -n "${VERSION_SELECT}" && "${installed_version}" != "${VERSION_SELECT}" ]]; then
+            if [[ "$(printf '%s\n%s\n' "${installed_version}" "${VERSION_SELECT}" | sort -V | head -n1)" == "${installed_version}" ]]; then
                 dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_UPDATE}\n\nGLPI ${installed_version} → ${VERSION_SELECT}" 10 50
-                info "$MSG_CONTINUING" >> "${LOGFILE}"
-
                 if update; then
-                    dialog --title "GLPI" --sleep 5 --infobox "Mise à jour GLPI ${installed_version} → ${VERSION_SELECT} terminée." 10 50
+                    dialog --title "Information" --msgbox "Mise à jour GLPI ${installed_version} → ${VERSION_SELECT} terminée." 6 60
                     info "Mise à jour GLPI ${installed_version} → ${VERSION_SELECT} terminée." >> "${LOGFILE}"
-                    return 0
                 else
-                    dialog --title "Erreur" --msgbox "La mise à jour a échoué ou a été annulée." 6 60
+                    dialog --title "Erreur" --msgbox "La mise à jour de GLPI a échoué ou a été annulée." 6 60
                     error "Échec de la mise à jour GLPI." >> "${ERRORFILE}"
-                    return 1
+                    exit 1
                 fi
             else
-                dialog --title "GLPI" --sleep 5 --infobox "Version actuelle (${installed_version}) plus récente que la cible (${VERSION_SELECT}), aucune mise à jour." 10 50
-                info "Version actuelle (${installed_version}) plus récente que la cible (${VERSION_SELECT}), aucune mise à jour." >> "${LOGFILE}"
-                return 0
+                dialog --title "Information" --sleep 5 --infobox "\nVersion actuelle (${installed_version}) plus récente\nque la cible (${VERSION_SELECT})" 10 50
+                info "Version actuelle (${installed_version}) plus récente que la cible (${VERSION_SELECT})." >> "${LOGFILE}"
+                exit 1
             fi
-        else
             info "GLPI ${installed_version:-inconnue} déjà installé, aucune action requise." >> "${LOGFILE}"
-            return 0
-        fi
-    else
-        # --- Pas d'installation détectée ---
-        dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
-        glpi_install
-        if [ $? -eq 0 ]; then
-            dialog --title "GLPI" --sleep 5 --infobox "Installation de GLPI ${VERSION_SELECT} terminée." 10 50
-            info "Installation de GLPI ${VERSION_SELECT} terminée." >> "${LOGFILE}"
-            return 0
         else
-            dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
-            warn "Échec de l'installation GLPI." >> "${ERRORFILE}"
-            return 1
+            dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
+            if glpi_install; then
+                dialog --title "Information" --msgbox "L'installation de GLPI est terminée." 6 60
+                info "Installation de GLPI ${VERSION_SELECT} terminée." >> "${LOGFILE}"
+            else
+                dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
+                error "Échec de l'installation GLPI." >> "${ERRORFILE}"
+                exit 1
+            fi
         fi
     fi
+    set -e  # réactiver le mode strict
     warn "$(date '+%F %T') [$$][DEBUG:check_install] Fin de la fonction" >> "${LOGFILE}"
 }
 # Mise à jour de la distribution
@@ -963,61 +956,106 @@ function write_credentials(){
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "$FICHIER_MSG" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
-GLPI Version: ${VERSION_SELECT}
-Répertoire d'installation de GLPI: ${REP_GLPI}
+ GLPI Version: ${VERSION_SELECT}
+ Répertoire d'installation de GLPI: ${REP_GLPI}
 
-Les comptes utilisateurs par défaut sont :
-UTILISATEUR   -  MOT DE PASSE       -       ACCES
- glpi         -  ${ADMINGLPIPWD}     -  compte admin
- post-only    -  ${POSTGLPIPWD}     -  compte post-only
- tech         -  ${TECHGLPIPWD}     -  compte tech
- normal       -  ${NORMGLPIPWD}     -  compte normal
+ Les comptes utilisateurs par défaut sont :
+ UTILISATEUR   -  MOT DE PASSE       -       ACCES
+  glpi         -  ${ADMINGLPIPWD}     -  compte admin
+  post-only    -  ${POSTGLPIPWD}     -  compte post-only
+  tech         -  ${TECHGLPIPWD}     -  compte tech
+  normal       -  ${NORMGLPIPWD}     -  compte normal
 
-Vous pouvez accéder à la page web de GLPI à partir d'une adresse IP ou d'un nom d'hôte :
-http://${IPADRESS}
+ Vous pouvez accéder à la page web de GLPI à partir d'une adresse IP ou d'un nom d'hôte :
+ http://${IPADRESS}
 
-==> Base de données:
-Hôte de la base de données: ${DB_HOST}
-Port de la base de données: 3306
-Nom de la base de données GLPI: ${DB_NAME}
-Mot de passe root: ${SQLROOTPWD}
-Mot de passe ${DB_USER}: ${SQLGLPIPWD}
+ ==> Base de données:
+ Hôte de la base de données: ${DB_HOST}
+ Port de la base de données: 3306
+ Nom de la base de données GLPI: ${DB_NAME}
+ Mot de passe root: ${SQLROOTPWD}
+ Mot de passe ${DB_USER}: ${SQLGLPIPWD}
 
-Fichier de sauvegarde enregistré dans ${FICHIER_MSG}
-<===============================================================================================>
+ Fichier de sauvegarde enregistré dans ${FICHIER_MSG}
+ <===============================================================================================>
 
-Si vous rencontrez un probléme avec ce script, veuillez le signaler sur GitHub : https://github.com/PapyPoc/glpi_install/issues
+ Si vous rencontrez un probléme avec ce script, veuillez le signaler sur GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	else
 		cat > "$FICHIER_MSG" << EOF
-<=============================> GLPI installation details <====================================>
-GLPI version: ${VERSION_SELECT}
-GLPI installation directory: ${REP_GLPI}
+<=============================> GLPI installation details <=====================================>
+ GLPI version: ${VERSION_SELECT}
+ GLPI installation directory: ${REP_GLPI}
 
-The default user accounts are:
-  USER         -    PASSWORD        -       ACCESS
-glpi           -  ${ADMINGLPIPWD}      -  admin account
-post-only      -  ${POSTGLPIPWD}      -  post-only account
-tech           -  ${TECHGLPIPWD}      -  tech account
-normal         -  ${NORMGLPIPWD}      -  normal account
+ The default user accounts are:
+    USER         -    PASSWORD        -       ACCESS
+  glpi           -  ${ADMINGLPIPWD}      -  admin account
+  post-only      -  ${POSTGLPIPWD}      -  post-only account
+  tech           -  ${TECHGLPIPWD}      -  tech account
+  normal         -  ${NORMGLPIPWD}      -  normal account
 
-You can access the GLPI web page from the following address :
-http://${IPADRESS}
+ You can access the GLPI web page from the following address :
+ http://${IPADRESS}
 
-==> Database:
-Database host: ${DB_HOST}
-Database port: 3306
-GLPI database name: ${DB_NAME}
-Root password: ${SQLROOTPWD}
-$DB_USER password: ${SQLGLPIPWD}
+ ==> Database:
+ Database host: ${DB_HOST}
+ Database port: 3306
+ GLPI database name: ${DB_NAME}
+ Root password: ${SQLROOTPWD}
+ ${DB_USER} password: ${SQLGLPIPWD}
 
-Backup file saved to ${FICHIER_MSG}
-<===============================================================================================>
+ Backup file saved to ${FICHIER_MSG}
+ <===============================================================================================>
 
-If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
+ If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
     warn "$(date '+%F %T') [$$][DEBUG:write_credentials] Fin de la fonction" >> "${LOGFILE}"
+}
+# Fonction principale pour exécuter les tâches avec barre de progression
+function update() {
+    warn "$(date '+%F %T') [$$][DEBUG:update] Entrée dans la fonction" >> "${LOGFILE}"
+    declare -A tasks=(
+        ["$MSG_T20"]="maintenance 1"
+        ["$MSG_T21"]="update_distro"
+        ["$MSG_T22"]="backup_glpi"
+        ["$MSG_T23"]="install_glpi"
+        ["$MSG_T24"]="update_glpi"
+        ["$MSG_T25"]="maintenance 0"
+    )
+    task_order=("$MSG_T20" "$MSG_T21" "$MSG_T22" "$MSG_T23" "$MSG_T24" "$MSG_T25")
+    total_tasks=${#task_order[@]}
+    task_index=0
+    (
+        for task_key in "${task_order[@]}"; do
+            task_index=$((task_index + 1))
+            progress=$((task_index * 100 / total_tasks))
+            echo "$progress"
+            echo "XXX"
+            echo "$task_index/$total_tasks - $task_key"
+            echo "XXX"
+            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
+                echo "$progress"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_OK}"
+                echo "XXX"
+            else
+                echo "100"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+                echo "XXX"
+                exit 1   # <-- remonte l'erreur au parent
+            fi
+            sleep 0.5
+        done
+    ) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
+    # Récupérer le code de retour du sous-shell
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then
+        warn "Une tâche a échoué pendant l'exécution de update()." >>"${ERRORFILE}"
+        return 1
+    fi
+    info "Toutes les tâches ont été exécutées avec succès." >>"${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:update] Fin de la fonction" >> "${LOGFILE}"
 }
 # Activé ou déactivé le mode maintenance (1 ou 0)
 function maintenance(){
@@ -1181,48 +1219,4 @@ function update_glpi() {
     sleep 2
     warn "$(date '+%F %T') [$$][DEBUG:update_glpi] Fin de la fonction" >> "${LOGFILE}"
 }
-# Fonction principale pour exécuter les tâches avec barre de progression
-function update() {
-    warn "$(date '+%F %T') [$$][DEBUG:update] Entrée dans la fonction" >> "${LOGFILE}"
-    declare -A tasks=(
-        ["$MSG_T20"]="maintenance 1"
-        ["$MSG_T21"]="update_distro"
-        ["$MSG_T22"]="backup_glpi"
-        ["$MSG_T23"]="install_glpi"
-        ["$MSG_T24"]="update_glpi"
-        ["$MSG_T25"]="maintenance 0"
-    )
-    task_order=("$MSG_T20" "$MSG_T21" "$MSG_T22" "$MSG_T23" "$MSG_T24" "$MSG_T25")
-    total_tasks=${#task_order[@]}
-    task_index=0
-    (
-        for task_key in "${task_order[@]}"; do
-            task_index=$((task_index + 1))
-            progress=$((task_index * 100 / total_tasks))
-            echo "$progress"
-            echo "XXX"
-            echo "$task_index/$total_tasks - $task_key"
-            echo "XXX"
-            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
-                echo "$progress"
-                echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_OK}"
-                echo "XXX"
-            else
-                echo "100"
-                echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
-                echo "XXX"
-                exit 1   # <-- remonte l'erreur au parent
-            fi
-            sleep 0.5
-        done
-    ) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
-    # Récupérer le code de retour du sous-shell
-    if [ ${PIPESTATUS[0]} -ne 0 ]; then
-        warn "Une tâche a échoué pendant l'exécution de update()." >>"${ERRORFILE}"
-        return 1
-    fi
-    info "Toutes les tâches ont été exécutées avec succès." >>"${LOGFILE}"
-    warn "$(date '+%F %T') [$$][DEBUG:update] Fin de la fonction" >> "${LOGFILE}"
-}
+
