@@ -893,13 +893,14 @@ function source_os_release(){
     warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >> "${WARNINGFILE}"
         return 1
     fi
+    export ID VERSION_ID
     error "$(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}" >> "${ERRORFILE}"
-    warn "$(date '+%F %T') [$$][DEBUG:source_os_release] Fin de la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:source_os_release] Fin de la fonction" >> "${WARNINGFILE}"
 }
 function rights_glpi(){
-    warn "$(date '+%F %T') [$$][DEBUG:rights_glpi] Entrée dans la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:rights_glpi] Entrée dans la fonction" >> "${WARNINGFILE}"
     source_os_release
-    warn "$(date '+%F %T'): INFO: after source_os_release (ID=${ID:-unknown})" >> "${LOGFILE}"
+    warn "$(date '+%F %T'): INFO: after source_os_release (ID=${ID:-unknown})" >> "${WARNINGFILE}"
     # Changer les droits des répertoires et fichiers
     {
         info "$MSG_RIGHTS_GLPI"
