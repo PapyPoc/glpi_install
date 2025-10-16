@@ -7,13 +7,28 @@
 #
 set -Eeuo pipefail
 # Ne pas continuer si le script est exécuté directement
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo -e "Ce fichier doit être sourcé, pas exécuté.\n">> "${ERRORFILE}"
     return 1
 fi
+on_error() {
+    local line="$1"
+    local code="$2"
+    echo "💥 Erreur détectée !"
+    echo "  → Fichier : ${BASH_SOURCE[1]}"
+    echo "  → Fonction : ${FUNCNAME[1]:-main}"
+    echo "  → Ligne : $line"
+    echo "  → Commande : ${BASH_COMMAND}"
+    echo "  → Code retour : $code"
+    exit "$code"
+}
+trap 'on_error "$LINENO" "$?"' ERR
+
+echo "Démarrage..."
+ls /chemin/inexistant
 # Affichage d'erreur en rouge
 function error(){
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "${ERRORFILE}"; exit 1' ERR
     local msg="$1"
     export_display_env
     local expanded
@@ -26,7 +41,6 @@ function error(){
 }
 # Affichage d'alerte en orange
 function warn(){
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "${ERRORFILE}"; exit 1' ERR
     local msg="$1"
     export_display_env
     local expanded
@@ -39,7 +53,6 @@ function warn(){
 }
 # Affichage d'information en bleu
 function info(){
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "${ERRORFILE}"; exit 1' ERR
     local msg="$1"
     export_display_env
     local expanded
@@ -404,7 +417,7 @@ function compatible() {
 # Vérifie si GLPI est installé ou pas
 function check_install() {
     trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
-    warn "$(date '+%F %T') [$$][DEBUG:check_install] Entrée dans la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:check_install] Entrée dans la fonction" >> "${WARNINGFILE}"
     local FIND_REP_GLPI=""
     local installed_version=""
     local version_file=""
@@ -456,14 +469,14 @@ function check_install() {
             exit 1
         fi
     fi
-    warn "$(date '+%F %T') [$$][DEBUG:check_install] Fin de la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:check_install] Fin de la fonction" >> "${WARNINGFILE}"
 }
 # Mise à jour de la distribution
 function update_distro(){
     trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
-    warn "$(date '+%F %T') [$$][DEBUG:update_distro] Entrée dans la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:update_distro] Entrée dans la fonction" >> "${WARNINGFILE}"
     source_os_release
-    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering update_distro (ID=${ID:-unknown})" >> "${LOGFILE}"
+    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering update_distro (ID=${ID:-unknown})" >> "${WARNINGFILE}"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
            info "$MSG_UPGRADE_DISTRO"
            timedatectl set-ntp true # Synchronise l'heure
@@ -475,12 +488,12 @@ function update_distro(){
            sleep 5
            yum update -y && yum upgrade -y
 	fi
-    warn "$(date '+%F %T') [$$][DEBUG:update_distro] Fin de la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:update_distro] Fin de la fonction" >> "${WARNINGFILE}"
 }
 # Adresse IP de la machine
 function network_info() {
     trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
-    warn "$(date '+%F %T') [$$][DEBUG:network_info] Entrée dans la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:network_info] Entrée dans la fonction" >> "${WARNINGFILE}"
     # Détection de l’interface principale (hors loopback et interfaces virtuelles)
     INTERFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/dev/ {print $5; exit}')
     if [[ -z "$INTERFACE" ]]; then
@@ -497,14 +510,14 @@ function network_info() {
         IPADRESS="127.0.0.1"
         export IPADRESS
     fi
-    warn "$(date '+%F %T') [$$][DEBUG:network_info] Fin de la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:network_info] Fin de la fonction" >> "${WARNINGFILE}"
 }
 # Installation des éléments nécessaire
 function install_packages(){
     trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
-    warn "$(date '+%F %T') [$$][DEBUG:install_packages] Entrée dans la fonction" >> "${LOGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:install_packages] Entrée dans la fonction" >> "${WARNINGFILE}"
     source_os_release
-    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering install_packages (ID=${ID:-unknown})" >> "${LOGFILE}"
+    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering install_packages (ID=${ID:-unknown})" >> "${WARNINGFILE}"
     if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
         export DEBIAN_FRONTEND=noninteractive
@@ -516,78 +529,77 @@ function install_packages(){
                 # continue, maybe cached; but log
             fi
         else
-            warn "apt-get not found, cannot install packages on Debian/Ubuntu branch" >> "${WARNINGFILE}"
+            error "apt-get not found, cannot install packages on Debian/Ubuntu branch" >> "${ERRORFILE}"
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
         if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 2>>"${ERRORFILE}"; then
-            warn "$MSG_PHP_EXT_FAILED" 2>>"${WARNINGFILE}"
+            error "$MSG_PHP_EXT_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
         if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 2>>"${ERRORFILE}"; then
-            warn "$MSG_LAMP_FAILED" 2>>"${WARNINGFILE}"
+            error "$MSG_LAMP_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
         if ! systemctl enable mariadb > /dev/null 2>>"${ERRORFILE}"; then
-            echo "Échec de l'activation de MariaDB." 2>>"${ERRORFILE}"
+            error "Échec de l'activation de MariaDB." 2>>"${ERRORFILE}"
             return 1
         fi
         if ! systemctl restart mariadb > /dev/null 2>>"${ERRORFILE}"; then
-            echo "Échec du redémarrage de MariaDB." 2>>"${ERRORFILE}"
+            error "Échec du redémarrage de MariaDB." 2>>"${ERRORFILE}"
             return 1
         fi
         info "$MSG_ACTIVE_START_WEB"
         if ! systemctl enable apache2 > /dev/null 2>>"${ERRORFILE}"; then
-            echo "Échec de l'activation d'Apache2." 2>>"${ERRORFILE}"
+            error "Échec de l'activation d'Apache2." 2>>"${ERRORFILE}"
             return 1
         fi
         if ! systemctl restart apache2 > /dev/null 2>>"${ERRORFILE}"; then
-            echo "Échec du redémarrage d'Apache2." 2>>"${ERRORFILE}"
+            error "Échec du redémarrage d'Apache2." 2>>"${ERRORFILE}"
             return 1
         fi
     elif [[ "${ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
         sleep 1
         if ! command -v dnf >/dev/null 2>&1; then
-            warn "dnf not found, cannot install packages on RHEL-like branch"
+            error "dnf not found, cannot install packages on RHEL-like branch" 2>>"${ERRORFILE}"
             return 1
         fi
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: dnf makecache" >> "${LOGFILE}"
         if ! dnf makecache --refresh >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_EPEL_FAILED"
+            error "$MSG_EPEL_FAILED" 2>>"${ERRORFILE}"
             # continue; attempt install may still work
         fi
         if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_EPEL_FAILED"
+            error "$MSG_EPEL_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         if ! dnf module reset -y php nginx mariadb composer >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_MODULES_RESET_FAILED"
+            error "$MSG_MODULES_RESET_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         if ! dnf module install -y php:8.2 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_PHP_INSTALL_FAILED"
+            error "$MSG_PHP_INSTALL_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         if ! dnf module install -y nginx:1.24 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_NGINX_INSTALL_FAILED"
+            error "$MSG_NGINX_INSTALL_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         if ! dnf module install -y mariadb:10.11 >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_MARIADB_INSTALL_FAILED"
+            error "$MSG_MARIADB_INSTALL_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         info "$MSG_AUTO_UPDATES"
         if ! dnf install dnf-automatic -y >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_DNF_AUTO_FAILED"
+            error "$MSG_DNF_AUTO_FAILED" 2>>"${ERRORFILE}"
             return 1
         fi
         sed -i 's/^\(;\?\)\(apply_updates =\).*/\2 yes/' /etc/dnf/automatic.conf
         sed -i 's/^\(;\?\)\(reboot =\).*/\2 when-needed/' /etc/dnf/automatic.conf
         sed -i 's/^\(;\?\)\(upgrade_type =\).*/\2 security/' /etc/dnf/automatic.conf
         if ! mkdir /etc/systemd/system/dnf-automatic.timer.d 2>/dev/null; then
-            warn "$MSG_DNF_AUTO_DIR_FAILED"
+            warn "$MSG_DNF_AUTO_DIR_FAILED" 2>>"${WARNINGFILE}"
             return 1
         fi
         sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf > /dev/null << 'EOF'
@@ -602,28 +614,28 @@ RandomizedDelaySec=60m
 Persistent=true
 EOF
         if ! systemctl enable --now dnf-automatic.timer >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_DNF_AUTO_ACTIVATE_FAILED"
+            warn "$MSG_DNF_AUTO_ACTIVATE_FAILED" 2>>"${WARNINGFILE}"
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
         if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_PHP_EXT_FAILED"
+            warn "$MSG_PHP_EXT_FAILED" 2>>"${WARNINGFILE}"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE lamp..."
         if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_LAMP_FAILED"
+            warn "$MSG_LAMP_FAILED" 2>>"${WARNINGFILE}"
             return 1
         fi
         sed -i 's/^\(;\?\)\(user =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         sed -i 's/^\(;\?\)\(group =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         info "$MSG_ACTIVE_START_WEB MariaDB, d'ENGINE X et de PHP-FPM"
         if ! systemctl enable --now mariadb nginx php-fpm >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_SERVICES_START_FAILED"
+            warn "$MSG_SERVICES_START_FAILED" 2>>"${WARNINGFILE}"
             return 1
         fi
         if ! firewall-cmd --permanent --zone=public --add-service=http || ! firewall-cmd --reload >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-            warn "$MSG_FIREWALL_FAILED"
+            warn "$MSG_FIREWALL_FAILED" 2>>"${WARNINGFILE}"
             return 1
         fi
     fi
@@ -631,13 +643,13 @@ EOF
 }
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
-    trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
+    trap 'error "Erreur dans ${FUNCNAME[0]}() à la ligne $LINENO : $BASH_COMMAND (code=$?)" >> "$ERRORFILE"; exit 1' ERR
     warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering mariadb_configure (ID=${ID:-unknown})" >> "${LOGFILE}"
     info "$MSG_BDD_CONFIG" >> "${LOGFILE}"
     # Détecter la commande MySQL/MariaDB
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql) 
     if [ -z "$MYSQL_CMD" ]; then 
-    warn "Commande MySQL/MariaDB introuvable" >> "${WARNINGFILE}"
+        error "Commande MySQL/MariaDB introuvable" >> "${ERRORFILE}"
         return 1
     fi
     sleep 1
@@ -655,12 +667,12 @@ function mariadb_configure() {
     _sql_root+="\nGRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';"
     _sql_root+="\nFLUSH PRIVILEGES;"
     if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
-        warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
+        warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc" >> "${ERRORFILE}"
         return 1
     fi
     # Détection du fuseau horaire
     if [ -z "${TIMEZONE:-}" ]; then
-        if command -v timedatectl >/dev/null 2>&1; then
+        if command -v timedatectl >>"${LOGFILE}" 2>>"${ERRORFILE}"; then
             TIMEZONE=$(timedatectl show -p Timezone --value 2>/dev/null || true)
         fi
         if [ -z "${TIMEZONE:-}" ] && [ -f /etc/timezone ]; then
