@@ -14,6 +14,12 @@ source "${REP_SCRIPT}/function" # Fichier de fonction
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
+
+trap 'on_error "$LINENO" "$?" >> "${ERRORFILE}"' ERR
+
+echo "Démarrage..."
+ls /chemin/inexistant
+
 # Regarde si la distribution est conforme
 if ! check_distro; then
     dialog --title "Erreur" --msgbox "La vérification de la distribution a échoué." 6 50

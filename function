@@ -12,21 +12,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo -e "Ce fichier doit être sourcé, pas exécuté.\n">> "${ERRORFILE}"
     return 1
 fi
-on_error() {
-    local line="$1"
-    local code="$2"
-    echo "💥 Erreur détectée !"
-    echo "  → Fichier : ${BASH_SOURCE[1]}"
-    echo "  → Fonction : ${FUNCNAME[1]:-main}"
-    echo "  → Ligne : $line"
-    echo "  → Commande : ${BASH_COMMAND}"
-    echo "  → Code retour : $code"
-    exit "$code"
-}
-trap 'on_error "$LINENO" "$?"' ERR
-
-echo "Démarrage..."
-ls /chemin/inexistant
 # Affichage d'erreur en rouge
 function error(){
     local msg="$1"
@@ -89,6 +74,19 @@ export_display_env() {
         _val="${!v:-}"
         export "$v"="$_val"
     done
+}
+# Gestion des erreurs avec trap
+on_error() {
+    local line="$1"
+    local code="$2"
+    echo "💥 Erreur détectée !"
+    echo "  → Fichier : ${BASH_SOURCE[1]}"
+    echo "  → Fonction : ${FUNCNAME[1]:-main}"
+    echo "  → Ligne : $line"
+    echo "  → Commande : ${BASH_COMMAND}"
+    echo "  → Code retour : $code"
+    echo "  → Consultez le fichier de log pour plus de détails : ${ERRORFILE}"
+    exit "$code"
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
