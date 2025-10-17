@@ -365,7 +365,7 @@ function prompt_install_options(){
         # Transformer les lignes en tableau
         IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
         # Validation du repertoire d'installation commence par /var/www /srv /opt /usr/share et que le nom du répértoire contienne glpi
-        if ! [[ "$REP_GLPI" =~ ^/(var/www|srv|opt|usr/share)(/[[:alnum:]_.-]+)*/glpi([[:alnum:]_.-]*)/?$ ]]; then
+        if ! [[ "$REP_GLPI" =~ ^/(var/www(/html)?|srv|opt|usr/share)(/[[:alnum:]_.-]+)*/glpi([[:alnum:]_.-]*)/?$ ]]; then
     dialog --msgbox "Répertoire d'installation invalide : $REP_GLPI\n\n\
 Le répertoire doit commencer par /var/www, /srv, /opt ou /usr/share\n\
 et contenir un dossier dont le nom inclut 'glpi'." 10 70
