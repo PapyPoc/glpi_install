@@ -350,6 +350,7 @@ function prompt_install_options(){
     local WIDTH=$(( WIDTH > WIDTH_DB_USER ? WIDTH : WIDTH_DB_USER ))
     local WIDTH=$(( WIDTH + 6 ))
     exec 3>&1
+    local form
     form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
     --form "${MSG_GLPI_SELECT_PARAM_1} ${VERSION_SELECT} ${MSG_GLPI_SELECT_PARAM_2}" 18 68 8 \
     "📁 ${MSG_PARAM_REP}"     1 2 "${REP_GLPI:-/var/www/html/glpi/}" 1 ${WIDTH} 20 40 \
@@ -357,6 +358,7 @@ function prompt_install_options(){
     "💾 ${MSG_PARAM_DB_NAME}" 5 2 "${DB_NAME:-glpi}"                 5 ${WIDTH} 20 20 \
     "👤 ${MSG_PARAM_DB_USER}" 7 2 "${DB_USER:-glpi_user}"            7 ${WIDTH} 20 20 \
     2>&1 1>&3)
+    info "Formulaire rempli : $form" 1>&2 >> "${LOGFILE}"
     rc=$?
     exec 3>&-
     if [ "${rc}" -ne 0 ]; then
