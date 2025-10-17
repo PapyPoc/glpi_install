@@ -349,23 +349,64 @@ function prompt_install_options(){
     local WIDTH=$(( WIDTH > WIDTH_DB_NAME ? WIDTH : WIDTH_DB_NAME ))
     local WIDTH=$(( WIDTH > WIDTH_DB_USER ? WIDTH : WIDTH_DB_USER ))
     local WIDTH=$(( WIDTH + 6 ))
-    exec 3>&1
     local form
-    form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
-    --form "${MSG_GLPI_SELECT_PARAM_1} ${VERSION_SELECT} ${MSG_GLPI_SELECT_PARAM_2}" 18 68 8 \
-    "📁 ${MSG_PARAM_REP}"     1 2 "${REP_GLPI:-/var/www/html/glpi/}" 1 ${WIDTH} 20 40 \
-    "🗄️ ${MSG_PARAM_DB_HOST}" 3 2 "${DB_HOST:-localhost}"            3 ${WIDTH} 20 20 \
-    "💾 ${MSG_PARAM_DB_NAME}" 5 2 "${DB_NAME:-glpi}"                 5 ${WIDTH} 20 20 \
-    "👤 ${MSG_PARAM_DB_USER}" 7 2 "${DB_USER:-glpi_user}"            7 ${WIDTH} 20 20 \
-    2>&1 1>&3)
-    info "Formulaire rempli : $form" 1>&2 >> "${LOGFILE}"
+    local IFS
+    while true; do
+        exec 3>&1
+        form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
+        --form "${MSG_GLPI_SELECT_PARAM_1} ${VERSION_SELECT} ${MSG_GLPI_SELECT_PARAM_2}" 18 68 8 \
+        "📁 ${MSG_PARAM_REP}"     1 2 "${REP_GLPI:-/var/www/html/glpi/}" 1 ${WIDTH} 20 40 \
+        "🗄️ ${MSG_PARAM_DB_HOST}" 3 2 "${DB_HOST:-localhost}"            3 ${WIDTH} 20 20 \
+        "💾 ${MSG_PARAM_DB_NAME}" 5 2 "${DB_NAME:-glpi}"                 5 ${WIDTH} 20 20 \
+        "👤 ${MSG_PARAM_DB_USER}" 7 2 "${DB_USER:-glpi_user}"            7 ${WIDTH} 20 20 \
+        2>&1 1>&3)
+        # Si annulation ou ESC
+        [ $? -ne 0 ] && break
+        # Transformer les lignes en tableau
+        IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
+        # Validation du repertoire d'installation commence par /var/www /srv /opt /usr/share et que le nom du répértoire contienne glpi
+        if ! [[ "$REP_GLPI" =~ ^/(var/www|srv|opt|usr/share)(/[[:alnum:]_.-]+)*/glpi([[:alnum:]_.-]*)/?$ ]]; then
+    dialog --msgbox "Répertoire d'installation invalide : $REP_GLPI\n\n\
+Le répertoire doit commencer par /var/www, /srv, /opt ou /usr/share\n\
+et contenir un dossier dont le nom inclut 'glpi'." 10 70
+            continue
+        fi
+        # Exemple de validation plus stricte (répertoire d'installation)
+        if ! [[ "$REP_GLPI" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
+            dialog --msgbox "Répertoire d’installation invalide : $REP_GLPI\nDoit commencer par /var/www/, /srv/, /opt/ ou /usr/share/ et contenir 'glpi'." 10 60
+            continue
+        fi  
+        # Exemple de validation nom de domaine, IP ou localhost 
+        if ! [[ "$DB_HOST" =~ ^(localhost|(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})|([0-9]{1,3}\.){3}[0-9]{1,3})$ ]]; then
+            dialog --msgbox "Hôte de base de données invalide : $DB_HOST" 8 50
+            continue
+        fi
+        # Exemple de validation plus stricte (nom de la base de données)
+        if ! [[ "$DB_NAME" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
+            dialog --msgbox "Nom de base de données invalide : $DB_NAME" 8 50
+            continue
+        fi
+        # Exemple de validation plus stricte (utilisateur de la base de données)
+        if ! [[ "$DB_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            dialog --msgbox "Nom d’utilisateur de base de données invalide : $DB_USER" 8 50
+            continue
+        fi  
+        # Si tout est correct → sortir de la boucle
+        break
+    done
+    dialog --title "Vérification" --msgbox "Résumé de la configuration :\n\n\
+        Répertoire GLPI : $REP_GLPI\n\
+        Base de données : $DB_NAME\n\
+        Hôte : $DB_HOST\n\
+        Utilisateur : $DB_USER" 12 70
+    info "${form}\n" 1>&2 >> "${LOGFILE}"
     rc=$?
     exec 3>&-
     if [ "${rc}" -ne 0 ]; then
         warn "Formulaire annulé."
         return 1
     fi
-    IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form" || true
+    IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
     local _def_rep="${REP_GLPI:-/var/www/html/glpi/}"
     local _def_db_host="${DB_HOST:-localhost}"
     local _def_db="${DB_NAME:-glpi}"
@@ -409,7 +450,7 @@ function compatible() {
 }
 # Vérifie si GLPI est installé ou pas
 function check_install() {
-    trap 'on_error 2>> "${ERRORFILE}"' ERR
+    trap 'on_error 2>> "${ERRORFILE}"' ERR BUG BREAKPOINT
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
     local FIND_REP_GLPI=""
     local installed_version=""
