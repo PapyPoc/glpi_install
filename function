@@ -403,8 +403,7 @@ et contenir un dossier dont le nom inclut 'glpi'." 10 70
     if [ "${check}" -ne 0 ]; then
         warn "Formulaire annulé." 2>> "${WARNINGFILE}"
         dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
-
-        exit 1
+        exit 0
     fi
     
     info "${form}\n" 1>&2 >> "${LOGFILE}"
