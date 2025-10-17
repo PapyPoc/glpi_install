@@ -160,12 +160,6 @@ function glpi_install() {
             fi
         done
     ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
-    # Message de fin
-    if [[ $? -eq 0 ]]; then
-        dialog --title "GLPI" --msgbox "\n${MSG_INSTALL_DONE}\n\nLogs : ${LOGFILE}" 8 70
-    else
-        dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
-    fi
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
