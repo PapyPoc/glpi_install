@@ -117,7 +117,6 @@ function run_task() {
 }
 # Exécuter les tâches avec barre de progression
 function glpi_install() {
-    trap 'on_error 2>> "${ERRORFILE}"' ERR
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
     declare -A tasks=(
         ["$MSG_T01"]="update_distro"
@@ -133,9 +132,8 @@ function glpi_install() {
     local total_tasks=${#task_order[@]}
     local task_index=0
     (
-        trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
+        trap 'on_error 2>> "${ERRORFILE}"' ERR
         for task_key in "${task_order[@]}"; do
-        trap 'echo "[ERREUR] Ligne $LINENO : commande échouée" >> "$ERRORFILE"; exit 1' ERR
             task_index=$((task_index + 1))
             progress=$((task_index * 100 / total_tasks))
             echo "$progress"
@@ -143,23 +141,23 @@ function glpi_install() {
             echo "$task_index/$total_tasks - $task_key : ${MSG_START}"
             echo "XXX"
             # Exécution et logging
-            run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks" #; then
+            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
                 echo "$progress"
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_END}"
                 echo "XXX"
                 warn "$(date '+%F %T'): [OK] $task_key terminé." 2>> "${WARNINGFILE}"
-            #else
-            #    echo "100"
-            #    echo "XXX"
-            #    echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
-            #    echo "XXX"
-            #    warn "$(date '+%F %T'): [ERREUR] $task_key a échoué." 2>> "${ERRORFILE}"
-            #    echo "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
-            #    sleep 1
-            #    exit 1
-            #fi
-            sleep 0.3
+            else
+                echo "100"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+                echo "XXX"
+                warn "$(date '+%F %T'): [ERREUR] $task_key a échoué." 2>> "${WARNINGFILE}"
+                dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
+                error "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
+                sleep 5
+                exit 1
+            fi
         done
     ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
     # Message de fin
@@ -279,7 +277,7 @@ function load_language() {
     fi
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
 }
-# Demander à l'utilisateur de choisir la version de GLPI (4 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
+# Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
@@ -430,9 +428,16 @@ function check_install() {
         FIND_REP_GLPI="${FIND_REP_GLPI%/}/"
         echo "Répertoire GLPI trouvé : ${FIND_REP_GLPI}" | sudo tee -a "${LOGFILE}"
         version_file="${FIND_REP_GLPI}/version"
-        #version_file= mysql -u glpi_user -p glpi_database -e "SELECT value FROM glpi_configs WHERE context='core' AND name='version';"php 
-        if [[ -f "${version_file}" ]]; then
-            installed_version=$(head -n1 "${version_file}" | tr -d '[:space:]')
+        installed_version=$(head -n1 "${version_file}" | tr -d '[:space:]')
+        if [[ "$ID" == "debian" || "$ID" == "ubuntu" ]]; then
+            GLPI_CLI_VERSION=$(sudo -u www-data php "${FIND_REP_GLPI}/bin/console" --version 2>/dev/null | awk '{print $3}' || true)
+        else
+            GLPI_CLI_VERSION=$(sudo -u nginx php "${FIND_REP_GLPI}/bin/console" --version 2>/dev/null | awk '{print $3}' || true)
+        fi
+        if [[ -f "${version_file}" && -n "${GLPI_CLI_VERSION}" ]]; then
+            if [[ -z "${installed_version}" ]]; then
+                installed_version="${GLPI_CLI_VERSION}"
+            fi
             info "Version GLPI détectée : ${installed_version}" >> "${LOGFILE}"
         else
             dialog --title "Erreur" --msgbox "Fichier version introuvable dans ${FIND_REP_GLPI}" 6 60
