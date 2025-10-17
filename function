@@ -377,7 +377,7 @@ et contenir un dossier dont le nom inclut 'glpi'." 10 70
             continue
         fi  
         # Exemple de validation nom de domaine, IP ou localhost 
-        if ! [[ "$DB_HOST" =~ ^(localhost|(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})|([0-9]{1,3}\.){3}[0-9]{1,3})$ ]]; then
+        if ! [[ "$DB_HOST" =~ ^(localhost|([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|([0-9]{1,3}\.){3}[0-9]{1,3})$ ]]; then
             dialog --msgbox "Hôte de base de données invalide : $DB_HOST" 8 50
             continue
         fi
@@ -394,11 +394,19 @@ et contenir un dossier dont le nom inclut 'glpi'." 10 70
         # Si tout est correct → sortir de la boucle
         break
     done
-    dialog --title "Vérification" --msgbox "Résumé de la configuration :\n\n\
+    check=$(dialog --title "Vérification" --msgbox "Résumé de la configuration :\n\n\
         Répertoire GLPI : $REP_GLPI\n\
         Base de données : $DB_NAME\n\
         Hôte : $DB_HOST\n\
-        Utilisateur : $DB_USER" 12 70
+        Utilisateur : $DB_USER" 12 70)
+    check=$?
+    if [ "${check}" -ne 0 ]; then
+        warn "Formulaire annulé." 2>> "${WARNINGFILE}"
+        dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
+
+        exit 1
+    fi
+    
     info "${form}\n" 1>&2 >> "${LOGFILE}"
     rc=$?
     exec 3>&-
