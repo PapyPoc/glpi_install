@@ -303,6 +303,26 @@ function load_language() {
     fi
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
+validate_db_host() {
+    local host="$1"
+    local clean_host
+
+    # Nettoyage : supprime CR/LF, espaces en début/fin
+    clean_host="$(printf '%s' "$host" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+
+    # Tests de validité
+    if [[ "$clean_host" == "localhost" || "$clean_host" == "[::1]" ]]; then
+        return 0
+    elif [[ "$clean_host" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+        return 0
+    elif [[ "$clean_host" =~ ^([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$ ]]; then
+        return 0
+    else
+        dialog --msgbox "Hôte de base de données invalide : ${clean_host}\n\nAutorisé : localhost, [::1], nom de domaine complet ou adresse IPv4." 10 70
+        warn "Validation échouée : hôte de base de données invalide (${clean_host})"
+        return 1
+    fi
+}
 # Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>> "${LOGFILE}"
@@ -438,21 +458,11 @@ function prompt_install_options(){
             continue
         fi
         # Hôte de base de données
-        # --- Nettoyage et validation du nom d’hôte ---
-        # Supprime espaces et caractères invisibles (dont \r)
-        DB_HOST="$(printf '%s' "$DB_HOST" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-        printf "DEBUG>DB_HOST=<%s>\n" "$DB_HOST" >> "${LOGFILE}"
-        od -An -t x1 <<< "$DB_HOST" >> "${LOGFILE}"
-        if [[ "$DB_HOST" == "localhost" || "$DB_HOST" == "[::1]" ]]; then
-            : # OK
-        elif [[ "$DB_HOST" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-            : # IPv4 OK
-        elif [[ "$DB_HOST" =~ ^([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$ ]]; then
-            : # Nom de domaine OK
-        else
-            dialog --msgbox "Hôte de base de données invalide : ${DB_HOST}\n\nAutorisé : localhost, nom de domaine complet ou adresse IPv4." 10 70
+        if ! validate_db_host "$DB_HOST"; then
             continue
         fi
+        printf "DEBUG>DB_HOST=<%s>\n" "$DB_HOST" >> "${LOGFILE}"
+        od -An -t x1 <<< "$DB_HOST" >> "${LOGFILE}"
         # Nom de la base
         if ! [[ "${DB_NAME}" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
             dialog --msgbox "Nom de base de données invalide : ${DB_NAME}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores (max 64 caractères)." 12 70
