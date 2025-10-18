@@ -436,10 +436,16 @@ function prompt_install_options(){
             continue
         fi
         # Hôte de base de données
-        if ! [[ $DB_HOST =~ ^localhost$ \
-            || $DB_HOST =~ ^\[::1\]$ \
-            || $DB_HOST =~ ^([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$ \
-            || $DB_HOST =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+        # --- Nettoyage et validation du nom d’hôte ---
+        # Supprime espaces et caractères invisibles (dont \r)
+        DB_HOST="$(printf '%s' "$DB_HOST" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+        if [[ "$DB_HOST" == "localhost" || "$DB_HOST" == "[::1]" ]]; then
+            : # OK
+        elif [[ "$DB_HOST" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+            : # IPv4 OK
+        elif [[ "$DB_HOST" =~ ^([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$ ]]; then
+            : # Nom de domaine OK
+        else
             dialog --msgbox "Hôte de base de données invalide : ${DB_HOST}\n\nAutorisé : localhost, nom de domaine complet ou adresse IPv4." 10 70
             continue
         fi
