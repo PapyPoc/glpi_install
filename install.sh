@@ -152,7 +152,7 @@ if [ ! -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
 fi 
 # Vérification des permissions
 if [ ! -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
-    chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
+    sudo chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
 else 
         warn "Impossible de rendre '${REP_SCRIPT}/glpi_install/glpi-install' exécutable (droits insuffisants)." | tee -a "${ERRORFILE}"
         dialog --title "Attention" \
