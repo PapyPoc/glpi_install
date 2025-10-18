@@ -355,7 +355,7 @@ function prompt_install_options(){
     if [ -n "${installed_dir}" ]; then
         if grep -qi "glpi" "$installed_dir"; then
             # Déterminer le répertoire racine de GLPI
-            local installed_root
+            #local installed_root
             installed_root=$(dirname "$(dirname "${installed_dir}")")
             installed_version=$(ls "${installed_root}"/version 2>/dev/null || true)
             installed_version="${installed_version//[[:space:]]/}"
@@ -366,17 +366,27 @@ function prompt_install_options(){
             return 1
         fi
     fi
-    local api_url="https://api.github.com/repos/glpi-project/glpi/tags"
+    api_url="https://api.github.com/repos/glpi-project/glpi/tags"
+    
     tags=$(curl -s "${api_url}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
     if [ -n "${tags}" ]; then
         if [ -n "${installed_version}" ]; then
-            tags=$(printf '%s\n' "${tags}" | sort -Vr | awk -v v="${installed_version}" '$0 > v' | uniq | head -n 16)
+            tags=$(printf '%s\n' "${tags}" | sort -V | awk -v v="${installed_version}" '
+                function version_gt(a,b,   i, n1,n2,part1,part2) {
+                    n1 = split(a, parts1, ".")
+                    n2 = split(b, parts2, ".")
+                    for (i = 1; i <= (n1 > n2 ? n1 : n2); i++) {
+                        part1 = parts1[i] + 0
+                        part2 = parts2[i] + 0
+                        if (part1 > part2) return 1
+                        if (part1 < part2) return 0
+                    }
+                    return 0
+                }
+                version_gt($0, v)
+            ' | sort -Vr | head -n 16)
         else
             tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
-        fi
-        if [ -z "${tags}" ]; then
-            dialog --title "${MSG_INFO}" --msgbox "Aucune version plus récente que ${installed_version} n'est disponible." 7 60
-            return 1
         fi
     else
         dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
