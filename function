@@ -418,6 +418,7 @@ function prompt_install_options(){
         fi
         rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
         DB_HOST="$db_host"
+        printf "DEBUG>DB_HOST=<%s>\n" "$DB_HOST" >> "${LOGFILE}"
         od -An -t x1 <<< "$DB_HOST" >> "${LOGFILE}"
         REP_GLPI="${rep_glpi%/}/"
         DB_NAME="$db_name"
@@ -440,6 +441,7 @@ function prompt_install_options(){
         # --- Nettoyage et validation du nom d’hôte ---
         # Supprime espaces et caractères invisibles (dont \r)
         DB_HOST="$(printf '%s' "$DB_HOST" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+        printf "DEBUG>DB_HOST=<%s>\n" "$DB_HOST" >> "${LOGFILE}"
         od -An -t x1 <<< "$DB_HOST" >> "${LOGFILE}"
         if [[ "$DB_HOST" == "localhost" || "$DB_HOST" == "[::1]" ]]; then
             : # OK
