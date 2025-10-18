@@ -64,4 +64,3 @@ export INVOKING_USER INVOKING_HOME DEBUG_ENTRY DEBUG_END
 # Initialisation des fichiers de log
 : > "$LOGFILE"
 : > "$ERRORFILE"
-: > "$UPDATEFILE"
