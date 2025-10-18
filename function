@@ -365,19 +365,19 @@ function prompt_install_options(){
         # Transformer les lignes en tableau
         IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
         # Validation du repertoire d'installation commence par /var/www /srv /opt /usr/share et que le nom du répértoire contienne glpi
-        if ! [[ "$REP_GLPI" =~ ^/(var/www(/html)?|srv|opt|usr/share)(/[[:alnum:]_.-]+)*/glpi([[:alnum:]_.-]*)/?$ ]]; then
-        dialog --msgbox "Répertoire d'installation invalide : $REP_GLPI\n\n\
+        if ! [[ "${REP_GLPI}" =~ ^/(var/www(/html)?|srv|opt|usr/share)(/[[:alnum:]_.-]+)*/glpi([[:alnum:]_.-]*)/?$ ]]; then
+        dialog --msgbox "Répertoire d'installation invalide : ${REP_GLPI}\n\n\
         Le répertoire doit commencer par /var/www, /srv, /opt ou /usr/share\n\
         et contenir un dossier dont le nom inclut 'glpi'." 10 70
             continue
-        elif ! [[ "$DB_HOST" =~ ^(localhost|([a-zA-Z0-9-]+\.)+[A-Za-z]{2,}|([0-9]{1,3}\.){3}[0-9]{1,3})$ ]]; then
-            dialog --msgbox "Hôte de base de données invalide : $DB_HOST" 8 50
+        elif ! { [[ "${DB_HOST}" =~ ^localhost$ ]] || [[ "${DB_HOST}" =~ ^([a-zA-Z0-9-]+\.)+[A-Za-z]{2,}$ ]] || [[ "${DB_HOST}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; }; then
+            dialog --msgbox "Hôte de base de données invalide : ${DB_HOST}" 8 50
             continue
-        elif ! [[ "$DB_NAME" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
-            dialog --msgbox "Nom de base de données invalide : $DB_NAME" 8 50
+        elif ! [[ "${DB_NAME}" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
+            dialog --msgbox "Nom de base de données invalide : ${DB_NAME}" 8 50
             continue
-        elif ! [[ "$DB_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-            dialog --msgbox "Nom d’utilisateur de base de données invalide : $DB_USER" 8 50
+        elif ! [[ "${DB_USER}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            dialog --msgbox "Nom d’utilisateur de base de données invalide : ${DB_USER}" 8 50
             continue
         fi  
         break # Si tout est correct → sortir de la boucle
