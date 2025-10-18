@@ -347,10 +347,8 @@ function validate_db_user() {
 }
 # Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>> "${LOGFILE}"
-    local tags=""
-    local installed_version=""
-    local installed_dir=""
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Début de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
+    local tags="" installed_version="" installed_dir=""
     installed_dir=$(find /var/www -type f -name 'console' -print -quit 2>/dev/null)
     if [ -n "${installed_dir}" ]; then
         if grep -qi "glpi" "$installed_dir"; then
@@ -366,8 +364,9 @@ function prompt_install_options(){
             return 1
         fi
     fi
+    local api_url
     api_url="https://api.github.com/repos/glpi-project/glpi/tags"
-    
+    #local tags
     tags=$(curl -s "${api_url}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
     if [ -n "${tags}" ]; then
         if [ -n "${installed_version}" ]; then
