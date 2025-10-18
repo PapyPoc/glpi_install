@@ -88,7 +88,7 @@ on_error() {
     done
     echo "──────────────────────────────" >> "$ERRORFILE"
 
-    dialog --msgbox "💥 Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 12 70 || true
+    dialog --msgbox "💥 Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
     exit "$rc"
 }
 # Exécuter une tâche et gérer les erreurs et les logs
