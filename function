@@ -317,12 +317,6 @@ function validate_glpi_path() {
         warn "Validation échouée : répertoire d’installation invalide (${clean_path})"
         return 1
     fi
-    # Vérifie si le dossier existe
-    if [[ ! -d "$clean_path" ]]; then
-        dialog --msgbox "Le répertoire ${clean_path} n’existe pas.\n\nVeuillez vérifier le chemin ou le créer avant l’installation." 10 70
-        warn "Validation échouée : répertoire non existant (${clean_path})"
-        return 1
-    fi
     return 0
 }
 # Valide le nom d’hôte de la base de données
@@ -626,13 +620,12 @@ function check_install() {
         fi
     else
         dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
-        glpi_install
-        if [ $? -eq 0 ]; then
+        if glpi_install; then
             dialog --title "Information" --msgbox "L'installation de GLPI est terminée." 6 60
             info "Installation de GLPI ${VERSION_SELECT} terminée." 1>> "${LOGFILE}"
         else
             dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
-            error "Échec de l'installation GLPI." 2>> "${ERRORFILE}"
+            error "Échec de l'installation GLPI." 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
             exit 1
         fi
     fi
