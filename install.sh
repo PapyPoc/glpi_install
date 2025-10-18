@@ -143,7 +143,7 @@ else
         exit 1
     }
 fi
-# Vérification d’existence
+# Vérification d’existence 
 if [ ! -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable." | tee -a "${ERRORFILE}"
     dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
