@@ -49,11 +49,13 @@ fi
 if [ -s "${ERRORFILE}" ]; then
     dialog --title "Attention" --msgbox "Des erreurs sont survenues lors de l'installation. Veuillez consulter le fichier ${ERRORFILE} pour plus de détails." 8 70
 else
-    rm -f "${ERRORFILE}"
+    :
+    # rm -f "${ERRORFILE}"
 fi
 if [ -s "${WARNINGFILE}" ]; then
     dialog --title "Attention" --msgbox "Des avertissements ont été générés lors de l'installation. Veuillez consulter le fichier ${WARNINGFILE} pour plus de détails." 8 70
     else
-    rm -f "${WARNINGFILE}"
+    :
+    # rm -f "${WARNINGFILE}"
 fi
 exit 0
