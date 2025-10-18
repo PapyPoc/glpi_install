@@ -304,11 +304,22 @@ function load_language() {
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 validate_db_host() {
+    : "${BASH_VERSION:?Ce script doit être exécuté avec bash}"
     local host="$1"
     local clean_host
-    # Nettoyage : supprime CR/LF, espaces en début/fin
-    clean_host="$(printf '%s' "$host" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-    # Tests de validité
+    # 1) Normalisation agressive
+    #    - supprime CR/LF
+    #    - trim espaces (y compris tabs)
+    #    - supprime espaces Unicode fréquents (NBSP \xC2\xA0, ZWSP \xE2\x80\x8B)
+    #    - ne garde que les caractères autorisés pour un host
+    clean_host="$(
+        printf '%s' "$host" \
+        | tr -d '\r\n' \
+        | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+              -e 's/\xC2\xA0//g' -e 's/\xE2\x80\x8B//g'
+    )"
+    clean_host="$(printf '%s' "$clean_host" | tr -cd '[:alnum:].:_\-\[\]')"
+    # 2) Validations
     if [[ "$clean_host" == "localhost" || "$clean_host" == "[::1]" ]]; then
         return 0
     elif [[ "$clean_host" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
@@ -317,7 +328,7 @@ validate_db_host() {
         return 0
     else
         dialog --msgbox "Hôte de base de données invalide : ${clean_host}\n\nAutorisé : localhost, [::1], nom de domaine complet ou adresse IPv4." 10 70
-        warn "Validation échouée : hôte de base de données invalide (${clean_host})" >> "${LOGFILE}"
+        warn "Validation échouée : hôte DB invalide (${clean_host})"
         return 1
     fi
 }
