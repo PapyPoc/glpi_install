@@ -146,7 +146,7 @@ fi
 # Vérification d’existence 
 if [ ! -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable." | tee -a "${ERRORFILE}"
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
+    dialog --title "Attention" \
            --msgbox "Erreur : le fichier '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable." 7 70
     exit 1
 fi
@@ -155,7 +155,7 @@ if [ ! -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
 else 
         warn "Impossible de rendre '${REP_SCRIPT}/glpi_install/glpi-install' exécutable (droits insuffisants)." | tee -a "${ERRORFILE}"
-        dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
+        dialog --title "Attention" \
                --msgbox "Erreur : impossible d'exécuter '${REP_SCRIPT}/glpi_install/glpi-install'. Vérifiez vos droits." 7 70
         exit 1
 fi
@@ -164,7 +164,7 @@ if bash "${REP_SCRIPT}/glpi_install/glpi-install" >> "${LOGFILE}" 2>&1; then
     info "Exécution réussie de ${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${LOGFILE}"
 else
     warn "Échec de l'exécution de ${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${ERRORFILE}"
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
+    dialog --title "Attention" \
            --msgbox "Erreur : l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' a échoué. Consultez le log." 8 70
     exit 1
 fi
