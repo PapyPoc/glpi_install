@@ -144,10 +144,10 @@ else
     }
 fi
 # Vérification d’existence
-if [ ! -f "${GLPI_INSTALL_SCRIPT}" ]; then
-    warn "Le script '${GLPI_INSTALL_SCRIPT}' est introuvable." | tee -a "${ERRORFILE}"
+if [ ! -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
+    warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable." | tee -a "${ERRORFILE}"
     dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
-           --msgbox "Erreur : le fichier '${GLPI_INSTALL_SCRIPT}' est introuvable." 7 70
+           --msgbox "Erreur : le fichier '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable." 7 70
     exit 1
 fi
 # Vérification des permissions
