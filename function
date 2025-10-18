@@ -624,7 +624,7 @@ function glpi_install() {
             echo "$progress"
             echo "XXX"
             echo "$task_index/$total_tasks - $task_key"
-            debug "$(date '+%F %T'): [Start] $task_key start." 1>>"${LOGFILE}"
+            debug "$(date '+%F %T'): [START] $task_key start." 1>>"${LOGFILE}"
             echo "XXX"
             # Exécution et logging
             if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
@@ -632,20 +632,10 @@ function glpi_install() {
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key"
                 echo "XXX"
-                debug "$(date '+%F %T'): [OK] $task_key end." 1>>"${LOGFILE}"
-            else
-                echo "100"
-                echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
-                echo "XXX"
-                warn "$(date '+%F %T'): [ERROR] $task_key error." 1>>"${LOGFILE}"
-                dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
-                error "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
-                sleep 5
-                exit 1
+                debug "$(date '+%F %T'): [END] $task_key end." 1>>"${LOGFILE}"
             fi
         done
-    ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
+    ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120 0
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Mise à jour de la distribution
