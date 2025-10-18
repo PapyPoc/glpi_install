@@ -395,11 +395,12 @@ function prompt_install_options(){
         exec 3>&-
         # Si annulation ou ESC
         if [[ $rc -ne 0 ]]; then
-            warn "Formulaire annulé." >> "${WARNINGFILE}"
-            break
+            warn "Formulaire annulé par l’utilisateur." 1>>"${WARNINGFILE}"
+            dialog --title "${MSG_INFO}" --msgbox "Installation annulée par l'utilisateur." 7 60
+            exit 1
         fi
         # Transformer les lignes du formulaire en variables
-            IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
+        IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
         # --- VALIDATIONS ---
         # Répertoire d’installation
         if ! [[ "${REP_GLPI}" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
@@ -428,23 +429,14 @@ function prompt_install_options(){
         if [[ "${DB_USER}" == "root" ]]; then
             dialog --msgbox "Nom d’utilisateur invalide : ${DB_USER}\n\nL’utilisateur de la base de données ne peut pas être 'root'." 10 70
             continue
-        else
-            # Si tout est valide, on quitte la boucle
-            break
         fi
+        # Si tout est valide
+        break
     done
-    rc=$?
-    exec 3>&-
-    if [ "${rc}" -ne 0 ]; then
-        dialog --title "${MSG_INFO}" --msgbox "Installation annulée par l'utilisateur." 7 60
-        warn "Formulaire annulé." >> "${WARNINGFILE}"
-        exit 1
-    fi
+    # Nettoyage et assignation des valeurs finales
+    local rep_glpi db_host db_name db_user
     IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
-    local _def_rep="${REP_GLPI:-/var/www/html/glpi/}"
-    local _def_db_host="${DB_HOST:-localhost}"
-    local _def_db="${DB_NAME:-glpi}"
-    local _def_user="${DB_USER:-glpi_user}"
+    local _def_rep="${REP_GLPI:-/var/www/html/glpi/}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
     rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
     db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
     db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
