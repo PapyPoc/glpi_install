@@ -133,7 +133,7 @@ else
     }
 fi
 if chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"; then
-    bash "${REP_SCRIPT}/glpi_install/glpi-install" "$@"
+    bash "${REP_SCRIPT}/glpi_install/glpi-install"
 else
     warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' n'est pas exécutable ou introuvable."
     exit 1
