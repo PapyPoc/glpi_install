@@ -143,21 +143,14 @@ else
         exit 1
     }
 fi
-# Vérification d’existence 
-if [ ! -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
+# Vérification d’existence
+if [  -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
+    sudo chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
+else
     warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable." | tee -a "${ERRORFILE}"
     dialog --title "Attention" \
            --msgbox "Erreur : le fichier '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable." 7 70
     exit 1
-fi 
-# Vérification des permissions
-if [ ! -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
-    sudo chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
-else 
-        warn "Impossible de rendre '${REP_SCRIPT}/glpi_install/glpi-install' exécutable (droits insuffisants)." | tee -a "${ERRORFILE}"
-        dialog --title "Attention" \
-               --msgbox "Erreur : impossible d'exécuter '${REP_SCRIPT}/glpi_install/glpi-install'. Vérifiez vos droits." 7 70
-        exit 1
 fi
 # Exécution sécurisée
 if bash "${REP_SCRIPT}/glpi_install/glpi-install" >> "${LOGFILE}" 2>&1; then
