@@ -149,7 +149,7 @@ if [ ! -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     dialog --title "Attention" \
            --msgbox "Erreur : le fichier '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable." 7 70
     exit 1
-fi
+fi 
 # Vérification des permissions
 if [ ! -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
