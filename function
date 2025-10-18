@@ -368,14 +368,14 @@ function prompt_install_options(){
         if ! [[ "${REP_GLPI}" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
             dialog --msgbox "Répertoire d’installation invalide : ${REP_GLPI}\n\nDoit commencer par /var/www/, /srv/, /opt/ ou /usr/share/\n   et contenir 'glpi' dans le nom d'un dossier." 12 70
             continue
-        elif ! {
+        elif ! (
             # shellcheck disable=SC2235
             [[ "${DB_HOST}" =~ ^localhost$ ]] ||
             [[ "${DB_HOST}" =~ ^::1$ ]] ||
             [[ "${DB_HOST}" =~ ^\[::1\]$ ]] ||
             [[ "${DB_HOST}" =~ ^([a-zA-Z0-9-]+\.)+[A-Za-z]{2,}$ ]] ||
             [[ "${DB_HOST}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
-        }; then
+        ); then
             dialog --msgbox "Hôte de base de données invalide : ${DB_HOST}\n\nAutorisé : localhost, ::1, nom de domaine complet ou adresse IPv4." 10 70
             continue
         elif ! [[ "${DB_NAME}" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
