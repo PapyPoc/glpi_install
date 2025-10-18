@@ -80,26 +80,26 @@ function export_display_env() {
 }
 # Gestion des erreurs avec trap
 function on_error() {
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     local i
     echo "Erreur : ${BASH_COMMAND} (code=$?) à la ligne $LINENO"
     echo "Pile d’appels :"
     for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
         echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}"
     done
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     local task_key="$1"
     local task_cmd="$2"
     local index="$3"
     local total="$4"
     info "Tâche: $index/$total - $task_key"
     info "$MSG_COMMAND: $task_cmd"
-    warn "$(date '+%F %T') [INFO] START: $task_cmd" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [INFO] START: $task_cmd" 1>&2>> "${WARNINGFILE}"
     local output
     output=$(eval "$task_cmd" )
     local exit_code=$?
@@ -112,12 +112,12 @@ function run_task() {
         echo "$output" 2>> "${ERRORFILE}"
         return 1
     fi
-    warn "$(date '+%F %T') [INFO] END: $task_cmd" 2>> "${WARNINGFILE}"
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [INFO] END: $task_cmd" 1>&2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Exécuter les tâches avec barre de progression
 function glpi_install() {
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     declare -A tasks=(
         ["$MSG_T01"]="update_distro"
         ["$MSG_T02"]="install_packages"
@@ -146,13 +146,13 @@ function glpi_install() {
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_END}"
                 echo "XXX"
-                warn "$(date '+%F %T'): [OK] $task_key terminé." 2>> "${WARNINGFILE}"
+                warn "$(date '+%F %T'): [OK] $task_key terminé." 1>&2>> "${WARNINGFILE}"
             else
                 echo "100"
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
-                warn "$(date '+%F %T'): [ERREUR] $task_key a échoué." 2>> "${WARNINGFILE}"
+                warn "$(date '+%F %T'): [ERREUR] $task_key a échoué." 1>&2>> "${WARNINGFILE}"
                 dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
                 error "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
                 sleep 5
@@ -160,13 +160,13 @@ function glpi_install() {
             fi
         done
     ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
     ls /ddd
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     # Vérifie si le fichier os-release existe
     source_os_release
     # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
@@ -175,8 +175,8 @@ function check_distro(){
             info "$MSG_DISTRO_OK" >> "${LOGFILE}"
             return 0
         else
-            warn "$MSG_DISTRO_NONOK" 2>> "${WARNINGFILE}"
-            warn "$MSG_FORCE_DISTRO" 2>> "${WARNINGFILE}"
+            warn "$MSG_DISTRO_NONOK" 1>&2>> "${WARNINGFILE}"
+            warn "$MSG_FORCE_DISTRO" 1>&2>> "${WARNINGFILE}"
             if [ -t 0 ]; then
                 info "$MSG_FORCE_DISTRO_QUESTION"
                 read -r RESPONSE
@@ -189,26 +189,26 @@ function check_distro(){
                         return 1
                         ;;
                     *)
-                        warn "$MSG_INVALID_ANSWER" 2>> "${WARNINGFILE}"
+                        warn "$MSG_INVALID_ANSWER" 1>&2>> "${WARNINGFILE}"
                         return 1
                         ;;
                 esac
             else
-                warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO" 2>> "${WARNINGFILE}"
+                warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO" 1>&2>> "${WARNINGFILE}"
                 return 1
             fi
         fi
         export VERSION_ID ID
     else
-        warn "$MSG_DISTRO_INVALID" 2>> "${WARNINGFILE}"
+        warn "$MSG_DISTRO_INVALID" 1>&2>> "${WARNINGFILE}"
         return 1
     fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Chargement du fichier de langue
 function load_language() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     local syslang="${LC_ALL:-${LANG:-}}"
     if [[ $syslang =~ ^fr ]]; then
         LANG_FILE="$REP_SCRIPT/lang/fr.lang"
@@ -269,12 +269,12 @@ function load_language() {
     else
         warn "Language file not found: $LANG_FILE"
     fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     local tags=""
     local installed_version=""
     local installed_dir=""
@@ -399,7 +399,7 @@ function prompt_install_options(){
         Utilisateur : $DB_USER" 12 70)
     check=$?
     if [ "${check}" -ne 0 ]; then
-        warn "Formulaire annulé." 2>> "${WARNINGFILE}"
+        warn "Formulaire annulé." 1>&2>> "${WARNINGFILE}"
         dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
         exit 0
     fi
@@ -442,21 +442,21 @@ function prompt_install_options(){
     DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK tags
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Vérifie si la version est compatible
 function compatible() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     local version="$1"
     local -n versions_array="$2"
     [[ ${versions_array[*]} =~ ${version} ]]
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Vérifie si GLPI est installé ou pas
 function check_install() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR BUG BREAKPOINT
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     local FIND_REP_GLPI=""
     local installed_version=""
     local version_file=""
@@ -486,7 +486,7 @@ function check_install() {
             local rc=$?
             exec 3>&-
             if [[ $rc -ne 0 ]]; then
-                warn "Sélection de l'installation GLPI annulée." 2>> "${WARNINGFILE}"
+                warn "Sélection de l'installation GLPI annulée." 1>&2>> "${WARNINGFILE}"
                 return 1
             fi
             local index=$((selection - 1))
@@ -545,12 +545,12 @@ function check_install() {
             exit 1
         fi
     fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Mise à jour de la distribution
 function update_distro(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
            info "$MSG_UPGRADE_DISTRO"
            timedatectl set-ntp true # Synchronise l'heure
@@ -562,12 +562,12 @@ function update_distro(){
            sleep 5
            yum update -y && yum upgrade -y
 	fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Adresse IP de la machine
 function network_info() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     # Détection de l’interface principale (hors loopback et interfaces virtuelles)
     INTERFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/dev/ {print $5; exit}')
     if [[ -z "$INTERFACE" ]]; then
@@ -580,18 +580,18 @@ function network_info() {
         export IPADRESS
         info "$(date '+%F %T'): INFO: Interface détectée : ${INTERFACE}, IP : ${IPADRESS}" >> "${LOGFILE}"
     else
-    warn "Impossible de déterminer l’adresse IP du serveur via l’interface ${INTERFACE:-inconnue}" 2>> "${WARNINGFILE}"
+    warn "Impossible de déterminer l’adresse IP du serveur via l’interface ${INTERFACE:-inconnue}" 1>&2>> "${WARNINGFILE}"
         IPADRESS="127.0.0.1"
         export IPADRESS
     fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Installation des éléments nécessaire
 function install_packages(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG:install_packages] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:install_packages] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     source_os_release
-    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering install_packages (ID=${ID:-unknown})" 2>> "${WARNINGFILE}"
+    warn "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: entering install_packages (ID=${ID:-unknown})" 1>&2>> "${WARNINGFILE}"
     if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
         export DEBIAN_FRONTEND=noninteractive
@@ -713,12 +713,12 @@ EOF
             return 1
         fi
     fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     info "$MSG_BDD_CONFIG" >> "${LOGFILE}"
     # Détecter la commande MySQL/MariaDB
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql) 
@@ -774,12 +774,12 @@ function mariadb_configure() {
     fi
     systemctl restart mariadb >/dev/null 2>&1 || warn "Impossible de redémarrer MariaDB (vérifiez le service)"
     sleep 5
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Téléchargement et décompression de GLPI
 function install_glpi(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
     # Téléchargement de GLPI
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
@@ -795,12 +795,12 @@ function install_glpi(){
     tar xzf "$tmp_file" --strip-components=1 -C "$REP_GLPI"
     rm -f "$tmp_file"
     sleep 5;
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Mise en place des réglage pour GLPI
 function setup_glpi(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     source_os_release
     info "$MSG_CONFIG_GLPI" >> "${LOGFILE}"
     mkdir -p /var/log/glpi
@@ -940,12 +940,12 @@ EOF
     sleep 5
     rm -Rf "${REP_GLPI}"install/install.php
 	sleep 2;
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     info "${MSG_CHANGE_MDP_GLPI}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
     MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
@@ -970,11 +970,11 @@ function maj_user_glpi(){
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
         return 1
     fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 function source_os_release(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release
     fi
@@ -988,16 +988,16 @@ function source_os_release(){
         VERSION_ID=$(uname -r)
     fi
     if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
-    warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" 2>> "${WARNINGFILE}"
+    warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" 1>&2>> "${WARNINGFILE}"
         return 1
     fi
     export ID VERSION_ID
     info "$(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}" >> "${LOGFILE}"
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 function rights_glpi(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     # Changer les droits des répertoires et fichiers
     {
         info "$MSG_RIGHTS_GLPI"
@@ -1034,12 +1034,12 @@ function rights_glpi(){
             error "$(date '+%F %T'): WARN: Distribution ${ID:-unknown} non reconnue — aucun changement propriétaire" 2>> "${ERRORFILE}"
             ;;
     esac
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Afficher le résultat final
 function display_result() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     MESSAGE=""
 	if [[ -f "${FICHIER_MSG}" ]]; then
         while IFS= read -r ligne; do
@@ -1054,12 +1054,12 @@ function display_result() {
         error "$MSG_ERROR_FICHIER_MSG" 2>> "${ERRORFILE}"
         exit 1
     fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
 function write_credentials(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "$FICHIER_MSG" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
@@ -1117,12 +1117,12 @@ EOF
  If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Fonction principale pour exécuter les tâches avec barre de progression
 function update() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     declare -A tasks=(
         ["$MSG_T20"]="maintenance 1"
         ["$MSG_T21"]="update_distro"
@@ -1163,12 +1163,12 @@ function update() {
         return 1
     fi
     info "Toutes les tâches ont été exécutées avec succès." 1>> "${LOGFILE}"
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Activé ou déactivé le mode maintenance (1 ou 0)
 function maintenance(){
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     if [ "$1" == "1" ]; then
         warn "${MSG_ACTIVE_SERVICE}"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
@@ -1185,12 +1185,12 @@ function maintenance(){
         fi
     fi
 	sleep 2;
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Sauvegarde de la base de donnée et des fichiers de GLPI
 function backup_glpi() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     info "=== Démarrage de la sauvegarde GLPI ===" 1>> "${LOGFILE}"
     # Vérification préliminaire
     if [ -z "${REP_GLPI}" ] || [ -z "${REP_BACKUP_COMPRESS}" ] || [ -z "${INVOKING_HOME}" ]; then
@@ -1256,12 +1256,12 @@ function backup_glpi() {
     info "=== Sauvegarde GLPI terminée avec succès ===" 1>> "${LOGFILE}"
     sleep 2
     export REP_BACKUP
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
 # Mise à jour de GLPI
 function update_glpi() {
     trap 'on_error 2>> "${ERRORFILE}"' ERR
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     info "=== Début de la mise à jour GLPI ===" 1>>"${LOGFILE}"
     # Vérification de base
     if [ -z "${REP_BACKUP}" ] || [ -z "${REP_GLPI}" ]; then
@@ -1331,5 +1331,5 @@ function update_glpi() {
 
     info "=== Fin de la mise à jour GLPI ===" 1>>"${LOGFILE}"
     sleep 2
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 2>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
 }
