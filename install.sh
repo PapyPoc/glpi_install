@@ -6,6 +6,7 @@ ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
 DEPENDENCIES="curl jq openssl sudo dialog git shellcheck"
 GIT="https://github.com/PapyPoc/glpi_install.git"
 BRANCHE="dev"
+ERRORFILE="${REP_SCRIPT}/error.log"
 export ORIG_USER REP_SCRIPT GIT BRANCHE
 warn(){ 
     echo -e "\033[0;31m[ERREUR]\033[0m $1";
