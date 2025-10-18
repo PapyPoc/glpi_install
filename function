@@ -5,7 +5,7 @@
 # Version: 1.8.0
 # Function file
 #
-set -Eeuo pipefail
+# set -Eeuo pipefail
 # Ne pas continuer si le script est exécuté directement
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -346,7 +346,6 @@ function validate_db_user() {
 }
 # Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
-    set +Eeuo pipefail
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>> "${LOGFILE}"
     trap 'on_error' ERR
     local tags=""
