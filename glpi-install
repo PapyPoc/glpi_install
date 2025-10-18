@@ -10,10 +10,10 @@ set -Eeuo pipefail
 clear # Nettoyer le terminal
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
 # shellcheck disable=SC1091
-source "${REP_SCRIPT}/function" # Fichier de fonctions
+. "${REP_SCRIPT}/function" # Fichier de fonctions
 trap 'on_error' ERR INT TERM
 # shellcheck disable=SC1091
-source "${REP_SCRIPT}/config" # Fichier de variable
+. "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
 # Regarde si la distribution est conforme
 if ! check_distro; then

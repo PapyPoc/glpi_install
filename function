@@ -100,7 +100,7 @@ function run_task() {
     local total="$4"
     info "Tâche: $index/$total - $task_key"
     info "$MSG_COMMAND: $task_cmd"
-    warn "$(date '+%F %T') [INFO] START: $task_cmd" >>"${WARNINGFILE}" 1>&2
+    warn "$(date '+%F %T') [INFO] START: $task_cmd" 1 1>>"${WARNINGFILE}"
     local output
     output=$(eval "$task_cmd" )
     local exit_code=$?
@@ -113,7 +113,7 @@ function run_task() {
         echo "$output" 2>> "${ERRORFILE}"
         return 1
     fi
-    warn "$(date '+%F %T') [INFO] END: $task_cmd" >>"${WARNINGFILE}" 1>&2
+    warn "$(date '+%F %T') [INFO] END: $task_cmd" 1 1>>"${WARNINGFILE}"
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Exécuter les tâches avec barre de progression
@@ -147,13 +147,13 @@ function glpi_install() {
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_END}"
                 echo "XXX"
-                warn "$(date '+%F %T'): [OK] $task_key terminé." >>"${WARNINGFILE}" 1>&2
+                warn "$(date '+%F %T'): [OK] $task_key terminé." 1>>"${LOGFILE}"
             else
                 echo "100"
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
-                warn "$(date '+%F %T'): [ERREUR] $task_key a échoué." >>"${WARNINGFILE}" 1>&2
+                warn "$(date '+%F %T'): [ERREUR] $task_key a échoué." 1>>"${WARNINGFILE}"
                 dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
                 error "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
                 sleep 5
@@ -166,7 +166,7 @@ function glpi_install() {
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
     ls /ddd
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" >> "${WARNINGFILE}" 1>&2
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>> "${LOGFILE}"
     # Vérifie si le fichier os-release existe
     source_os_release
     # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
@@ -175,8 +175,8 @@ function check_distro(){
             info "$MSG_DISTRO_OK" 1>> "${LOGFILE}"
             return 0
         else
-            warn "$MSG_DISTRO_NONOK" >>"${WARNINGFILE}" 1>&2
-            warn "$MSG_FORCE_DISTRO" >>"${WARNINGFILE}" 1>&2
+            warn "$MSG_DISTRO_NONOK"  1>>"${WARNINGFILE}"
+            warn "$MSG_FORCE_DISTRO"  1>>"${WARNINGFILE}"
             if [ -t 0 ]; then
                 info "$MSG_FORCE_DISTRO_QUESTION"
                 read -r RESPONSE
@@ -189,18 +189,18 @@ function check_distro(){
                         return 1
                         ;;
                     *)
-                        warn "$MSG_INVALID_ANSWER" >>"${WARNINGFILE}" 1>&2
+                        warn "$MSG_INVALID_ANSWER"  1>>"${WARNINGFILE}"
                         return 1
                         ;;
                 esac
             else
-                warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO" >>"${WARNINGFILE}" 1>&2
+                warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO"  1>>"${WARNINGFILE}"
                 return 1
             fi
         fi
         export VERSION_ID ID
     else
-        warn "$MSG_DISTRO_INVALID" >>"${WARNINGFILE}" 1>&2
+        warn "$MSG_DISTRO_INVALID"  1>>"${WARNINGFILE}"
         return 1
     fi
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
@@ -272,7 +272,7 @@ function load_language() {
 }
 # Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>> "${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>> "${LOGFILE}"
     local tags=""
     local installed_version=""
     local installed_dir=""
@@ -437,19 +437,19 @@ function prompt_install_options(){
     DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK tags
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Vérifie si la version est compatible
 function compatible() {
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     local version="$1"
     local -n versions_array="$2"
     [[ ${versions_array[*]} =~ ${version} ]]
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Vérifie si GLPI est installé ou pas
 function check_install() {
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     local FIND_REP_GLPI=""
     local installed_version=""
     local version_file=""
@@ -479,7 +479,7 @@ function check_install() {
             local rc=$?
             exec 3>&-
             if [[ $rc -ne 0 ]]; then
-                warn "Sélection de l'installation GLPI annulée." >>"${WARNINGFILE}" 1>&2
+                warn "Sélection de l'installation GLPI annulée."  1>>"${WARNINGFILE}"
                 dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
                 exit 1
             fi
@@ -539,11 +539,11 @@ function check_install() {
             exit 1
         fi
     fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Mise à jour de la distribution
 function update_distro(){
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
            info "$MSG_UPGRADE_DISTRO"
            timedatectl set-ntp true # Synchronise l'heure
@@ -555,11 +555,11 @@ function update_distro(){
            sleep 5
            yum update -y && yum upgrade -y
 	fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Adresse IP de la machine
 function network_info() {
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     # Détection de l’interface principale (hors loopback et interfaces virtuelles)
     INTERFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/dev/ {print $5; exit}')
     if [[ -z "$INTERFACE" ]]; then
@@ -576,11 +576,11 @@ function network_info() {
         IPADRESS="127.0.0.1"
         export IPADRESS
     fi
-    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Installation des éléments nécessaire
 function install_packages(){
-    warn "$(date '+%F %T') [$$][DEBUG:install_packages] Entrée dans ${FUNCNAME[1]:-main}" 1>>"${WARNINGFILE}"
+    warn "$(date '+%F %T') [$$][DEBUG:install_packages] Entrée dans ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     source_os_release
     if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
@@ -796,17 +796,21 @@ function setup_glpi(){
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     source_os_release
     info "$MSG_CONFIG_GLPI" 1>> "${LOGFILE}"
-    mkdir -p /var/log/glpi
-    mkdir -p /etc/glpi/config
-    mkdir -p /var/lib/glpi/files
-    mv -f "${REP_GLPI}"/files /var/lib/glpi
-    sudo tee /etc/glpi/config/local_define.php > /dev/null <<'EOF'
+    mkdir -p /var/log/glpi  1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+    mkdir -p /etc/glpi/config  1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+    mkdir -p /var/lib/glpi/files  1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+    mv -f "${REP_GLPI}"/files /var/lib/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}" ||
+    {
+        warn "Échec du déplacement du répertoire files de GLPI." 1>>"${WARNINGFILE}"
+        return 1
+    }
+    sudo tee /etc/glpi/config/local_define.php  1>> "${LOGFILE}" 2>> "${ERRORFILE}" <<'EOF'
 <?php
     define('GLPI_VAR_DIR', '/var/lib/glpi/files');
     define('GLPI_LOG_DIR', '/var/log/glpi');
 EOF
     sleep 1
-    sudo tee "${REP_GLPI}"/inc/downstream.php > /dev/null <<EOF
+    sudo tee "${REP_GLPI}"/inc/downstream.php  1>> "${LOGFILE}" 2>> "${ERRORFILE}" <<EOF
 <?php
     define('GLPI_CONFIG_DIR', '/etc/glpi/config');
     if (file_exists(GLPI_CONFIG_DIR . '/local_define.php')) {
@@ -816,7 +820,7 @@ EOF
     network_info
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         # Configuration d'Apache pour GLPI
-        sudo tee /etc/apache2/sites-available/glpi.conf > /dev/null <<EOF
+        sudo tee /etc/apache2/sites-available/glpi.conf  1>> "${LOGFILE}" 2>> "${ERRORFILE}" <<EOF
 <VirtualHost *:80>
     ServerName ${IPADRESS}
     DocumentRoot ${REP_GLPI}/public
@@ -833,7 +837,7 @@ EOF
 </VirtualHost>
 EOF
         phpversion=$(php -v | grep -i '(cli)' | awk '{print $2}' | cut -d. -f1,2)
-        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 =on/' /etc/php/"$phpversion"/apache2/php.ini
+        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 =on/' /etc/php/"$phpversion"/apache2/php.ini 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         sleep 1
         # Disable Apache Web Server Signature
         echo "ServerSignature Off" >> /etc/apache2/apache2.conf
@@ -842,20 +846,20 @@ EOF
         {
             # Enable Apache modules and site configuration
             # Mode rewrite activé
-            a2enmod rewrite;
+            a2enmod rewrite 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
             # Déactiver le site par défaut
-            a2dissite 000-default.conf;
+            a2dissite 000-default.conf 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
             # Activer le site GLPI
-            a2ensite glpi.conf;
+            a2ensite glpi.conf 1>> "${LOGFILE}" 2>> "${ERRORFILE}";
             # Recharger la configuration d'Apache
-            systemctl reload apache2;
+            systemctl reload apache2 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
             # Change permissions
             rights_glpi || { 
-                warn "Échec de la modification des droits pour GLPI." >>"${WARNINGFILE}"
+                warn "Échec de la modification des droits pour GLPI." 1>>"${WARNINGFILE}"
                 return 1
             }
         } 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || {
-            warn "Échec de la configuration d'Apache pour GLPI." >>"${WARNINGFILE}"
+            warn "Échec de la configuration d'Apache pour GLPI." 1>>"${WARNINGFILE}"
             return 1
         }
         # Installation de GLPI en ligne de commande
@@ -875,15 +879,15 @@ EOF
         if eval "sudo -u www-data php ${CMD}" 1>"${LOGFILE}" 2>> "${ERRORFILE}"; then
             info "Installation GLPI terminée avec succès." 1>> "${LOGFILE}"
         else
-            warn "Échec de l'installation GLPI via console." >>"${WARNINGFILE}"
+            warn "Échec de l'installation GLPI via console." 1>>"${WARNINGFILE}"
             return 1
         fi
         systemctl restart apache2
         # Configuration de la tâche Cron
-        echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
+        echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi 
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         network_info
-        sudo tee /etc/nginx/conf.d/glpi.conf > /dev/null << EOF
+        sudo tee /etc/nginx/conf.d/glpi.conf 1>> "${LOGFILE}" 2>> "${ERRORFILE}" << EOF
 server {
     listen 80;
     server_name "${IPADRESS}";
@@ -900,7 +904,7 @@ server {
     }
 }
 EOF
-        sudo tee /etc/logrotate.d/glpi > /dev/null << EOF
+        sudo tee /etc/logrotate.d/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}" << EOF
 # Rotate GLPI logs daily, only if not empty
 # Save 14 days old logs under compressed mode
 /var/lib/glpi/files/_log/*.log {
@@ -913,26 +917,32 @@ EOF
     create 644 nginx nginx
 }
 EOF
-        chmod 0644 /etc/logrotate.d/glpi
-        chown root:root /etc/logrotate.d/glpi
-        chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi
-        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini
+        chmod 0644 /etc/logrotate.d/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+        chown root:root /etc/logrotate.d/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+        chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         # Change permissions
         rights_glpi || { 
-            warn "Échec de la modification des droits pour GLPI." >>"${WARNINGFILE}"
+            warn "Échec de la modification des droits pour GLPI." 1>>"${WARNINGFILE}"
             return 1
         }
         # Recharger la configuration de Nginx
-        systemctl reload nginx php-fpm
+        systemctl reload nginx php-fpm 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || {
+            warn "Échec du rechargement de Nginx ou PHP-FPM." 1>>"${WARNINGFILE}"
+            return 1
+        }
         sleep 2
         # Installation de GLPI en ligne de commande
         CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
-        eval sudo -u nginx "${CMD}" 1>"${LOGFILE}" 2>> "${ERRORFILE}"
+        eval sudo -u nginx "${CMD}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         echo "*/2 * * * * nginx /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
     sleep 5
-    rm -Rf "${REP_GLPI}"install/install.php
-	sleep 2;
+    rm -Rf "${REP_GLPI}"install/install.php 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || {
+        warn "Échec de la suppression du script d'installation de GLPI." 1>>"${WARNINGFILE}"
+        return 1
+    }
+    sleep 2
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Mise à jour des mot de passe des utilisateurs de GLPI
@@ -940,9 +950,9 @@ function maj_user_glpi(){
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     info "${MSG_CHANGE_MDP_GLPI}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
-    MYSQL_CMD=$(command -v mysql 2>/dev/null || command -v mariadb 2>/dev/null || echo mysql)
+    MYSQL_CMD=$(command -v mysql  || command -v mariadb || echo mysql)
     # Verify mysql client exists
-    if ! command -v "${MYSQL_CMD}" >/dev/null 2>&1; then
+    if ! command -v "${MYSQL_CMD}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
         warn "mysql client not found: ${MYSQL_CMD}"
         return 1
     fi
@@ -959,7 +969,7 @@ function maj_user_glpi(){
     echo "${_sql_user}" 1>> "${LOGFILE}"
     # Execute the SQL commands
     if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
-        warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
+        error "$MSG_ERROR_TASK: base de données - échec des modifications en bloc" 2>> "${ERRORFILE}"
         return 1
     fi
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
@@ -967,10 +977,12 @@ function maj_user_glpi(){
 function source_os_release(){
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     if [[ -f /etc/os-release ]]; then
-        source /etc/os-release
+        # shellcheck disable=SC1091
+        . /etc/os-release
     fi
     if [[ -f /etc/lsb-release ]]; then
-        source /etc/lsb-release
+        # shellcheck disable=SC1091
+        . /etc/lsb-release
     fi
     if [[ -z "${ID:-}" ]]; then
         ID=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -979,7 +991,7 @@ function source_os_release(){
         VERSION_ID=$(uname -r)
     fi
     if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
-    warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" >>"${WARNINGFILE}" 1>&2
+    warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release"  1>>"${WARNINGFILE}"
         return 1
     fi
     export ID VERSION_ID
@@ -993,21 +1005,21 @@ function rights_glpi(){
         info "$MSG_RIGHTS_GLPI"
         for dir in /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"; do
             [[ -d "$dir" ]] || continue
-            find "$dir" -type d -exec chmod 755 {} \; 2>/dev/null
-            find "$dir" -type f -exec chmod 644 {} \; 2>/dev/null
+            find "$dir" -type d -exec chmod 755 {} \; 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            find "$dir" -type f -exec chmod 644 {} \; 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         done
     } 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
     # Changer le propriétaire des répertoires
     case "${ID}" in
         debian|ubuntu)
             {
-                sudo chown -Rc www-data:www-data /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}" 2>/dev/null
+                sudo chown -Rc www-data:www-data /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
             } 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
             ;;
         almalinux|centos|rocky|rhel)
             {
-                sudo chown -Rc nginx:nginx /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}" 2>/dev/null
-                if command -v semanage >/dev/null 2>&1; then
+                sudo chown -Rc nginx:nginx /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+                if command -v semanage; then
                     setsebool -P httpd_can_network_connect on
                     setsebool -P httpd_can_network_connect_db on
                     setsebool -P httpd_can_sendmail on
@@ -1146,7 +1158,7 @@ function update() {
     ) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
     # Récupérer le code de retour du sous-shell
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    warn "Une tâche a échoué pendant l'exécution de update()." >>"${WARNINGFILE}"
+    warn "Une tâche a échoué pendant l'exécution de update()." 1>>"${WARNINGFILE}"
         return 1
     fi
     info "Toutes les tâches ont été exécutées avec succès." 1>> "${LOGFILE}"
@@ -1156,16 +1168,16 @@ function update() {
 function maintenance(){ 
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     if [ "$1" == "1" ]; then
-        warn "${MSG_ACTIVE_SERVICE}"
+        warn "${MSG_ACTIVE_SERVICE}" 1>> "${LOGFILE}"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         fi
     elif [ "$1" == "0" ]; then
-        info "$MSG_DEACTIVE_SERVICE"
+        info "$MSG_DEACTIVE_SERVICE" 1>> "${LOGFILE}"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
             sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable
         fi
@@ -1179,7 +1191,7 @@ function backup_glpi() {
     info "=== Démarrage de la sauvegarde GLPI ===" 1>> "${LOGFILE}"
     # Vérification préliminaire
     if [ -z "${REP_GLPI}" ] || [ -z "${REP_BACKUP_COMPRESS}" ] || [ -z "${INVOKING_HOME}" ]; then
-    warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" >>"${WARNINGFILE}"
+    warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" 1>>"${WARNINGFILE}"
         return 1
     fi
     # Lecture des informations MySQL
@@ -1187,7 +1199,7 @@ function backup_glpi() {
     DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     if [ -z "${DB_NAME}" ] || [ -z "${PASSWORD}" ]; then
-    warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt" >>"${WARNINGFILE}"
+    warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt" 1>>"${WARNINGFILE}"
         return 1
     fi
     # Détermination de l’outil de dump
@@ -1202,7 +1214,7 @@ function backup_glpi() {
     if ${MYSQLDUMP_CMD} -u root -p"${PASSWORD}" --databases "${DB_NAME}" > "${REP_BACKUP}/${BDD_BACKUP}" 2>> "${ERRORFILE}"; then
         info "${MSG_DUMP_SUCCESS}" 1>> "${LOGFILE}"
     else
-    warn "Échec de la sauvegarde de la base ${DB_NAME}" >>"${WARNINGFILE}"
+    warn "Échec de la sauvegarde de la base ${DB_NAME}" 1>>"${WARNINGFILE}"
         return 1
     fi
     # --- Sauvegarde des fichiers ---
@@ -1211,7 +1223,7 @@ function backup_glpi() {
         if [ -e "${SRC}" ]; then
             cp -Rf "${SRC}" "${REP_BACKUP}/" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         else
-            warn "Source manquante : ${SRC}" >>"${WARNINGFILE}"
+            warn "Source manquante : ${SRC}" 1>>"${WARNINGFILE}"
         fi
     done
     info "${MSG_SITE_COPY_OK}" 1>> "${LOGFILE}"
@@ -1223,7 +1235,7 @@ function backup_glpi() {
         info "${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})" 1>> "${LOGFILE}"
         # Vérifier que le fichier compressé n'est pas vide
         if [ ! -s "${BACKUP_FILE}" ]; then
-            warn "Fichier de sauvegarde vide, suppression annulée." >>"${WARNINGFILE}"
+            warn "Fichier de sauvegarde vide, suppression annulée." 1>>"${WARNINGFILE}"
             return 1
         fi
         # Suppression sécurisée de l’ancien GLPI
@@ -1232,10 +1244,10 @@ function backup_glpi() {
             rm -rf "${REP_GLPI:?}/"
             info "Répertoire ${REP_GLPI} supprimé." 1>> "${LOGFILE}"
         else
-            warn "Répertoire GLPI introuvable : ${REP_GLPI}" >>"${WARNINGFILE}"
+            warn "Répertoire GLPI introuvable : ${REP_GLPI}" 1>>"${WARNINGFILE}"
         fi
     else
-    warn "${MSG_COMPRESS_BACKUP_FAILED}" >>"${WARNINGFILE}"
+    warn "${MSG_COMPRESS_BACKUP_FAILED}" 1>>"${WARNINGFILE}"
         return 1
     fi
     info "=== Sauvegarde GLPI terminée avec succès ===" 1>> "${LOGFILE}"
