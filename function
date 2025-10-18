@@ -446,10 +446,11 @@ function prompt_install_options(){
             rep_glpi="${_def_rep}"
         fi
         rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
-        DB_HOST="$db_host"
-        printf "DEBUG>DB_HOST=<%s>\n" "$DB_HOST" >> "${LOGFILE}"
-        od -An -t x1 <<< "$DB_HOST" >> "${LOGFILE}"
+        validate_db_host "${db_host}"
+        printf "DEBUG>DB_HOST=<%s>\n" "$db_host" >> "${LOGFILE}"
+        od -An -t x1 <<< "$db_host" >> "${LOGFILE}"
         REP_GLPI="${rep_glpi%/}/"
+        DB_HOST="$db_host"
         DB_NAME="$db_name"
         DB_USER="$db_user"
         # Si annulation ou ESC
@@ -467,9 +468,9 @@ function prompt_install_options(){
             continue
         fi
         # Hôte de base de données
-        if ! validate_db_host "$DB_HOST"; then
-            printf "DEBUG>DB_HOST=<%s>\n" "$DB_HOST" >> "${LOGFILE}"
-            od -An -t x1 <<< "$DB_HOST" >> "${LOGFILE}"
+        if ! validate_db_host "$db_host"; then
+            printf "DEBUG>DB_HOST=<%s>\n" "$db_host" >> "${LOGFILE}"
+            od -An -t x1 <<< "$db_host" >> "${LOGFILE}"
             continue
         fi
         # Nom de la base
