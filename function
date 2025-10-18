@@ -485,7 +485,11 @@ function prompt_install_options(){
         exec 3>&-
         # Transformer les lignes du formulaire en variables
         IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
-        echo "Réponses du formulaire : REP_GLPI='${REP_GLPI}', DB_HOST='${DB_HOST}', DB_NAME='${DB_NAME}', DB_USER='${DB_USER}'" 1>>"${LOGFILE}"
+        {
+            echo "Réponses du formulaire : REP_GLPI='${REP_GLPI}', DB_HOST='${DB_HOST}', DB_NAME='${DB_NAME}', DB_USER='${DB_USER}'"
+            echo "Code de retour du formulaire : rc='${rc}'"
+            echo "Formulaire brut : '${form}'"
+        } 1>>"${LOGFILE}"
         # Si annulation ou ESC
         if [[ $rc -ne 0 ]]; then
             warn "Formulaire annulé par l’utilisateur." 1>>"${LOGFILE}"
