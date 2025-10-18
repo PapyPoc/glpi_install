@@ -352,9 +352,14 @@ function validate_db_host() {
         return 0
     fi
     # Sinon invalide
-    dialog --title "Hôte de base de données invalide : ${clean_host}\n\n" --msgbox "Autorisé : localhost, ::1/[::1], nom de domaine complet ou adresse IPv4." 10 70
-    warn "Validation échouée : hôte DB invalide (${clean_host})" >> "${LOGFILE}"
+        _dbhost_err "$clean_host"
     return 1
+}
+# 🔧 Helper message d'erreur + log
+_dbhost_err() {
+    v=$1
+    dialog --msgbox "Hôte de base de données invalide : ${v}\n\nAutorisé : localhost, ::1/[::1], nom de domaine complet ou adresse IPv4." 10 70
+    warn "Validation échouée : hôte DB invalide (${v})"
 }
 # Valide le nom de la base de données
 function validate_db_name() {
@@ -481,6 +486,7 @@ function prompt_install_options(){
         exec 3>&-
         # Transformer les lignes du formulaire en variables
         IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
+        echo "Réponses du formulaire : REP_GLPI='${REP_GLPI}', DB_HOST='${DB_HOST}', DB_NAME='${DB_NAME}', DB_USER='${DB_USER}'" 1>>"${LOGFILE}"
         # Si annulation ou ESC
         if [[ $rc -ne 0 ]]; then
             warn "Formulaire annulé par l’utilisateur." 1>>"${LOGFILE}"
