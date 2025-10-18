@@ -112,17 +112,17 @@ function run_task() {
     # Afficher les informations de la tâche
     info "Tâche: $index/$total - $task_key"
     info "$MSG_COMMAND: $task_cmd"
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" | tee -a "$LOGFILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" | tee -a "${DEBUGFILE}"
     # --- Exécution de la commande ---
     local output exit_code
     output=$(eval "$task_cmd" 2>&1)
     exit_code=$?
     # --- Résultat ---
     if (( exit_code == 0 )); then
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" | tee -a "$LOGFILE"
-        echo "$output" | tee -a "$LOGFILE"
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" | tee -a "${DEBUGFILE}"
+        echo "$output" | tee -a "${DEBUGFILE}"
     else
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd" | tee -a "$LOGFILE"
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd" | tee -a "${DEBUGFILE}"
         echo "$output" | tee -a "$ERRORFILE"
         warn "$MSG_ERROR_TASK: $task_key (exit=$exit_code)" | tee -a "$ERRORFILE"
         debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (échec) de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
