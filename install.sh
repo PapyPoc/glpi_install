@@ -8,7 +8,6 @@ GIT="https://github.com/PapyPoc/glpi_install.git"
 BRANCHE="dev"
 ERRORFILE="${REP_SCRIPT}/error.log"
 LOGFILE="${REP_SCRIPT}/debug.log"
-GLPI_INSTALL_SCRIPT="${REP_SCRIPT}/install.sh"
 export ORIG_USER REP_SCRIPT GIT BRANCHE
 function warn(){ 
     echo -e "\033[0;31m[ERREUR]\033[0m $1";
@@ -152,20 +151,20 @@ if [ ! -f "${GLPI_INSTALL_SCRIPT}" ]; then
     exit 1
 fi
 # Vérification des permissions
-if [ ! -x "${GLPI_INSTALL_SCRIPT}" ]; then
-    chmod +x "${GLPI_INSTALL_SCRIPT}" 2>/dev/null || {
-        warn "Impossible de rendre '${GLPI_INSTALL_SCRIPT}' exécutable (droits insuffisants)." | tee -a "${ERRORFILE}"
+if [ ! -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
+    chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null || {
+        warn "Impossible de rendre '${REP_SCRIPT}/glpi_install/glpi-install' exécutable (droits insuffisants)." | tee -a "${ERRORFILE}"
         dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
-               --msgbox "Erreur : impossible d'exécuter '${GLPI_INSTALL_SCRIPT}'. Vérifiez vos droits." 7 70
+               --msgbox "Erreur : impossible d'exécuter '${REP_SCRIPT}/glpi_install/glpi-install'. Vérifiez vos droits." 7 70
         exit 1
     }
 fi
 # Exécution sécurisée
-if bash "${GLPI_INSTALL_SCRIPT}" >> "${LOGFILE}" 2>&1; then
-    info "Exécution réussie de ${GLPI_INSTALL_SCRIPT}" | tee -a "${LOGFILE}"
+if bash "${REP_SCRIPT}/glpi_install/glpi-install" >> "${LOGFILE}" 2>&1; then
+    info "Exécution réussie de ${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${LOGFILE}"
 else
-    warn "Échec de l'exécution de ${GLPI_INSTALL_SCRIPT}" | tee -a "${ERRORFILE}"
+    warn "Échec de l'exécution de ${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${ERRORFILE}"
     dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
-           --msgbox "Erreur : l'exécution du script '${GLPI_INSTALL_SCRIPT}' a échoué. Consultez le log." 8 70
+           --msgbox "Erreur : l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' a échoué. Consultez le log." 8 70
     exit 1
 fi
