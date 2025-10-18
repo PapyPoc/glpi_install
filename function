@@ -103,6 +103,7 @@ function on_error() {
     dialog --msgbox "💥 Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
     exit "$rc"
 }
+trap 'on_error' ERR
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
     debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${LOGFILE}"
