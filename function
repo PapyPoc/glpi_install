@@ -633,9 +633,19 @@ function glpi_install() {
                 echo "$task_index/$total_tasks - $task_key"
                 echo "XXX"
                 debug "$(date '+%F %T'): [END] $task_key end." 1>>"${LOGFILE}"
+            else
+                echo "100"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+                echo "XXX"
+                warn "$(date '+%F %T'): [ERROR] $task_key error." 1>>"${LOGFILE}"
+                dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
+                error "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
+                sleep 5
+                return 1
             fi
         done
-    ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120 0
+    ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120 0 1>>"${LOGFILE}" 2>>"${ERRORFILE}"
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Mise à jour de la distribution
