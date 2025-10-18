@@ -463,11 +463,6 @@ function prompt_install_options(){
         DB_HOST="$db_host"
         DB_NAME="$db_name"
         DB_USER="$db_user"
-        {
-            echo "Réponses du formulaire : REP_GLPI='${REP_GLPI}', DB_HOST='${DB_HOST}', DB_NAME='${DB_NAME}', DB_USER='${DB_USER}'"
-            echo "Code de retour du formulaire : rc='${rc}'"
-            echo "Formulaire brut : '${form}'"
-        } 1>>"${LOGFILE}"
         # Si annulation ou ESC
         if [[ $rc -ne 0 ]]; then
             warn "Formulaire annulé par l’utilisateur." 1>>"${LOGFILE}"
@@ -617,35 +612,33 @@ function glpi_install() {
     local total_tasks=${#task_order[@]}
     local task_index=0
     (
-        
-        for task_key in "${task_order[@]}"; do
-            task_index=$((task_index + 1))
-            progress=$((task_index * 100 / total_tasks))
-            echo "$progress"
+    task_index=0
+    for task_key in "${task_order[@]}"; do
+        task_index=$((task_index + 1))
+        progress=$((task_index * 100 / total_tasks))
+
+        # --- Affichage progression
+        echo "$progress"
+        echo "XXX"
+        echo "$task_index/$total_tasks - $task_key"
+        echo "XXX"
+        debug "$(date '+%F %T'): [START] $task_key" >> "${LOGFILE}"
+        # --- Exécution silencieuse de la tâche
+        if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks" 1>>"${LOGFILE}" 2>>"${ERRORFILE}"; then
+            debug "$(date '+%F %T'): [END] $task_key" >> "${LOGFILE}"
+        else
+            echo "100"
             echo "XXX"
-            echo "$task_index/$total_tasks - $task_key"
-            debug "$(date '+%F %T'): [START] $task_key start." 1>>"${LOGFILE}"
+            echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
             echo "XXX"
-            # Exécution et logging
-            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
-                echo "$progress"
-                echo "XXX"
-                echo "$task_index/$total_tasks - $task_key"
-                echo "XXX"
-                debug "$(date '+%F %T'): [END] $task_key end." 1>>"${LOGFILE}"
-            else
-                echo "100"
-                echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
-                echo "XXX"
-                warn "$(date '+%F %T'): [ERROR] $task_key error." 1>>"${LOGFILE}"
-                dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
-                error "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
-                sleep 5
-                return 1
-            fi
-        done
-    ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120 0 1>>"${LOGFILE}" 2>>"${ERRORFILE}"
+            warn "$(date '+%F %T'): [ERROR] $task_key error." >> "${LOGFILE}"
+            dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
+            error "$MSG_ERROR_INSTALL\n\nConsultez : ${ERRORFILE}" >> "${ERRORFILE}"
+            sleep 3
+            return 1
+        fi
+    done
+    ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120 0
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Mise à jour de la distribution
