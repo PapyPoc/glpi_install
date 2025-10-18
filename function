@@ -76,34 +76,19 @@ function export_display_env() {
     done
 }
 # Gestion des erreurs avec trap
-function on_error() {
-    local rc=$?                # Code d’erreur exact
-    local line=$LINENO         # Ligne où l’erreur est survenue
-    local cmd=$BASH_COMMAND    # Commande ayant échoué
-    # Log entrée dans le gestionnaire
-    {
-        printf "%s [$$][DEBUG:%s] Entrée dans %s\n" \
-            "$(date '+%F %T')" "${FUNCNAME[0]:-main}" "${FUNCNAME[1]:-main}"
-    } >>"$WARNINGFILE" 2>&1
-    # Log d’erreur détaillé
-    {
-        echo "❌ Erreur détectée : '${cmd}' (code=$rc) à la ligne $line"
-        echo "Pile d’appels :"
-        for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
-            src="${BASH_SOURCE[$i]}"
-            ln="${BASH_LINENO[$((i-1))]:-?}"
-            echo "  ↳ ${FUNCNAME[$i]}() depuis ${src}:${ln}"
-        done
-        echo "───────────────────────────────"
-    } >>"$ERRORFILE" 2>&1
-    # Log de sortie du handler
-    {
-        printf "%s [$$][DEBUG:%s] Fin de %s\n" \
-            "$(date '+%F %T')" "${FUNCNAME[0]:-main}" "${FUNCNAME[1]:-main}"
-    } >>"$WARNINGFILE" 2>&1
-    # Affiche à l’écran et stoppe TOUT
-    echo -e "\n\033[1;31mERREUR FATALE : '${cmd}' (code=$rc)\nScript arrêté.\033[0m" >&2
-    # Quitter le script principal avec le même code d’erreur
+on_error() {
+    local rc=$?
+    local cmd=$BASH_COMMAND
+    local line=${BASH_LINENO[0]}
+
+    echo "❌ Erreur détectée : '${cmd}' (code=$rc) à la ligne $line" | tee -a "$ERRORFILE" >&2
+    echo "Pile d’appels :" >> "$ERRORFILE"
+    for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
+        echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}" >> "$ERRORFILE"
+    done
+    echo "──────────────────────────────" >> "$ERRORFILE"
+
+    dialog --msgbox "💥 Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 12 70 || true
     exit "$rc"
 }
 # Exécuter une tâche et gérer les erreurs et les logs

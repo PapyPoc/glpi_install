@@ -75,6 +75,11 @@ ensure_dependencies(){
     export NEED_RESTART
     return 0
 }
+on_error_install() {
+    echo "❌ Erreur : ${BASH_COMMAND} (code=$?)" >&2
+    exit 1
+}
+trap 'on_error_install' ERR
 if source /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
     info "Distribution détectée : ${DISTRO_ID^} ${VERSION_ID:-}"
@@ -125,9 +130,8 @@ else
         exit 1
     }
 fi
-chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"
-if [ -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
-    exec "${REP_SCRIPT}/glpi_install/glpi-install" "$@"
+if chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"; then
+    bash "${REP_SCRIPT}/glpi_install/glpi-install" "$@"
 else
     warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' n'est pas exécutable ou introuvable."
     exit 1
