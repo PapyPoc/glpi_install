@@ -597,7 +597,7 @@ function check_install() {
             info "Installation de GLPI ${VERSION_SELECT} terminée." 1>> "${LOGFILE}"
         else
             dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
-            error "Échec de l'installation GLPI." 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            error "Échec de l'installation GLPI."
             exit 1
         fi
     fi
@@ -696,9 +696,9 @@ function install_packages(){
         export DEBIAN_FRONTEND=noninteractive
         # update cache first
         apt-get update
-        if command -v apt-get 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
-            echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get update" 1>> "${LOGFILE}"
-            if ! apt-get update 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if command -v apt-get update; then
+            echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get update" >> "${LOGFILE}"
+            if ! apt-get update; then
                 warn "apt-get update failed"
                 # continue, maybe cached; but log
             fi
@@ -707,66 +707,66 @@ function install_packages(){
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
-        if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
             error "$MSG_PHP_EXT_FAILED" 2>> "${ERRORFILE}"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php; then
             error "$MSG_LAMP_FAILED" 2>> "${ERRORFILE}"
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
-        if ! systemctl enable mariadb 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! systemctl enable mariadb; then
             error "Échec de l'activation de MariaDB." 2>> "${ERRORFILE}"
             return 1
         fi
-        if ! systemctl restart mariadb 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! systemctl restart mariadb; then
             error "Échec du redémarrage de MariaDB." 2>> "${ERRORFILE}"
             return 1
         fi
         info "$MSG_ACTIVE_START_WEB"
-        if ! systemctl enable apache2 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! systemctl enable apache2; then
             error "Échec de l'activation d'Apache2." 2>> "${ERRORFILE}"
             return 1
         fi
-        if ! systemctl restart apache2 1>> "${LOGFILE}" 2>> "${ERRORFILE}" ; then
+        if ! systemctl restart apache2 ; then
             error "Échec du redémarrage d'Apache2." 2>> "${ERRORFILE}"
             return 1
         fi
     elif [[ "${ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
         sleep 1
-        dnf makecache --refresh 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+        dnf makecache --refresh
         if ! command -v dnf >/dev/null 2>&1; then
             error "dnf not found, cannot install packages on RHEL-like branch" 2>> "${ERRORFILE}"
             return 1
         fi
-        if ! dnf makecache --refresh 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! dnf makecache --refresh; then
             error "$MSG_EPEL_FAILED" 2>> "${ERRORFILE}"
             # continue; attempt install may still work
         fi
-        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm; then
             error "$MSG_EPEL_FAILED" 2>> "${ERRORFILE}"
             return 1
         fi
-        if ! dnf module reset -y php nginx mariadb composer 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! dnf module reset -y php nginx mariadb composer; then
             error "$MSG_MODULES_RESET_FAILED" 2>> "${ERRORFILE}"
             return 1
         fi
-        if ! dnf module install -y php:8.2 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! dnf module install -y php:8.2; then
             error "$MSG_PHP_INSTALL_FAILED" 2>> "${ERRORFILE}"
             return 1
         fi
-        if ! dnf module install -y nginx:1.24 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! dnf module install -y nginx:1.24; then
             error "$MSG_NGINX_INSTALL_FAILED" 2>> "${ERRORFILE}"
             return 1
         fi
-        if ! dnf module install -y mariadb:10.11 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! dnf module install -y mariadb:10.11; then
             error "$MSG_MARIADB_INSTALL_FAILED" 2>> "${ERRORFILE}"
             return 1
         fi
         info "$MSG_AUTO_UPDATES"
-        if ! dnf install dnf-automatic -y 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! dnf install dnf-automatic -y; then
             error "$MSG_DNF_AUTO_FAILED" 2>> "${ERRORFILE}"
             return 1
         fi
@@ -774,12 +774,12 @@ function install_packages(){
             sed -i 's/^\(;\?\)\(apply_updates =\).*/\2 yes/' /etc/dnf/automatic.conf
             sed -i 's/^\(;\?\)\(reboot =\).*/\2 when-needed/' /etc/dnf/automatic.conf
             sed -i 's/^\(;\?\)\(upgrade_type =\).*/\2 security/' /etc/dnf/automatic.conf
-        } 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
-        if ! mkdir /etc/systemd/system/dnf-automatic.timer.d 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        }
+        if ! mkdir /etc/systemd/system/dnf-automatic.timer.d; then
             warn "$MSG_DNF_AUTO_DIR_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
-        sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf 1>> "${LOGFILE}" 2>> "${ERRORFILE}" << 'EOF'
+        sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf << 'EOF'
 [Unit]
 Description=dnf-automatic timer
 ConditionPathExists=!/run/ostree-booted
@@ -790,28 +790,28 @@ OnCalendar=*-*-* 6:00
 RandomizedDelaySec=60m
 Persistent=true
 EOF
-        if ! systemctl enable --now dnf-automatic.timer 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! systemctl enable --now dnf-automatic.timer; then
             warn "$MSG_DNF_AUTO_ACTIVATE_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
-        if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
             warn "$MSG_PHP_EXT_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE lamp..."
-        if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release; then
             warn "$MSG_LAMP_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
         sed -i 's/^\(;\?\)\(user =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         sed -i 's/^\(;\?\)\(group =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         info "$MSG_ACTIVE_START_WEB MariaDB, d'ENGINE X et de PHP-FPM"
-        if ! systemctl enable --now mariadb nginx php-fpm 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! systemctl enable --now mariadb nginx php-fpm; then
             warn "$MSG_SERVICES_START_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
-        if ! firewall-cmd --permanent --zone=public --add-service=http || ! firewall-cmd --reload 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+        if ! firewall-cmd --permanent --zone=public --add-service=http || ! firewall-cmd --reload; then
             warn "$MSG_FIREWALL_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
@@ -825,7 +825,7 @@ function mariadb_configure() {
         # Détecter la commande MySQL/MariaDB
         info "$MSG_BDD_CONFIG"
     } 1>> "${LOGFILE}"
-    MYSQL_CMD=$(command -v mysql || command -v mariadb || echo mysql) 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+    MYSQL_CMD=$(command -v mysql || command -v mariadb || echo mysql)
     if [ -z "$MYSQL_CMD" ]; then 
         error "Commande MySQL/MariaDB introuvable" 2>> "${ERRORFILE}"
         return 1
@@ -844,39 +844,39 @@ function mariadb_configure() {
     _sql_root+="\nGRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';"
     _sql_root+="\nGRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';"
     _sql_root+="\nFLUSH PRIVILEGES;"
-    if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+    if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
         warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc" 2>> "${ERRORFILE}"
         return 1
     fi
     # Détection du fuseau horaire
     if [ -z "${TIMEZONE:-}" ]; then
-        if command -v timedatectl 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
-            TIMEZONE=$(timedatectl show -p Timezone --value 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || true)
+        if command -v timedatectl; then
+            TIMEZONE=$(timedatectl show -p Timezone --value || true)
         fi
         if [ -z "${TIMEZONE:-}" ] && [ -f /etc/timezone ]; then
-            TIMEZONE=$(sed -n '1p' /etc/timezone 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || true)
+            TIMEZONE=$(sed -n '1p' /etc/timezone || true)
         fi
         if [ -z "${TIMEZONE:-}" ]; then
             if [ -L /etc/localtime ] || [ -f /etc/localtime ]; then
-                tzfile=$(readlink -f /etc/localtime 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || true)
+                tzfile=$(readlink -f /etc/localtime || true)
                 case "$tzfile" in
                     */usr/share/zoneinfo/*) TIMEZONE=${tzfile#*/usr/share/zoneinfo/} ;;
                 esac
             fi
         fi
         if [ -z "${TIMEZONE:-}" ] && [ -f /etc/sysconfig/clock ]; then
-            TIMEZONE=$(awk -F= '/^ZONE/ {gsub(/"/,"",$2); print $2}' /etc/sysconfig/clock 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || true)
+            TIMEZONE=$(awk -F= '/^ZONE/ {gsub(/"/,"",$2); print $2}' /etc/sysconfig/clock || true)
         fi
         TIMEZONE=${TIMEZONE:-UTC}
         export TIMEZONE
         info "Fuseau horaire détecté : ${TIMEZONE}"
     fi
     info "$MSG_TIMEZONE_CONFIG"
-    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql; then
         warn "$MSG_ERROR_TASK: import du timezone échoué"
         return 1
     fi
-    systemctl restart mariadb 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || warn "Impossible de redémarrer MariaDB (vérifiez le service)"
+    systemctl restart mariadb || warn "Impossible de redémarrer MariaDB (vérifiez le service)"
     sleep 5
     # debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${LOGFILE}"
 }
@@ -886,7 +886,7 @@ function install_glpi(){
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
     # Téléchargement de GLPI
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
-    if ! wget -q -O "$tmp_file" "${DOWNLOADLINK}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+    if ! wget -q -O "$tmp_file" "${DOWNLOADLINK}"; then
         warn "$MSG_DOWNLOAD_FAILED" 1>> "${ERRORFILE}"
         rm -f "$tmp_file"
         return 1
@@ -905,21 +905,21 @@ function setup_glpi(){
     # debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${LOGFILE}"
     source_os_release
     info "$MSG_CONFIG_GLPI" 1>> "${LOGFILE}"
-    mkdir -p /var/log/glpi  1>> "${LOGFILE}" 2>> "${ERRORFILE}"
-    mkdir -p /etc/glpi/config  1>> "${LOGFILE}" 2>> "${ERRORFILE}"
-    mkdir -p /var/lib/glpi/files  1>> "${LOGFILE}" 2>> "${ERRORFILE}"
-    mv -f "${REP_GLPI}"/files /var/lib/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}" ||
+    mkdir -p /var/log/glpi 
+    mkdir -p /etc/glpi/config 
+    mkdir -p /var/lib/glpi/files 
+    mv -f "${REP_GLPI}"/files /var/lib/glpi ||
     {
         warn "Échec du déplacement du répertoire files de GLPI." >>"${LOGFILE}"
         return 1
     }
-    sudo tee /etc/glpi/config/local_define.php  1>> "${LOGFILE}" 2>> "${ERRORFILE}" <<'EOF'
+    sudo tee /etc/glpi/config/local_define.php  <<'EOF'
 <?php
     define('GLPI_VAR_DIR', '/var/lib/glpi/files');
     define('GLPI_LOG_DIR', '/var/log/glpi');
 EOF
     sleep 1
-    sudo tee "${REP_GLPI}"/inc/downstream.php  1>> "${LOGFILE}" 2>> "${ERRORFILE}" <<EOF
+    sudo tee "${REP_GLPI}"/inc/downstream.php  <<EOF
 <?php
     define('GLPI_CONFIG_DIR', '/etc/glpi/config');
     if (file_exists(GLPI_CONFIG_DIR . '/local_define.php')) {
@@ -929,7 +929,7 @@ EOF
     network_info
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
         # Configuration d'Apache pour GLPI
-        sudo tee /etc/apache2/sites-available/glpi.conf  1>> "${LOGFILE}" 2>> "${ERRORFILE}" <<EOF
+        sudo tee /etc/apache2/sites-available/glpi.conf  <<EOF
 <VirtualHost *:80>
     ServerName ${IPADRESS}
     DocumentRoot ${REP_GLPI}/public
@@ -946,7 +946,7 @@ EOF
 </VirtualHost>
 EOF
         phpversion=$(php -v | grep -i '(cli)' | awk '{print $2}' | cut -d. -f1,2)
-        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 =on/' /etc/php/"$phpversion"/apache2/php.ini 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 =on/' /etc/php/"$phpversion"/apache2/php.ini
         sleep 1
         # Disable Apache Web Server Signature
         echo "ServerSignature Off" >> /etc/apache2/apache2.conf
@@ -955,19 +955,19 @@ EOF
         {
             # Enable Apache modules and site configuration
             # Mode rewrite activé
-            a2enmod rewrite 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            a2enmod rewrite
             # Déactiver le site par défaut
-            a2dissite 000-default.conf 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            a2dissite 000-default.conf
             # Activer le site GLPI
-            a2ensite glpi.conf 1>> "${LOGFILE}" 2>> "${ERRORFILE}";
+            a2ensite glpi.conf;
             # Recharger la configuration d'Apache
-            systemctl reload apache2 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            systemctl reload apache2
             # Change permissions
             rights_glpi || { 
                 warn "Échec de la modification des droits pour GLPI." >>"${LOGFILE}"
                 return 1
             }
-        } 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || {
+        } || {
             warn "Échec de la configuration d'Apache pour GLPI." >>"${LOGFILE}"
             return 1
         }
@@ -996,7 +996,7 @@ EOF
         echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi 
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
         network_info
-        sudo tee /etc/nginx/conf.d/glpi.conf 1>> "${LOGFILE}" 2>> "${ERRORFILE}" << EOF
+        sudo tee /etc/nginx/conf.d/glpi.conf << EOF
 server {
     listen 80;
     server_name "${IPADRESS}";
@@ -1013,7 +1013,7 @@ server {
     }
 }
 EOF
-        sudo tee /etc/logrotate.d/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}" << EOF
+        sudo tee /etc/logrotate.d/glpi << EOF
 # Rotate GLPI logs daily, only if not empty
 # Save 14 days old logs under compressed mode
 /var/lib/glpi/files/_log/*.log {
@@ -1026,28 +1026,28 @@ EOF
     create 644 nginx nginx
 }
 EOF
-        chmod 0644 /etc/logrotate.d/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
-        chown root:root /etc/logrotate.d/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
-        chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
-        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+        chmod 0644 /etc/logrotate.d/glpi
+        chown root:root /etc/logrotate.d/glpi
+        chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi
+        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini
         # Change permissions
         rights_glpi || { 
             warn "Échec de la modification des droits pour GLPI." >>"${LOGFILE}"
             return 1
         }
         # Recharger la configuration de Nginx
-        systemctl reload nginx php-fpm 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || {
+        systemctl reload nginx php-fpm || {
             warn "Échec du rechargement de Nginx ou PHP-FPM." >>"${LOGFILE}"
             return 1
         }
         sleep 2
         # Installation de GLPI en ligne de commande
         CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
-        eval sudo -u nginx "${CMD}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+        eval sudo -u nginx "${CMD}"
         echo "*/2 * * * * nginx /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
     sleep 5
-    rm -Rf "${REP_GLPI}"install/install.php 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || {
+    rm -Rf "${REP_GLPI}"install/install.php || {
         warn "Échec de la suppression du script d'installation de GLPI." >>"${LOGFILE}"
         return 1
     }
@@ -1061,7 +1061,7 @@ function maj_user_glpi(){
     # Ensure we have a mysql client command; fallback to detecting it if not set
     MYSQL_CMD=$(command -v mysql  || command -v mariadb || echo mysql)
     # Verify mysql client exists
-    if ! command -v "${MYSQL_CMD}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+    if ! command -v "${MYSQL_CMD}"; then
         warn "mysql client not found: ${MYSQL_CMD}"
         return 1
     fi
@@ -1077,7 +1077,7 @@ function maj_user_glpi(){
     _sql_user+="\nUPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"
     echo "${_sql_user}" 1>> "${LOGFILE}"
     # Execute the SQL commands
-    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
+    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}"; then
         error "$MSG_ERROR_TASK: base de données - échec des modifications en bloc" 2>> "${ERRORFILE}"
         return 1
     fi
@@ -1114,20 +1114,20 @@ function rights_glpi(){
         info "$MSG_RIGHTS_GLPI"
         for dir in /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"; do
             [[ -d "$dir" ]] || continue
-            find "$dir" -type d -exec chmod 755 {} \; 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
-            find "$dir" -type f -exec chmod 644 {} \; 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            find "$dir" -type d -exec chmod 755 {} \;
+            find "$dir" -type f -exec chmod 644 {} \;
         done
-    } 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+    }
     # Changer le propriétaire des répertoires
     case "${ID}" in
         debian|ubuntu)
             {
-                sudo chown -Rc www-data:www-data /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
-            } 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+                sudo chown -Rc www-data:www-data /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"
+            }
             ;;
         almalinux|centos|rocky|rhel)
             {
-                sudo chown -Rc nginx:nginx /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+                sudo chown -Rc nginx:nginx /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"
                 if command -v semanage; then
                     setsebool -P httpd_can_network_connect on
                     setsebool -P httpd_can_network_connect_db on
@@ -1139,7 +1139,7 @@ function rights_glpi(){
                 else
                     error "$(date '+%F %T'): WARN: semanage non disponible — SELinux non configuré" 2>> "${ERRORFILE}"
                 fi
-            } 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            }
             ;;
         *)
             error "$(date '+%F %T'): WARN: Distribution ${ID:-unknown} non reconnue — aucun changement propriétaire" 2>> "${ERRORFILE}"
@@ -1278,14 +1278,14 @@ function maintenance(){
     if [ "$1" == "1" ]; then
         warn "${MSG_ACTIVE_SERVICE}" 1>> "${LOGFILE}"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable
         fi
     elif [ "$1" == "0" ]; then
         info "$MSG_DEACTIVE_SERVICE" 1>> "${LOGFILE}"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
             sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable
         fi
@@ -1329,7 +1329,7 @@ function backup_glpi() {
     info "${MSG_SITE_COPY}" 1>> "${LOGFILE}"
     for SRC in "/etc/glpi/config" "/var/lib/glpi/files" "${REP_GLPI}/plugins" "${REP_GLPI}/marketplace" "${REP_GLPI}/inc/downstream.php"; do
         if [ -e "${SRC}" ]; then
-            cp -Rf "${SRC}" "${REP_BACKUP}/" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
+            cp -Rf "${SRC}" "${REP_BACKUP}/"
         else
             warn "Source manquante : ${SRC}" >>"${LOGFILE}"
         fi
