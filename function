@@ -306,10 +306,8 @@ function load_language() {
 validate_db_host() {
     local host="$1"
     local clean_host
-
     # Nettoyage : supprime CR/LF, espaces en début/fin
     clean_host="$(printf '%s' "$host" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-
     # Tests de validité
     if [[ "$clean_host" == "localhost" || "$clean_host" == "[::1]" ]]; then
         return 0
@@ -319,7 +317,7 @@ validate_db_host() {
         return 0
     else
         dialog --msgbox "Hôte de base de données invalide : ${clean_host}\n\nAutorisé : localhost, [::1], nom de domaine complet ou adresse IPv4." 10 70
-        warn "Validation échouée : hôte de base de données invalide (${clean_host})"
+        warn "Validation échouée : hôte de base de données invalide (${clean_host})" >> "${LOGFILE}"
         return 1
     fi
 }
