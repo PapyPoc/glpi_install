@@ -25,7 +25,7 @@ function ensure_dependencies(){
         list="$DEPENDENCIES"
     fi
     for cmd in $list; do
-        if ! command -v "$cmd" >/dev/null 2>&1; then
+        if ! command -v "$cmd"; then
             missing="${missing:+$missing }$cmd"
         fi
     done
@@ -35,22 +35,22 @@ function ensure_dependencies(){
     echo "Dépendances manquantes : ${missing}. Tentative d'installation..."
     local pkgmgr install_cmd
     local pkgs="$missing"
-    if command -v apt-get >/dev/null 2>&1; then
+    if command -v apt-get >>"${UPDATEFILE}"; then
         pkgmgr="apt-get"
         install_cmd="${pkgmgr} update -qq && ${pkgmgr} install -y -qq ${pkgs}"
-    elif command -v dnf >/dev/null 2>&1; then
+    elif command -v dnf >>"${UPDATEFILE}"; then
         pkgmgr="dnf"
         install_cmd="${pkgmgr} install -y -q ${pkgs}"
-    elif command -v yum >/dev/null 2>&1; then
+    elif command -v yum >>"${UPDATEFILE}"; then
         pkgmgr="yum"
         install_cmd="${pkgmgr} install -y -q ${pkgs}"
-    elif command -v apk >/dev/null 2>&1; then
+    elif command -v apk >>"${UPDATEFILE}"; then
         pkgmgr="apk"
         install_cmd="${pkgmgr} add --no-cache ${pkgs}"
-    elif command -v pacman >/dev/null 2>&1; then
+    elif command -v pacman >>"${UPDATEFILE}"; then
         pkgmgr="pacman"
         install_cmd="${pkgmgr} -Syu --noconfirm ${pkgs}"
-    elif command -v zypper >/dev/null 2>&1; then
+    elif command -v zypper >>"${UPDATEFILE}"; then
         pkgmgr="zypper"
         install_cmd="${pkgmgr} install -y ${pkgs}"
     else
