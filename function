@@ -353,43 +353,56 @@ function prompt_install_options(){
     local form
     local IFS
     while true; do
-        exec 3>&1
-        form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
+    exec 3>&1
+    form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
         --form "${MSG_GLPI_SELECT_PARAM_1} ${VERSION_SELECT} ${MSG_GLPI_SELECT_PARAM_2}" 18 68 8 \
         "📁 ${MSG_PARAM_REP}"     1 2 "${REP_GLPI:-/var/www/html/glpi/}" 1 ${WIDTH} 20 40 \
         "🗄️ ${MSG_PARAM_DB_HOST}" 3 2 "${DB_HOST:-localhost}"            3 ${WIDTH} 20 20 \
         "💾 ${MSG_PARAM_DB_NAME}" 5 2 "${DB_NAME:-glpi}"                 5 ${WIDTH} 20 20 \
         "👤 ${MSG_PARAM_DB_USER}" 7 2 "${DB_USER:-glpi_user}"            7 ${WIDTH} 20 20 \
         2>&1 1>&3)
-        # Si annulation ou ESC
-        [ $? -ne 0 ] && break
-        # Transformer les lignes en tableau
-        IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
-        # Validation du repertoire d'installation commence par /var/www /srv /opt /usr/share et que le nom du répértoire contienne glpi
-        if ! [[ "${REP_GLPI}" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
-            dialog --msgbox "Répertoire d’installation invalide : ${REP_GLPI}\n\nDoit commencer par /var/www/, /srv/, /opt/ ou /usr/share/\n   et contenir 'glpi' dans le nom d'un dossier." 12 70
-            continue
-        elif ! (
-            # shellcheck disable=SC2235
-            [[ "${DB_HOST}" =~ ^localhost$ ]] ||
-            [[ "${DB_HOST}" =~ ^::1$ ]] ||
-            [[ "${DB_HOST}" =~ ^\[::1\]$ ]] ||
-            [[ "${DB_HOST}" =~ ^([a-zA-Z0-9-]+\.)+[A-Za-z]{2,}$ ]] ||
-            [[ "${DB_HOST}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
-        ); then
-            dialog --msgbox "Hôte de base de données invalide : ${DB_HOST}\n\nAutorisé : localhost, ::1, nom de domaine complet ou adresse IPv4." 10 70
-            continue
-        elif ! [[ "${DB_NAME}" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
-            dialog --msgbox "Nom de base de données invalide : ${DB_NAME}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores (max 64 caractères)." 12 70
-            continue
-        elif ! [[ "${DB_USER}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-            dialog --msgbox "Nom d’utilisateur invalide : ${DB_USER}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores." 10 70
-            continue
-        fi
-        break
-    done
+    rc=$?
+    exec 3>&-
     # Si annulation ou ESC
-    info "${form}\n" 1>&2 >> "${LOGFILE}"
+    if [[ $rc -ne 0 ]]; then
+        warn "Formulaire annulé." >> "${WARNINGFILE}"
+        break
+    fi
+    # Transformer les lignes du formulaire en variables
+        IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
+    # --- VALIDATIONS ---
+    # Répertoire d’installation
+    if ! [[ "${REP_GLPI}" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
+        dialog --msgbox "Répertoire d’installation invalide : ${REP_GLPI}\n\nDoit commencer par /var/www/, /srv/, /opt/ ou /usr/share/\n   et contenir 'glpi' dans le nom d’un dossier." 12 70
+        continue
+    # Hôte de base de données
+    elif ! (
+        # shellcheck disable=SC2235
+        [[ "${DB_HOST}" =~ ^localhost$ ]] ||
+        [[ "${DB_HOST}" =~ ^::1$ ]] ||
+        [[ "${DB_HOST}" =~ ^\[::1\]$ ]] ||
+        [[ "${DB_HOST}" =~ ^([a-zA-Z0-9-]+\.)+[A-Za-z]{2,}$ ]] ||
+        [[ "${DB_HOST}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+    ); then
+        dialog --msgbox "Hôte de base de données invalide : ${DB_HOST}\n\nAutorisé : localhost, ::1, nom de domaine complet ou adresse IPv4." 10 70
+        continue
+    # Nom de la base
+    elif ! [[ "${DB_NAME}" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
+        dialog --msgbox "Nom de base de données invalide : ${DB_NAME}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores (max 64 caractères)." 12 70
+        continue
+    # Utilisateur
+    elif ! [[ "${DB_USER}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        dialog --msgbox "Nom d’utilisateur invalide : ${DB_USER}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores." 10 70
+        continue
+    # Interdiction d’utiliser 'root'
+    elif [[ "${DB_USER}" == "root" ]]; then
+        dialog --msgbox "Nom d’utilisateur invalide : ${DB_USER}\n\nL’utilisateur de la base de données ne peut pas être 'root'." 10 70
+        continue
+    else
+        # Si tout est valide, on quitte la boucle
+        break
+    fi
+done
     rc=$?
     exec 3>&-
     if [ "${rc}" -ne 0 ]; then
