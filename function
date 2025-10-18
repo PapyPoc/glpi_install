@@ -304,6 +304,22 @@ function load_language() {
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Valide le répertoire d’installation de GLPI
+function validate_glpi_path() {
+    : "${BASH_VERSION:?Ce script doit être exécuté avec bash}"
+    local path="$1"
+    local clean_path
+    # Nettoyage
+    clean_path="$(printf '%s' "$path" | tr -d '\r\n' | sed -E 's#/{2,}#/#g' \
+        | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    # Vérification du format
+    if ! [[ "$clean_path" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
+        dialog --msgbox "Répertoire d’installation invalide : ${clean_path}\n\nDoit commencer par /var/www/, /srv/, /opt/ ou /usr/share/\n   et contenir 'glpi' dans le nom d’un dossier." 12 70
+        warn "Validation échouée : répertoire d’installation invalide (${clean_path})"
+        return 1
+    fi
+    return 0
+}
+# Valide le répertoire d’installation de GLPI
 function validate_db_host() {
     host=$1
     # Nettoyage de base
@@ -344,7 +360,6 @@ _dbhost_err() {
     dialog --title "Hôte de base de données invalide : ${v}\n\n" --msgbox "Autorisé : localhost, ::1/[::1], nom de domaine complet ou adresse IPv4." 10 70
     warn "Validation échouée : hôte DB invalide (${v})"
 }
-
 # Valide le nom de la base de données
 function validate_db_name() {
     local name="$1"
