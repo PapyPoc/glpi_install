@@ -82,12 +82,13 @@ function export_display_env() {
 function on_error() {
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Entrée dans ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
     local i
-    echo "Erreur : ${BASH_COMMAND} (code=$?) à la ligne $LINENO"
+    error "$(echo "Erreur : ${BASH_COMMAND} (code=$?) à la ligne $LINENO"
     echo "Pile d’appels :"
     for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
         echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}"
-    done
+    done)" 2>> "${ERRORFILE}"
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>&2>> "${WARNINGFILE}"
+    exit 1
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
