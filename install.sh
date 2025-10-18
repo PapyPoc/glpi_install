@@ -144,8 +144,6 @@ else
         exit 1
     }
 fi
-: > "${LOGFILE}"   # Crée ou vide le fichier de log
-: > "${ERRORFILE}" # Crée ou vide le fichier d'erreurs
 # Vérification d’existence
 if [ ! -f "${GLPI_INSTALL_SCRIPT}" ]; then
     warn "Le script '${GLPI_INSTALL_SCRIPT}' est introuvable." | tee -a "${ERRORFILE}"
