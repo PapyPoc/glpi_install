@@ -303,15 +303,33 @@ function load_language() {
     fi
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
-validate_db_host() {
+# Valide le répertoire d’installation de GLPI
+function validate_glpi_path() {
+    : "${BASH_VERSION:?Ce script doit être exécuté avec bash}"
+    local path="$1"
+    local clean_path
+    # Nettoyage
+    clean_path="$(printf '%s' "$path" | tr -d '\r\n' | sed -E 's#/{2,}#/#g' \
+        | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    # Vérification du format
+    if ! [[ "$clean_path" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
+        dialog --msgbox "Répertoire d’installation invalide : ${clean_path}\n\nDoit commencer par /var/www/, /srv/, /opt/ ou /usr/share/\n   et contenir 'glpi' dans le nom d’un dossier." 12 70
+        warn "Validation échouée : répertoire d’installation invalide (${clean_path})"
+        return 1
+    fi
+    # Vérifie si le dossier existe
+    if [[ ! -d "$clean_path" ]]; then
+        dialog --msgbox "Le répertoire ${clean_path} n’existe pas.\n\nVeuillez vérifier le chemin ou le créer avant l’installation." 10 70
+        warn "Validation échouée : répertoire non existant (${clean_path})"
+        return 1
+    fi
+    return 0
+}
+# Valide le nom d’hôte de la base de données
+function validate_db_host() {
     : "${BASH_VERSION:?Ce script doit être exécuté avec bash}"
     local host="$1"
     local clean_host
-    # 1) Normalisation agressive
-    #    - supprime CR/LF
-    #    - trim espaces (y compris tabs)
-    #    - supprime espaces Unicode fréquents (NBSP \xC2\xA0, ZWSP \xE2\x80\x8B)
-    #    - ne garde que les caractères autorisés pour un host
     clean_host="$(
         printf '%s' "$host" \
         | tr -d '\r\n' \
@@ -329,6 +347,39 @@ validate_db_host() {
     else
         dialog --msgbox "Hôte de base de données invalide : ${clean_host}\n\nAutorisé : localhost, [::1], nom de domaine complet ou adresse IPv4." 10 70
         warn "Validation échouée : hôte DB invalide (${clean_host})"
+        return 1
+    fi
+}
+# Valide le nom de la base de données
+validate_db_name() {
+    local name="$1"
+    local clean_name
+    clean_name="$(printf '%s' "$name" | tr -d '\r\n' \
+        | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    if [[ "$clean_name" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
+        return 0
+    else
+        dialog --msgbox "Nom de base de données invalide : ${clean_name}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores (max 64 caractères)." 12 70
+        warn "Validation échouée : nom de base invalide (${clean_name})"
+        return 1
+    fi
+}
+# Valide le nom d’utilisateur de la base de données
+function validate_db_user() {
+    local user="$1"
+    local clean_user
+    clean_user="$(printf '%s' "$user" | tr -d '\r\n' \
+        | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    if [[ "$clean_user" == "root" ]]; then
+        dialog --msgbox "Nom d’utilisateur invalide : ${clean_user}\n\nL’utilisateur de la base de données ne peut pas être 'root'." 10 70
+        warn "Validation échouée : utilisateur 'root' interdit"
+        return 1
+    fi
+    if [[ "$clean_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        return 0
+    else
+        dialog --msgbox "Nom d’utilisateur invalide : ${clean_user}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores." 10 70
+        warn "Validation échouée : utilisateur invalide (${clean_user})"
         return 1
     fi
 }
@@ -463,29 +514,19 @@ function prompt_install_options(){
         IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
         # --- VALIDATIONS ---
         # Répertoire d’installation
-        if ! [[ "${REP_GLPI}" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
-            dialog --msgbox "Répertoire d’installation invalide : ${REP_GLPI}\n\nDoit commencer par /var/www/, /srv/, /opt/ ou /usr/share/\n   et contenir 'glpi' dans le nom d’un dossier." 12 70
+        if ! validate_glpi_path "$REP_GLPI"; then
             continue
         fi
-        # Hôte de base de données
-        if ! validate_db_host "$db_host"; then
-            printf "DEBUG>DB_HOST=<%s>\n" "$db_host" >> "${LOGFILE}"
-            od -An -t x1 <<< "$db_host" >> "${LOGFILE}"
+        # Hôte de la base de données
+        if ! validate_db_host "$DB_HOST"; then
             continue
         fi
-        # Nom de la base
-        if ! [[ "${DB_NAME}" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
-            dialog --msgbox "Nom de base de données invalide : ${DB_NAME}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores (max 64 caractères)." 12 70
+        # Nom de la base de données
+        if ! validate_db_name "$DB_NAME"; then
             continue
         fi
-        # Utilisateur
-        if ! [[ "${DB_USER}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-            dialog --msgbox "Nom d’utilisateur invalide : ${DB_USER}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores." 10 70
-            continue
-        fi
-        # Interdiction d’utiliser 'root'
-        if [[ "${DB_USER}" == "root" ]]; then
-            dialog --msgbox "Nom d’utilisateur invalide : ${DB_USER}\n\nL’utilisateur de la base de données ne peut pas être 'root'." 10 70
+        # Utilisateur de la base de données
+        if ! validate_db_user "$DB_USER"; then
             continue
         fi
         # Si tout est valide
