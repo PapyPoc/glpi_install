@@ -459,10 +459,10 @@ function prompt_install_options(){
         fi
         # Hôte de base de données
         if ! validate_db_host "$DB_HOST"; then
+            printf "DEBUG>DB_HOST=<%s>\n" "$DB_HOST" >> "${LOGFILE}"
+            od -An -t x1 <<< "$DB_HOST" >> "${LOGFILE}"
             continue
         fi
-        printf "DEBUG>DB_HOST=<%s>\n" "$DB_HOST" >> "${LOGFILE}"
-        od -An -t x1 <<< "$DB_HOST" >> "${LOGFILE}"
         # Nom de la base
         if ! [[ "${DB_NAME}" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
             dialog --msgbox "Nom de base de données invalide : ${DB_NAME}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores (max 64 caractères)." 12 70
