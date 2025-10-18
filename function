@@ -186,7 +186,7 @@ function glpi_install() {
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
-                warn "$(date '+%F %T'): [ERREUR] $task_key a échoué." 1>>"${WARNINGFILE}"
+                warn "$(date '+%F %T'): [ERREUR] $task_key a échoué." 1>>"${LOGFILE}"
                 dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
                 error "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
                 sleep 5
@@ -208,8 +208,8 @@ function check_distro(){
             info "$MSG_DISTRO_OK" 1>> "${LOGFILE}"
             return 0
         else
-            warn "$MSG_DISTRO_NONOK"  1>>"${WARNINGFILE}"
-            warn "$MSG_FORCE_DISTRO"  1>>"${WARNINGFILE}"
+            warn "$MSG_DISTRO_NONOK"  1>>"${LOGFILE}"
+            warn "$MSG_FORCE_DISTRO"  1>>"${LOGFILE}"
             if [ -t 0 ]; then
                 info "$MSG_FORCE_DISTRO_QUESTION"
                 read -r RESPONSE
@@ -222,18 +222,18 @@ function check_distro(){
                         return 1
                         ;;
                     *)
-                        warn "$MSG_INVALID_ANSWER"  1>>"${WARNINGFILE}"
+                        warn "$MSG_INVALID_ANSWER"  1>>"${LOGFILE}"
                         return 1
                         ;;
                 esac
             else
-                warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO"  1>>"${WARNINGFILE}"
+                warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO"  1>>"${LOGFILE}"
                 return 1
             fi
         fi
         export VERSION_ID ID
     else
-        warn "$MSG_DISTRO_INVALID"  1>>"${WARNINGFILE}"
+        warn "$MSG_DISTRO_INVALID"  1>>"${LOGFILE}"
         return 1
     fi
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
@@ -393,9 +393,37 @@ function prompt_install_options(){
             2>&1 1>&3)
         rc=$?
         exec 3>&-
+        # Nettoyage et assignation des valeurs finales
+        local rep_glpi db_host db_name db_user
+        IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
+        local _def_rep="${REP_GLPI:-/var/www/html/glpi/}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
+        rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
+        db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
+        db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
+        db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
+        rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
+        db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
+        db_name="${db_name//[^A-Za-z0-9_]/_}"
+        db_user="${db_user//[^A-Za-z0-9_]/_}"
+        [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
+        [ -z "$db_host" ] && db_host="$_def_db_host"
+        [ -z "$db_name" ] && db_name="$_def_db"
+        [ -z "$db_user" ] && db_user="$_def_user"
+        if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            db_name="glpi_${db_name}"
+        fi
+        rep_glpi="${rep_glpi//\\//}"
+        if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
+            rep_glpi="${_def_rep}"
+        fi
+        rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
+        DB_HOST="$db_host"
+        REP_GLPI="${rep_glpi%/}/"
+        DB_NAME="$db_name"
+        DB_USER="$db_user"
         # Si annulation ou ESC
         if [[ $rc -ne 0 ]]; then
-            warn "Formulaire annulé par l’utilisateur." 1>>"${WARNINGFILE}"
+            warn "Formulaire annulé par l’utilisateur." 1>>"${LOGFILE}"
             dialog --title "${MSG_INFO}" --msgbox "Installation annulée par l'utilisateur." 7 60
             exit 1
         fi
@@ -433,34 +461,6 @@ function prompt_install_options(){
         # Si tout est valide
         break
     done
-    # Nettoyage et assignation des valeurs finales
-    local rep_glpi db_host db_name db_user
-    IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
-    local _def_rep="${REP_GLPI:-/var/www/html/glpi/}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
-    rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
-    db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
-    db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
-    db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
-    rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
-    db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
-    db_name="${db_name//[^A-Za-z0-9_]/_}"
-    db_user="${db_user//[^A-Za-z0-9_]/_}"
-    [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
-    [ -z "$db_host" ] && db_host="$_def_db_host"
-    [ -z "$db_name" ] && db_name="$_def_db"
-    [ -z "$db_user" ] && db_user="$_def_user"
-    if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-        db_name="glpi_${db_name}"
-    fi
-    rep_glpi="${rep_glpi//\\//}"
-    if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
-        rep_glpi="${_def_rep}"
-    fi
-    rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
-    DB_HOST="$db_host"
-    REP_GLPI="${rep_glpi%/}/"
-    DB_NAME="$db_name"
-    DB_USER="$db_user"
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK tags
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
@@ -505,7 +505,7 @@ function check_install() {
             local rc=$?
             exec 3>&-
             if [[ $rc -ne 0 ]]; then
-                warn "Sélection de l'installation GLPI annulée."  1>>"${WARNINGFILE}"
+                warn "Sélection de l'installation GLPI annulée."  1>>"${LOGFILE}"
                 dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
                 exit 1
             fi
@@ -598,7 +598,7 @@ function network_info() {
         export IPADRESS
         info "$(date '+%F %T'): INFO: Interface détectée : ${INTERFACE}, IP : ${IPADRESS}" 1>> "${LOGFILE}"
     else
-    warn "Impossible de déterminer l’adresse IP du serveur via l’interface ${INTERFACE:-inconnue}" 1>>"${WARNINGFILE}"
+    warn "Impossible de déterminer l’adresse IP du serveur via l’interface ${INTERFACE:-inconnue}" 1>>"${LOGFILE}"
         IPADRESS="127.0.0.1"
         export IPADRESS
     fi
@@ -693,7 +693,7 @@ function install_packages(){
             sed -i 's/^\(;\?\)\(upgrade_type =\).*/\2 security/' /etc/dnf/automatic.conf
         } 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         if ! mkdir /etc/systemd/system/dnf-automatic.timer.d 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
-            warn "$MSG_DNF_AUTO_DIR_FAILED" 2>>"${WARNINGFILE}"
+            warn "$MSG_DNF_AUTO_DIR_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
         sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf 1>> "${LOGFILE}" 2>> "${ERRORFILE}" << 'EOF'
@@ -708,28 +708,28 @@ RandomizedDelaySec=60m
 Persistent=true
 EOF
         if ! systemctl enable --now dnf-automatic.timer 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
-            warn "$MSG_DNF_AUTO_ACTIVATE_FAILED" 2>>"${WARNINGFILE}"
+            warn "$MSG_DNF_AUTO_ACTIVATE_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
         if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
-            warn "$MSG_PHP_EXT_FAILED" 2>>"${WARNINGFILE}"
+            warn "$MSG_PHP_EXT_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE lamp..."
         if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
-            warn "$MSG_LAMP_FAILED" 2>>"${WARNINGFILE}"
+            warn "$MSG_LAMP_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
         sed -i 's/^\(;\?\)\(user =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         sed -i 's/^\(;\?\)\(group =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         info "$MSG_ACTIVE_START_WEB MariaDB, d'ENGINE X et de PHP-FPM"
         if ! systemctl enable --now mariadb nginx php-fpm 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
-            warn "$MSG_SERVICES_START_FAILED" 2>>"${WARNINGFILE}"
+            warn "$MSG_SERVICES_START_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
         if ! firewall-cmd --permanent --zone=public --add-service=http || ! firewall-cmd --reload 1>> "${LOGFILE}" 2>> "${ERRORFILE}"; then
-            warn "$MSG_FIREWALL_FAILED" 2>>"${WARNINGFILE}"
+            warn "$MSG_FIREWALL_FAILED" 2>>"${LOGFILE}"
             return 1
         fi
     fi
@@ -827,7 +827,7 @@ function setup_glpi(){
     mkdir -p /var/lib/glpi/files  1>> "${LOGFILE}" 2>> "${ERRORFILE}"
     mv -f "${REP_GLPI}"/files /var/lib/glpi 1>> "${LOGFILE}" 2>> "${ERRORFILE}" ||
     {
-        warn "Échec du déplacement du répertoire files de GLPI." 1>>"${WARNINGFILE}"
+        warn "Échec du déplacement du répertoire files de GLPI." 1>>"${LOGFILE}"
         return 1
     }
     sudo tee /etc/glpi/config/local_define.php  1>> "${LOGFILE}" 2>> "${ERRORFILE}" <<'EOF'
@@ -881,11 +881,11 @@ EOF
             systemctl reload apache2 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
             # Change permissions
             rights_glpi || { 
-                warn "Échec de la modification des droits pour GLPI." 1>>"${WARNINGFILE}"
+                warn "Échec de la modification des droits pour GLPI." 1>>"${LOGFILE}"
                 return 1
             }
         } 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || {
-            warn "Échec de la configuration d'Apache pour GLPI." 1>>"${WARNINGFILE}"
+            warn "Échec de la configuration d'Apache pour GLPI." 1>>"${LOGFILE}"
             return 1
         }
         # Installation de GLPI en ligne de commande
@@ -905,7 +905,7 @@ EOF
         if eval "sudo -u www-data php ${CMD}" 1>"${LOGFILE}" 2>> "${ERRORFILE}"; then
             info "Installation GLPI terminée avec succès." 1>> "${LOGFILE}"
         else
-            warn "Échec de l'installation GLPI via console." 1>>"${WARNINGFILE}"
+            warn "Échec de l'installation GLPI via console." 1>>"${LOGFILE}"
             return 1
         fi
         systemctl restart apache2
@@ -949,12 +949,12 @@ EOF
         sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         # Change permissions
         rights_glpi || { 
-            warn "Échec de la modification des droits pour GLPI." 1>>"${WARNINGFILE}"
+            warn "Échec de la modification des droits pour GLPI." 1>>"${LOGFILE}"
             return 1
         }
         # Recharger la configuration de Nginx
         systemctl reload nginx php-fpm 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || {
-            warn "Échec du rechargement de Nginx ou PHP-FPM." 1>>"${WARNINGFILE}"
+            warn "Échec du rechargement de Nginx ou PHP-FPM." 1>>"${LOGFILE}"
             return 1
         }
         sleep 2
@@ -965,7 +965,7 @@ EOF
     fi
     sleep 5
     rm -Rf "${REP_GLPI}"install/install.php 1>> "${LOGFILE}" 2>> "${ERRORFILE}" || {
-        warn "Échec de la suppression du script d'installation de GLPI." 1>>"${WARNINGFILE}"
+        warn "Échec de la suppression du script d'installation de GLPI." 1>>"${LOGFILE}"
         return 1
     }
     sleep 2
@@ -1017,7 +1017,7 @@ function source_os_release(){
         VERSION_ID=$(uname -r)
     fi
     if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
-    warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release"  1>>"${WARNINGFILE}"
+    warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release"  1>>"${LOGFILE}"
         return 1
     fi
     export ID VERSION_ID
@@ -1183,7 +1183,7 @@ function update() {
     ) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
     # Récupérer le code de retour du sous-shell
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    warn "Une tâche a échoué pendant l'exécution de update()." 1>>"${WARNINGFILE}"
+    warn "Une tâche a échoué pendant l'exécution de update()." 1>>"${LOGFILE}"
         return 1
     fi
     info "Toutes les tâches ont été exécutées avec succès." 1>> "${LOGFILE}"
@@ -1216,7 +1216,7 @@ function backup_glpi() {
     info "=== Démarrage de la sauvegarde GLPI ===" 1>> "${LOGFILE}"
     # Vérification préliminaire
     if [ -z "${REP_GLPI}" ] || [ -z "${REP_BACKUP_COMPRESS}" ] || [ -z "${INVOKING_HOME}" ]; then
-    warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" 1>>"${WARNINGFILE}"
+    warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" 1>>"${LOGFILE}"
         return 1
     fi
     # Lecture des informations MySQL
@@ -1224,7 +1224,7 @@ function backup_glpi() {
     DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     if [ -z "${DB_NAME}" ] || [ -z "${PASSWORD}" ]; then
-    warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt" 1>>"${WARNINGFILE}"
+    warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt" 1>>"${LOGFILE}"
         return 1
     fi
     # Détermination de l’outil de dump
@@ -1239,7 +1239,7 @@ function backup_glpi() {
     if ${MYSQLDUMP_CMD} -u root -p"${PASSWORD}" --databases "${DB_NAME}" > "${REP_BACKUP}/${BDD_BACKUP}" 2>> "${ERRORFILE}"; then
         info "${MSG_DUMP_SUCCESS}" 1>> "${LOGFILE}"
     else
-    warn "Échec de la sauvegarde de la base ${DB_NAME}" 1>>"${WARNINGFILE}"
+    warn "Échec de la sauvegarde de la base ${DB_NAME}" 1>>"${LOGFILE}"
         return 1
     fi
     # --- Sauvegarde des fichiers ---
@@ -1248,7 +1248,7 @@ function backup_glpi() {
         if [ -e "${SRC}" ]; then
             cp -Rf "${SRC}" "${REP_BACKUP}/" 1>> "${LOGFILE}" 2>> "${ERRORFILE}"
         else
-            warn "Source manquante : ${SRC}" 1>>"${WARNINGFILE}"
+            warn "Source manquante : ${SRC}" 1>>"${LOGFILE}"
         fi
     done
     info "${MSG_SITE_COPY_OK}" 1>> "${LOGFILE}"
@@ -1260,7 +1260,7 @@ function backup_glpi() {
         info "${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})" 1>> "${LOGFILE}"
         # Vérifier que le fichier compressé n'est pas vide
         if [ ! -s "${BACKUP_FILE}" ]; then
-            warn "Fichier de sauvegarde vide, suppression annulée." 1>>"${WARNINGFILE}"
+            warn "Fichier de sauvegarde vide, suppression annulée." 1>>"${LOGFILE}"
             return 1
         fi
         # Suppression sécurisée de l’ancien GLPI
@@ -1269,10 +1269,10 @@ function backup_glpi() {
             rm -rf "${REP_GLPI:?}/"
             info "Répertoire ${REP_GLPI} supprimé." 1>> "${LOGFILE}"
         else
-            warn "Répertoire GLPI introuvable : ${REP_GLPI}" 1>>"${WARNINGFILE}"
+            warn "Répertoire GLPI introuvable : ${REP_GLPI}" 1>>"${LOGFILE}"
         fi
     else
-    warn "${MSG_COMPRESS_BACKUP_FAILED}" 1>>"${WARNINGFILE}"
+    warn "${MSG_COMPRESS_BACKUP_FAILED}" 1>>"${LOGFILE}"
         return 1
     fi
     info "=== Sauvegarde GLPI terminée avec succès ===" 1>> "${LOGFILE}"
@@ -1286,7 +1286,7 @@ function update_glpi() {
     info "=== Début de la mise à jour GLPI ===" 1>>"${LOGFILE}" 
     # Vérification de base
     if [ -z "${REP_BACKUP}" ] || [ -z "${REP_GLPI}" ]; then
-    warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." 1>>"${WARNINGFILE}"
+    warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." 1>>"${LOGFILE}"
         return 1
     fi
     # --- Étape 1 : restauration des fichiers de configuration et des plugins ---
@@ -1305,10 +1305,10 @@ function update_glpi() {
                 if cp -Rf "${SRC}/"* "${DEST}/" 2>> "${ERRORFILE}"; then
                     info "Restauration de ${DIR} vers ${DEST} terminée." 1>>"${LOGFILE}"
                 else
-                    warn "Erreur lors de la copie de ${DIR}." 2>>"${WARNINGFILE}"
+                    warn "Erreur lors de la copie de ${DIR}." 2>>"${LOGFILE}"
                 fi
             else
-                warn "Répertoire ${SRC} vide, rien à copier." 2>>"${WARNINGFILE}"
+                warn "Répertoire ${SRC} vide, rien à copier." 2>>"${LOGFILE}"
             fi
         fi
     done

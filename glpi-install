@@ -52,10 +52,10 @@ else
     :
     # rm -f "${ERRORFILE}"
 fi
-if [ -s "${WARNINGFILE}" ]; then
-    dialog --title "Attention" --msgbox "Des avertissements ont été générés lors de l'installation. Veuillez consulter le fichier ${WARNINGFILE} pour plus de détails." 8 70
+if [ -s "${LOGFILE}" ]; then
+    dialog --title "Attention" --msgbox "Des avertissements ont été générés lors de l'installation. Veuillez consulter le fichier ${LOGFILE} pour plus de détails." 8 70
     else
     :
-    # rm -f "${WARNINGFILE}"
+    # rm -f "${LOGFILE}"
 fi
 exit 0
