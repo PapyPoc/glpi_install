@@ -153,7 +153,7 @@ else
     exit 1
 fi
 # Exécution sécurisée
-if bash "${REP_SCRIPT}/glpi_install/glpi-install" >> "${LOGFILE}" 2>&1; then
+if bash "${REP_SCRIPT}/glpi_install/glpi-install"; then
     info "Exécution réussie de ${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${LOGFILE}"
 else
     warn "Échec de l'exécution de ${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${ERRORFILE}"
