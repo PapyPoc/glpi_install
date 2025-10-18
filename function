@@ -320,7 +320,7 @@ function validate_glpi_path() {
     return 0
 }
 # Valide le nom d’hôte de la base de données
-validate_db_host() {
+function validate_db_host() {
     # Assure bash (sinon [[ =~ ]] casse)
     : "${BASH_VERSION:?Ce script doit être exécuté avec bash}"
     local host="$1"
