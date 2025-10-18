@@ -150,53 +150,6 @@ function run_task() {
     #    return 1
     #fi
 }
-# Exécuter les tâches avec barre de progression
-function glpi_install() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
-    declare -A tasks=(
-        ["$MSG_T01"]="update_distro"
-        ["$MSG_T02"]="install_packages"
-        ["$MSG_T03"]="network_info"
-        ["$MSG_T04"]="mariadb_configure"
-        ["$MSG_T05"]="install_glpi"
-        ["$MSG_T06"]="setup_glpi"
-        ["$MSG_T07"]="maj_user_glpi"
-        ["$MSG_T08"]="write_credentials"
-    )
-    local task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
-    local total_tasks=${#task_order[@]}
-    local task_index=0
-    (
-        
-        for task_key in "${task_order[@]}"; do
-            task_index=$((task_index + 1))
-            progress=$((task_index * 100 / total_tasks))
-            echo "$progress"
-            echo "XXX"
-            echo "$task_index/$total_tasks - $task_key : ${MSG_START}"
-            echo "XXX"
-            # Exécution et logging
-            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
-                echo "$progress"
-                echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_END}"
-                echo "XXX"
-                warn "$(date '+%F %T'): [OK] $task_key terminé." 1>>"${LOGFILE}"
-            else
-                echo "100"
-                echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
-                echo "XXX"
-                warn "$(date '+%F %T'): [ERREUR] $task_key a échoué." 1>>"${LOGFILE}"
-                dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
-                error "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
-                sleep 5
-                exit 1
-            fi
-        done
-    ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
-}
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>> "${LOGFILE}"
@@ -337,10 +290,10 @@ function validate_db_host() {
         set -- $clean_host
         for o in "$@"; do
             case $o in
-                *[!0-9]*) _dbhost_err "$clean_host"; return 1 ;;
+                *[!0-9]*) dbhost_err "$clean_host"; return 1 ;;
             esac
             [ "$o" -ge 0 ] 2>/dev/null && [ "$o" -le 255 ] 2>/dev/null || {
-                _dbhost_err "$clean_host"; return 1;
+                dbhost_err "$clean_host"; return 1;
             }
         done
         return 0
@@ -350,16 +303,15 @@ function validate_db_host() {
         return 0
     fi
     # 5️⃣ Sinon invalide
-    _dbhost_err "$clean_host"
+    dbhost_err "$clean_host"
     return 1
 }
 # 🔧 Helper message d'erreur + log
-_dbhost_err() {
+function dbhost_err() {
     v=$1
     dialog --msgbox "Hôte de base de données invalide : ${v}\n\nAutorisé : localhost, ::1/[::1], nom de domaine complet ou adresse IPv4." 10 70
     warn "Validation échouée : hôte DB invalide (${v})"
 }
-
 # Valide le nom de la base de données
 function validate_db_name() {
     local name="$1"
@@ -647,6 +599,54 @@ function check_install() {
         fi
     fi
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
+}
+# Exécuter les tâches avec barre de progression
+function glpi_install() {
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
+    declare -A tasks=(
+        ["$MSG_T01"]="update_distro"
+        ["$MSG_T02"]="install_packages"
+        ["$MSG_T03"]="network_info"
+        ["$MSG_T04"]="mariadb_configure"
+        ["$MSG_T05"]="install_glpi"
+        ["$MSG_T06"]="setup_glpi"
+        ["$MSG_T07"]="maj_user_glpi"
+        ["$MSG_T08"]="write_credentials"
+    )
+    local task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
+    local total_tasks=${#task_order[@]}
+    local task_index=0
+    (
+        
+        for task_key in "${task_order[@]}"; do
+            task_index=$((task_index + 1))
+            progress=$((task_index * 100 / total_tasks))
+            echo "$progress"
+            echo "XXX"
+            echo "$task_index/$total_tasks - $task_key"
+            debug "$(date '+%F %T'): [Start] $task_key start." 1>>"${LOGFILE}"
+            echo "XXX"
+            # Exécution et logging
+            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
+                echo "$progress"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key"
+                echo "XXX"
+                debug "$(date '+%F %T'): [OK] $task_key end." 1>>"${LOGFILE}"
+            else
+                echo "100"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+                echo "XXX"
+                warn "$(date '+%F %T'): [ERROR] $task_key error." 1>>"${LOGFILE}"
+                dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
+                error "$MSG_ERROR_INSTALL" 2>> "${ERRORFILE}"
+                sleep 5
+                exit 1
+            fi
+        done
+    ) | dialog --clean --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
 }
 # Mise à jour de la distribution
 function update_distro(){
