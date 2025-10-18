@@ -7,6 +7,9 @@ DEPENDENCIES="curl jq openssl sudo dialog git shellcheck"
 GIT="https://github.com/PapyPoc/glpi_install.git"
 BRANCHE="dev"
 ERRORFILE="${REP_SCRIPT}/error.log"
+LOGFILE="${REP_SCRIPT}/debug.log"
+: > "${LOGFILE}"    # Crée ou vide le fichier de log
+: >> "${ERRORFILE}" # Crée ou vide le fichier d'erreurs
 GLPI_INSTALL_SCRIPT="${REP_SCRIPT}/install.sh"
 export ORIG_USER REP_SCRIPT GIT BRANCHE
 function warn(){ 
@@ -145,7 +148,7 @@ else
 fi
 # Vérification d’existence
 if [ ! -f "${GLPI_INSTALL_SCRIPT}" ]; then
-    warn "Le script '${GLPI_INSTALL_SCRIPT}' est introuvable." | tee -a "${LOGFILE}"
+    warn "Le script '${GLPI_INSTALL_SCRIPT}' est introuvable." | tee -a "${ERRORFILE}"
     dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
            --msgbox "Erreur : le fichier '${GLPI_INSTALL_SCRIPT}' est introuvable." 7 70
     exit 1
@@ -153,18 +156,17 @@ fi
 # Vérification des permissions
 if [ ! -x "${GLPI_INSTALL_SCRIPT}" ]; then
     chmod +x "${GLPI_INSTALL_SCRIPT}" 2>/dev/null || {
-        warn "Impossible de rendre '${GLPI_INSTALL_SCRIPT}' exécutable (droits insuffisants)." | tee -a "${LOGFILE}"
+        warn "Impossible de rendre '${GLPI_INSTALL_SCRIPT}' exécutable (droits insuffisants)." | tee -a "${ERRORFILE}"
         dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
                --msgbox "Erreur : impossible d'exécuter '${GLPI_INSTALL_SCRIPT}'. Vérifiez vos droits." 7 70
         exit 1
     }
 fi
 # Exécution sécurisée
-debug "$(date '+%F %T') [$$][DEBUG] Lancement du script glpi-install" >> "${LOGFILE}"
 if bash "${GLPI_INSTALL_SCRIPT}" >> "${LOGFILE}" 2>&1; then
     info "Exécution réussie de ${GLPI_INSTALL_SCRIPT}" | tee -a "${LOGFILE}"
 else
-    warn "Échec de l'exécution de ${GLPI_INSTALL_SCRIPT}" | tee -a "${LOGFILE}"
+    warn "Échec de l'exécution de ${GLPI_INSTALL_SCRIPT}" | tee -a "${ERRORFILE}"
     dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
            --msgbox "Erreur : l'exécution du script '${GLPI_INSTALL_SCRIPT}' a échoué. Consultez le log." 8 70
     exit 1
