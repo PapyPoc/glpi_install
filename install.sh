@@ -76,7 +76,8 @@ ensure_dependencies(){
     return 0
 }
 on_error_install() {
-    echo "❌ Erreur : ${BASH_COMMAND} (code=$?)" >&2
+    echo "❌ Erreur : ${BASH_COMMAND} à la ligne ${BASH_LINENO[0]} (code=$?)" >> "${ERRORFILE}"
+    sleep 5
     exit 1
 }
 trap 'on_error_install' ERR
