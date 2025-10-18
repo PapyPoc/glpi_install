@@ -348,6 +348,7 @@ function validate_db_user() {
 # Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Début de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
+    clear
     local tags="" installed_version="" installed_dir=""
     installed_dir=$(find /var/www -type f -name 'console' -print -quit 2>/dev/null)
     if [ -n "${installed_dir}" ]; then
