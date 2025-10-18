@@ -160,8 +160,7 @@ if [ ! -x "${GLPI_INSTALL_SCRIPT}" ]; then
     }
 fi
 # Exécution sécurisée
-debug "$(date '+%F %T') [$$][DEBUG] Lancement de ${GLPI_INSTALL_SCRIPT}" >> "${LOGFILE}"
-
+debug "$(date '+%F %T') [$$][DEBUG] Lancement du script glpi-install" >> "${LOGFILE}"
 if bash "${GLPI_INSTALL_SCRIPT}" >> "${LOGFILE}" 2>&1; then
     info "Exécution réussie de ${GLPI_INSTALL_SCRIPT}" | tee -a "${LOGFILE}"
 else
