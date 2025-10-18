@@ -366,33 +366,21 @@ function prompt_install_options(){
         IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
         # Validation du repertoire d'installation commence par /var/www /srv /opt /usr/share et que le nom du répértoire contienne glpi
         if ! [[ "$REP_GLPI" =~ ^/(var/www(/html)?|srv|opt|usr/share)(/[[:alnum:]_.-]+)*/glpi([[:alnum:]_.-]*)/?$ ]]; then
-    dialog --msgbox "Répertoire d'installation invalide : $REP_GLPI\n\n\
-Le répertoire doit commencer par /var/www, /srv, /opt ou /usr/share\n\
-et contenir un dossier dont le nom inclut 'glpi'." 10 70
+        dialog --msgbox "Répertoire d'installation invalide : $REP_GLPI\n\n\
+        Le répertoire doit commencer par /var/www, /srv, /opt ou /usr/share\n\
+        et contenir un dossier dont le nom inclut 'glpi'." 10 70
             continue
-        fi
-        # Exemple de validation plus stricte (répertoire d'installation)
-        if ! [[ "$REP_GLPI" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
-            dialog --msgbox "Répertoire d’installation invalide : $REP_GLPI\nDoit commencer par /var/www/, /srv/, /opt/ ou /usr/share/ et contenir 'glpi'." 10 60
-            continue
-        fi  
-        # Exemple de validation nom de domaine, IP ou localhost 
-        if ! [[ "$DB_HOST" =~ ^(localhost|([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|([0-9]{1,3}\.){3}[0-9]{1,3})$ ]]; then
+        elif ! [[ "$DB_HOST" =~ ^(localhost|([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|([0-9]{1,3}\.){3}[0-9]{1,3})$ ]]; then
             dialog --msgbox "Hôte de base de données invalide : $DB_HOST" 8 50
             continue
-        fi
-        # Exemple de validation plus stricte (nom de la base de données)
-        if ! [[ "$DB_NAME" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
+        elif ! [[ "$DB_NAME" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
             dialog --msgbox "Nom de base de données invalide : $DB_NAME" 8 50
             continue
-        fi
-        # Exemple de validation plus stricte (utilisateur de la base de données)
-        if ! [[ "$DB_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        elif ! [[ "$DB_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
             dialog --msgbox "Nom d’utilisateur de base de données invalide : $DB_USER" 8 50
             continue
         fi  
-        # Si tout est correct → sortir de la boucle
-        break
+        break # Si tout est correct → sortir de la boucle
     done
     check=$(dialog --title "Vérification" --msgbox "Résumé de la configuration :\n\n\
         Répertoire GLPI : $REP_GLPI\n\
@@ -462,11 +450,41 @@ function check_install() {
     local FIND_REP_GLPI=""
     local installed_version=""
     local version_file=""
-    # Recherche du répertoire GLPI
+    local FIND_REP_GLPI_LIST=""
+    # Recherche des installations GLPI existantes
     for path in /var/www /srv /opt /usr/share; do
-        FIND_REP_GLPI=$(find "$path" -maxdepth 3 -type d -name "glpi" -print -quit 2>/dev/null)
-        [[ -n "$FIND_REP_GLPI" ]] && break
+        FOUND=$(find "$path" -maxdepth 3 -type d -name "glpi" 2>/dev/null)
+        [[ -n "$FOUND" ]] && FIND_REP_GLPI_LIST+="$FOUND"$'\n'
     done
+    # Si plusieurs répertoires GLPI trouvés, demander à l'utilisateur de choisir
+    if [[ -n "$FIND_REP_GLPI_LIST" ]]; then
+        IFS=$'\n' read -r -d '' -a glpi_dirs <<< "$(printf '%s\0' "$FIND_REP_GLPI_LIST")"
+        if [[ ${#glpi_dirs[@]} -gt 1 ]]; then
+            # Préparer les arguments pour dialog
+            args=()
+            number=1
+            first="ON"
+            for dir in "${glpi_dirs[@]}"; do
+                args+=("$number" "$dir" "$first")
+                first="OFF"
+                ((number++))
+            done
+            exec 3>&1
+            local selection
+            selection=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_GLPI_SELECT_INSTALLED}" --clear \
+            --radiolist "${MSG_GLPI_SELECT_INSTALLED_CHOIX}" 20 70 8 "${args[@]}" 3>&1 1>&2 2>&3)
+            local rc=$?
+            exec 3>&-
+            if [[ $rc -ne 0 ]]; then
+                warn "Sélection de l'installation GLPI annulée." 2>> "${WARNINGFILE}"
+                return 1
+            fi
+            local index=$((selection - 1))
+            FIND_REP_GLPI="${glpi_dirs[$index]}"
+        else
+            FIND_REP_GLPI="${glpi_dirs[0]}"
+        fi
+    fi
     # Si GLPI est déjà installé
     if [[ -n "${FIND_REP_GLPI}" ]]; then
         FIND_REP_GLPI="${FIND_REP_GLPI%/}/"
@@ -505,10 +523,10 @@ function check_install() {
                 exit 1
             fi
         fi
-    info "GLPI ${installed_version:-inconnue} déjà installé, aucune action requise." >> "${LOGFILE}"
     else
         dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
-        if glpi_install; then
+        glpi_install
+        if [ $? -eq 0 ]; then
             dialog --title "Information" --msgbox "L'installation de GLPI est terminée." 6 60
             info "Installation de GLPI ${VERSION_SELECT} terminée." >> "${LOGFILE}"
         else
