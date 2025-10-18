@@ -472,6 +472,33 @@ function prompt_install_options(){
     local WIDTH=$(( WIDTH + 6 ))
     local form
     local IFS
+    local rep_glpi db_host db_name db_user
+    local _def_rep="${REP_GLPI:-/var/www/html/glpi/}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
+    IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
+    rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
+    db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
+    db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
+    db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
+    rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
+    db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
+    db_name="${db_name//[^A-Za-z0-9_]/_}"
+    db_user="${db_user//[^A-Za-z0-9_]/_}"
+    [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
+    [ -z "$db_host" ] && db_host="$_def_db_host"
+    [ -z "$db_name" ] && db_name="$_def_db"
+    [ -z "$db_user" ] && db_user="$_def_user"
+    if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        db_name="glpi_${db_name}"
+    fi
+    rep_glpi="${rep_glpi//\\//}"
+    if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
+        rep_glpi="${_def_rep}"
+    fi
+    rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
+    REP_GLPI="${rep_glpi%/}/"
+    DB_HOST="$db_host"
+    DB_NAME="$db_name"
+    DB_USER="$db_user"
     while true; do
         exec 3>&1
         form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
@@ -484,7 +511,31 @@ function prompt_install_options(){
         rc=$?
         exec 3>&-
         # Transformer les lignes du formulaire en variables
-        IFS=$'\n' read -r REP_GLPI DB_HOST DB_NAME DB_USER <<< "$form"
+        IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
+        rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
+        db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
+        db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
+        db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
+        rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
+        db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
+        db_name="${db_name//[^A-Za-z0-9_]/_}"
+        db_user="${db_user//[^A-Za-z0-9_]/_}"
+        [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
+        [ -z "$db_host" ] && db_host="$_def_db_host"
+        [ -z "$db_name" ] && db_name="$_def_db"
+        [ -z "$db_user" ] && db_user="$_def_user"
+        if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            db_name="glpi_${db_name}"
+        fi
+        rep_glpi="${rep_glpi//\\//}"
+        if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
+            rep_glpi="${_def_rep}"
+        fi
+        rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
+        REP_GLPI="${rep_glpi%/}/"
+        DB_HOST="$db_host"
+        DB_NAME="$db_name"
+        DB_USER="$db_user"
         {
             echo "Réponses du formulaire : REP_GLPI='${REP_GLPI}', DB_HOST='${DB_HOST}', DB_NAME='${DB_NAME}', DB_USER='${DB_USER}'"
             echo "Code de retour du formulaire : rc='${rc}'"
@@ -516,34 +567,7 @@ function prompt_install_options(){
         # Si tout est valide
         break
     done
-    # Nettoyage et assignation des valeurs finales
-    local rep_glpi db_host db_name db_user
-    IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
-    local _def_rep="${REP_GLPI:-/var/www/html/glpi/}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
-    rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
-    db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
-    db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
-    db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
-    rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
-    db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
-    db_name="${db_name//[^A-Za-z0-9_]/_}"
-    db_user="${db_user//[^A-Za-z0-9_]/_}"
-    [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
-    [ -z "$db_host" ] && db_host="$_def_db_host"
-    [ -z "$db_name" ] && db_name="$_def_db"
-    [ -z "$db_user" ] && db_user="$_def_user"
-    if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-        db_name="glpi_${db_name}"
-    fi
-    rep_glpi="${rep_glpi//\\//}"
-    if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
-        rep_glpi="${_def_rep}"
-    fi
-    rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
-    REP_GLPI="${rep_glpi%/}/"
-    DB_HOST="$db_host"
-    DB_NAME="$db_name"
-    DB_USER="$db_user"
+    # Assignation des valeurs finales
     DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK tags
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
