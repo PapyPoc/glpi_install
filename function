@@ -370,7 +370,11 @@ function prompt_install_options(){
         Le répertoire doit commencer par /var/www, /srv, /opt ou /usr/share\n\
         et contenir un dossier dont le nom inclut 'glpi'." 10 70
             continue
-        elif ! { [[ "${DB_HOST}" =~ ^localhost$ ]] || [[ "${DB_HOST}" =~ ^([a-zA-Z0-9-]+\.)+[A-Za-z]{2,}$ ]] || [[ "${DB_HOST}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; }; then
+        elif ! {
+            [[ "${DB_HOST}" =~ ^localhost$ ]] || 
+            [[ "${DB_HOST}" =~ ^([a-zA-Z0-9-]+\.)+[A-Za-z]{2,}$ ]] || 
+            [[ "${DB_HOST}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+            }; then
             dialog --msgbox "Hôte de base de données invalide : ${DB_HOST}" 8 50
             continue
         elif ! [[ "${DB_NAME}" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
