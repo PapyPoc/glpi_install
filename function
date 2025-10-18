@@ -93,14 +93,14 @@ function on_error() {
     local cmd=$BASH_COMMAND
     local line=${BASH_LINENO[0]}
 
-    echo "❌ Erreur détectée : '${cmd}' (code=$rc) à la ligne $line" | tee -a "$ERRORFILE" >&2
+    echo "Erreur détectée : '${cmd}' (code=$rc) à la ligne $line" | tee -a "$ERRORFILE" >&2
     echo "Pile d’appels :" >> "$ERRORFILE"
     for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
         echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}" >> "$ERRORFILE"
     done
     echo "──────────────────────────────" >> "$ERRORFILE"
 
-    dialog --msgbox "💥 Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
+    dialog --msgbox "Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
     exit "$rc"
 }
 trap 'on_error' ERR
@@ -196,10 +196,10 @@ function load_language() {
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
     local syslang="${LC_ALL:-${LANG:-}}"
     if [[ $syslang =~ ^fr ]]; then
-        LANG_FILE="$REP_SCRIPT/lang/fr.lang"
+        LANG_FILE="$REP_SCRIPT/lang/fr_lang.ini"
         LANGUAGE="fr_FR"
     else
-        LANG_FILE="$REP_SCRIPT/lang/en.lang"
+        LANG_FILE="$REP_SCRIPT/lang/en_lang.ini"
         LANGUAGE="en_US"
     fi
     if [[ -f $LANG_FILE ]]; then

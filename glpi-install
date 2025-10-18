@@ -14,48 +14,49 @@ REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répert
 trap 'on_error' ERR
 # shellcheck disable=SC1091
 . "${REP_SCRIPT}/config" # Fichier de variable
+info "${MSG_LOADING_LANGUAGE}" >> "${LOGFILE}"
 load_language # Fichier de langue
 # Regarde si la distribution est conforme
+
 if ! check_distro; then
-   dialog --title "Erreur" --msgbox "La vérification de la distribution a échoué." 6 50
-    error "Vérification de la distribution échouée" 2>> "${ERRORFILE}"
+   dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISTRO_CHECK_FAILED}" 6 50
+    error "${MSG_DISTRO_CHECK_ERROR}" 2>> "${ERRORFILE}"
     exit 1
 fi
 if ! prompt_install_options; then # Demande les options d'installation
-    dialog --title "Erreur" --msgbox "La récupération des options d'installation a échoué." 6 70
-    error "Récupération des options d'installation échouée" 2>> "${ERRORFILE}"
+    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_PROMPT_OPTIONS_FAILED}" 6 70
+    error "${MSG_PROMPT_OPTIONS_ERROR}" 2>> "${ERRORFILE}"
     exit 1
 fi
 if ! check_install "${REP_GLPI}"; then # Vérifie l'installation de GLPI
-    dialog --title "Erreur" --msgbox "La vérification de l'installation de GLPI a échoué." 6 60
-    error "Vérification de l'installation de GLPI échouée" 2>> "${ERRORFILE}"
+    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_CHECK_INSTALL_FAILED}" 6 60
+    error "${MSG_CHECK_INSTALL_ERROR}" 2>> "${ERRORFILE}"
     exit 1
 fi
 if ! display_result; then # Affiche le résultat de l'installation
-    dialog --title "Erreur" --msgbox "L'affichage du résultat a échoué." 6 50
-    error "Affichage du résultat échoué" 2>> "${ERRORFILE}"
+    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISPLAY_RESULT_FAILED}" 6 50
+    error "${MSG_DISPLAY_RESULT_ERROR}" 2>> "${ERRORFILE}"
     exit 1
 fi
 if [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
     chmod 600 "${FICHIER_MSG}"
     chown root:root "${FICHIER_MSG}"
-    dialog --title "Information" --msgbox "Le fichier de sauvegarde ${FICHIER_MSG} a été créé avec succès." 6 60
+    dialog --title "${MSG_DIALOG_INFO_TITLE}" --msgbox "${MSG_BACKUP_CREATED}" 6 60
     echo "Fichier de sauvegarde : ${FICHIER_MSG}" 1>> "${LOGFILE}"
 else
-    dialog --title "Erreur" --msgbox "Le fichier de sauvegarde ${FICHIER_MSG} est introuvable." 6 60
+    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_BACKUP_NOT_FOUND}" 6 60
     error "$MSG_ERROR_FICHIER_MSG" 1>> "${ERRORFILE}"
     exit 1
 fi
 if [ -s "${ERRORFILE}" ]; then
-    dialog --title "Attention" --msgbox "Des erreurs sont survenues lors de l'installation. Veuillez consulter le fichier ${ERRORFILE} pour plus de détails." 8 70
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG}" 8 70
 else
-    :
-    # rm -f "${ERRORFILE}"
+    rm -f "${ERRORFILE}"
 fi
 if [ -s "${LOGFILE}" ]; then
-    dialog --title "Attention" --msgbox "Des avertissements ont été générés lors de l'installation. Veuillez consulter le fichier ${LOGFILE} pour plus de détails." 8 70
-    else
-    :
-    # rm -f "${LOGFILE}"
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG}" 8 70
+else
+    rm -f "${LOGFILE}"
 fi
+info "${MSG_END_SCRIPT}" >> "${LOGFILE}"
 exit 0
