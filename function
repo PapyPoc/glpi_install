@@ -335,17 +335,10 @@ function validate_db_host() {
         return 0
     fi
     # Sinon invalide
-    _dbhost_err "$clean_host"
+    dialog --msgbox "Hôte de base de données invalide : ${clean_host}\n\nAutorisé : localhost, ::1/[::1], nom de domaine complet ou adresse IPv4." 10 70
+    warn "Validation échouée : hôte DB invalide (${clean_host})"
     return 1
 }
-# 🔧 Helper message d'erreur + log
-_dbhost_err() {
-    v=$1
-    dialog --msgbox "Hôte de base de données invalide : ${v}\n\nAutorisé : localhost, ::1/[::1], nom de domaine complet ou adresse IPv4." 10 70
-    warn "Validation échouée : hôte DB invalide (${v})"
-}
-
-
 # Valide le nom de la base de données
 function validate_db_name() {
     local name="$1"
