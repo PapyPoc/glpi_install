@@ -88,7 +88,7 @@ function export_display_env() {
     done
 }
 # Gestion des erreurs avec trap
-on_error() {
+function on_error() {
     local rc=$?
     local cmd=$BASH_COMMAND
     local line=${BASH_LINENO[0]}
@@ -198,7 +198,7 @@ function glpi_install() {
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
-    ls /ddd
+    ls /ddd/gfgdf
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>> "${LOGFILE}"
     # Vérifie si le fichier os-release existe
     source_os_release
