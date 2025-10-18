@@ -43,7 +43,7 @@ if [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
     echo "Fichier de sauvegarde : ${FICHIER_MSG}" 1>> "${LOGFILE}"
 else
     dialog --title "Erreur" --msgbox "Le fichier de sauvegarde ${FICHIER_MSG} est introuvable." 6 60
-    error "Fichier de sauvegarde ${FICHIER_MSG} introuvable" 1>> "${ERRORFILE}"
+    error "$MSG_ERROR_FICHIER_MSG" 1>> "${ERRORFILE}"
     exit 1
 fi
 if [ -s "${ERRORFILE}" ]; then

@@ -1052,7 +1052,6 @@ function display_result() {
             MESSAGE+="${ligne}\n"
         done < "${ERRORFILE}"
         dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_NONOK}" --msgbox "${MSG_NONOK}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
-        error "$MSG_ERROR_FICHIER_MSG" 2>> "${ERRORFILE}"
         exit 1
     fi
     warn "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1>>"${LOGFILE}"
