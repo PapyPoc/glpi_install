@@ -7,14 +7,15 @@ DEPENDENCIES="curl jq openssl sudo dialog git shellcheck"
 GIT="https://github.com/PapyPoc/glpi_install.git"
 BRANCHE="dev"
 ERRORFILE="${REP_SCRIPT}/error.log"
+GLPI_INSTALL_SCRIPT="${REP_SCRIPT}/install.sh"
 export ORIG_USER REP_SCRIPT GIT BRANCHE
-warn(){ 
+function warn(){ 
     echo -e "\033[0;31m[ERREUR]\033[0m $1";
 }
-info(){
+function info(){
     echo -e "\033[0;36m[INFO]\033[0m $1";
 }
-ensure_dependencies(){
+function ensure_dependencies(){
     NEED_RESTART=0
     local missing=""
     local list
@@ -76,10 +77,20 @@ ensure_dependencies(){
     export NEED_RESTART
     return 0
 }
-on_error_install() {
-    echo "❌ Erreur : ${BASH_COMMAND} à la ligne ${BASH_LINENO[0]} (code=$?)" >> "${ERRORFILE}"
-    sleep 5
-    exit 1
+function on_error_install() {
+    local rc=$?
+    local cmd=$BASH_COMMAND
+    local line=${BASH_LINENO[0]}
+
+    echo "Erreur détectée : '${cmd}' (code=$rc) à la ligne $line" | tee -a "$ERRORFILE" >&2
+    echo "Pile d’appels :" >> "$ERRORFILE"
+    for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
+        echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}" >> "$ERRORFILE"
+    done
+    echo "──────────────────────────────" >> "$ERRORFILE"
+
+    dialog --msgbox "Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
+    exit "$rc"
 }
 trap 'on_error_install' ERR
 if source /etc/os-release 2>/dev/null; then
@@ -132,9 +143,30 @@ else
         exit 1
     }
 fi
-if chmod +x "${REP_SCRIPT}/glpi_install/glpi-install"; then
-    bash "${REP_SCRIPT}/glpi_install/glpi-install"
+# Vérification d’existence
+if [ ! -f "${GLPI_INSTALL_SCRIPT}" ]; then
+    warn "Le script '${GLPI_INSTALL_SCRIPT}' est introuvable." | tee -a "${LOGFILE}"
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
+           --msgbox "Erreur : le fichier '${GLPI_INSTALL_SCRIPT}' est introuvable." 7 70
+    exit 1
+fi
+# Vérification des permissions
+if [ ! -x "${GLPI_INSTALL_SCRIPT}" ]; then
+    chmod +x "${GLPI_INSTALL_SCRIPT}" 2>/dev/null || {
+        warn "Impossible de rendre '${GLPI_INSTALL_SCRIPT}' exécutable (droits insuffisants)." | tee -a "${LOGFILE}"
+        dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
+               --msgbox "Erreur : impossible d'exécuter '${GLPI_INSTALL_SCRIPT}'. Vérifiez vos droits." 7 70
+        exit 1
+    }
+fi
+# Exécution sécurisée
+debug "$(date '+%F %T') [$$][DEBUG] Lancement de ${GLPI_INSTALL_SCRIPT}" >> "${LOGFILE}"
+
+if bash "${GLPI_INSTALL_SCRIPT}" >> "${LOGFILE}" 2>&1; then
+    info "Exécution réussie de ${GLPI_INSTALL_SCRIPT}" | tee -a "${LOGFILE}"
 else
-    warn "Le script '${REP_SCRIPT}/glpi_install/glpi-install' n'est pas exécutable ou introuvable."
+    warn "Échec de l'exécution de ${GLPI_INSTALL_SCRIPT}" | tee -a "${LOGFILE}"
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
+           --msgbox "Erreur : l'exécution du script '${GLPI_INSTALL_SCRIPT}' a échoué. Consultez le log." 8 70
     exit 1
 fi
