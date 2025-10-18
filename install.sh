@@ -8,8 +8,6 @@ GIT="https://github.com/PapyPoc/glpi_install.git"
 BRANCHE="dev"
 ERRORFILE="${REP_SCRIPT}/error.log"
 LOGFILE="${REP_SCRIPT}/debug.log"
-: > "${LOGFILE}"    # Crée ou vide le fichier de log
-: >> "${ERRORFILE}" # Crée ou vide le fichier d'erreurs
 GLPI_INSTALL_SCRIPT="${REP_SCRIPT}/install.sh"
 export ORIG_USER REP_SCRIPT GIT BRANCHE
 function warn(){ 
@@ -146,6 +144,8 @@ else
         exit 1
     }
 fi
+: > "${LOGFILE}"   # Crée ou vide le fichier de log
+: > "${ERRORFILE}" # Crée ou vide le fichier d'erreurs
 # Vérification d’existence
 if [ ! -f "${GLPI_INSTALL_SCRIPT}" ]; then
     warn "Le script '${GLPI_INSTALL_SCRIPT}' est introuvable." | tee -a "${ERRORFILE}"
