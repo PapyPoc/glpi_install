@@ -152,12 +152,12 @@ if [ ! -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
 fi
 # Vérification des permissions
 if [ ! -x "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
-    chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null || {
+    chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
+else 
         warn "Impossible de rendre '${REP_SCRIPT}/glpi_install/glpi-install' exécutable (droits insuffisants)." | tee -a "${ERRORFILE}"
         dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
                --msgbox "Erreur : impossible d'exécuter '${REP_SCRIPT}/glpi_install/glpi-install'. Vérifiez vos droits." 7 70
         exit 1
-    }
 fi
 # Exécution sécurisée
 if bash "${REP_SCRIPT}/glpi_install/glpi-install" >> "${LOGFILE}" 2>&1; then
