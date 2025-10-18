@@ -20,33 +20,40 @@ if ! check_distro; then
    dialog --title "Erreur" --msgbox "La vérification de la distribution a échoué." 6 50
     error "Vérification de la distribution échouée" 2>> "${ERRORFILE}"
     exit 1
-elif ! prompt_install_options; then # Demande les options d'installation
+fi
+if ! prompt_install_options; then # Demande les options d'installation
     dialog --title "Erreur" --msgbox "La récupération des options d'installation a échoué." 6 70
     error "Récupération des options d'installation échouée" 2>> "${ERRORFILE}"
     exit 1
-elif ! check_install "${REP_GLPI}"; then # Vérifie l'installation de GLPI
+fi
+if ! check_install "${REP_GLPI}"; then # Vérifie l'installation de GLPI
     dialog --title "Erreur" --msgbox "La vérification de l'installation de GLPI a échoué." 6 60
     error "Vérification de l'installation de GLPI échouée" 2>> "${ERRORFILE}"
     exit 1
-elif ! display_result; then # Affiche le résultat de l'installation
+fi
+if ! display_result; then # Affiche le résultat de l'installation
     dialog --title "Erreur" --msgbox "L'affichage du résultat a échoué." 6 50
     error "Affichage du résultat échoué" 2>> "${ERRORFILE}"
     exit 1
-elif [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
+fi
+if [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
     chmod 600 "${FICHIER_MSG}"
     chown root:root "${FICHIER_MSG}"
-    echo ""
     dialog --title "Information" --msgbox "Le fichier de sauvegarde ${FICHIER_MSG} a été créé avec succès." 6 60
-    warn "${MSG_FILE_MSG}" 2>> "${LOGFILE}"
-    echo ""
-    echo "Fichier de sauvegarde : ${FICHIER_MSG}" 2>> "${LOGFILE}"
+    echo "Fichier de sauvegarde : ${FICHIER_MSG}" 1>> "${LOGFILE}"
 else
-    echo ""
     dialog --title "Erreur" --msgbox "Le fichier de sauvegarde ${FICHIER_MSG} est introuvable." 6 60
-    warn "${MSG_ERROR_INSTALL}"
-    echo ""
-    error "Le fichier de sauvegarde ${FICHIER_MSG} est introuvable." 2>> "${ERRORFILE}"
+    error "Le fichier de sauvegarde ${FICHIER_MSG} est introuvable." 1>> "${ERRORFILE}"
     exit 1
 fi
+if [ -s "${ERRORFILE}" ]; then
+    dialog --title "Attention" --msgbox "Des erreurs sont survenues lors de l'installation. Veuillez consulter le fichier ${ERRORFILE} pour plus de détails." 8 70
+else
+    rm -f "${ERRORFILE}"
+fi
+if [ -s "${WARNINGFILE}" ]; then
+    dialog --title "Attention" --msgbox "Des avertissements ont été générés lors de l'installation. Veuillez consulter le fichier ${WARNINGFILE} pour plus de détails." 8 70
+    else
+    rm -f "${WARNINGFILE}"
+fi
 exit 0
-# Fin du script
