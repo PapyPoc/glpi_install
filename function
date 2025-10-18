@@ -354,12 +354,12 @@ function prompt_install_options(){
     installed_dir=$(find /var/www -type f -name 'console' -print -quit 2>/dev/null)
     if [ -n "${installed_dir}" ]; then
         if grep -qi "glpi" "$installed_dir"; then
-            # installed_dir points to bin/console — déterminer le répertoire racine de GLPI
+            # Déterminer le répertoire racine de GLPI
             local installed_root
             installed_root=$(dirname "$(dirname "${installed_dir}")")
-            installed_version=$(sed -n '1p' "${installed_root}/version" 2>/dev/null || true)
+            installed_version=$(ls "${installed_root}"/version 2>/dev/null || true)
             installed_version="${installed_version//[[:space:]]/}"
-            # normaliser avec slash final
+            # Normaliser avec slash final
             REP_GLPI="${installed_root%/}/"
         else
             dialog --title "${MSG_INFO}" --msgbox "Erreur : le fichier '${installed_dir}' ne semble pas appartenir à GLPI." 7 60
@@ -383,10 +383,7 @@ function prompt_install_options(){
         warn "${MSG_GITHUB_VERSIONS_FAILED}"
         return 1
     fi
-    local args=()
-    local first=ON
-    local number=1
-    local version_map=()
+    local args=() first=ON number=1 version_map=()
     while IFS= read -r tag; do
         args+=("${number}" "GLPI ${tag}" "${first}")
         version_map+=("${tag}")
