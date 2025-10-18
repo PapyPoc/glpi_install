@@ -77,17 +77,34 @@ function export_display_env() {
 }
 # Gestion des erreurs avec trap
 function on_error() {
-    warn "${DEBUG_ENTRY}" >> "${WARNINGFILE}" 1>&2
-    local i
-    error "$(
-    echo "Erreur : ${BASH_COMMAND} (code=$?) à la ligne $LINENO"
-    echo "Pile d’appels :"
-    for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
-        echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}"
-    done;
-    )" 1>&2>> "${ERRORFILE}"
-    warn "${DEBUG_END}" >> "${WARNINGFILE}" 1>&2
-    exit 0
+    local rc=$?                # Code d’erreur exact
+    local line=$LINENO         # Ligne où l’erreur est survenue
+    local cmd=$BASH_COMMAND    # Commande ayant échoué
+    # Log entrée dans le gestionnaire
+    {
+        printf "%s [$$][DEBUG:%s] Entrée dans %s\n" \
+            "$(date '+%F %T')" "${FUNCNAME[0]:-main}" "${FUNCNAME[1]:-main}"
+    } >>"$WARNINGFILE" 2>&1
+    # Log d’erreur détaillé
+    {
+        echo "❌ Erreur détectée : '${cmd}' (code=$rc) à la ligne $line"
+        echo "Pile d’appels :"
+        for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
+            src="${BASH_SOURCE[$i]}"
+            ln="${BASH_LINENO[$((i-1))]:-?}"
+            echo "  ↳ ${FUNCNAME[$i]}() depuis ${src}:${ln}"
+        done
+        echo "───────────────────────────────"
+    } >>"$ERRORFILE" 2>&1
+    # Log de sortie du handler
+    {
+        printf "%s [$$][DEBUG:%s] Fin de %s\n" \
+            "$(date '+%F %T')" "${FUNCNAME[0]:-main}" "${FUNCNAME[1]:-main}"
+    } >>"$WARNINGFILE" 2>&1
+    # Affiche à l’écran et stoppe TOUT
+    echo -e "\n\033[1;31mERREUR FATALE : '${cmd}' (code=$rc)\nScript arrêté.\033[0m" >&2
+    # Quitter le script principal avec le même code d’erreur
+    exit "$rc"
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {

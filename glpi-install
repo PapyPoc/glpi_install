@@ -10,12 +10,11 @@ set -Eeuo pipefail
 clear # Nettoyer le terminal
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
 # shellcheck disable=SC1091
-source "${REP_SCRIPT}/function" # Fichier de fonction
+source "${REP_SCRIPT}/function" # Fichier de fonctions
+trap 'on_error' ERR INT TERM
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
-# Capture les erreurs et les interruptions pour les gérer
-trap 'on_error 1>&2>> "${ERRORFILE}"' ERR INT TERM
 # Regarde si la distribution est conforme
 if ! check_distro; then
    dialog --title "Erreur" --msgbox "La vérification de la distribution a échoué." 6 50
