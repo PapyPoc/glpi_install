@@ -389,13 +389,10 @@ function prompt_install_options(){
             continue
         fi
         # Hôte de base de données
-        if ! (
-            # shellcheck disable=SC2235
-            [[ "${DB_HOST}" =~ ^localhost$ ]] ||
-            [[ "${DB_HOST}" =~ ^\[::1\]$ ]] ||
-            [[ "${DB_HOST}" =~ ^([a-zA-Z0-9-]+\.)+[A-Za-z]{2,}$ ]] ||
-            [[ "${DB_HOST}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
-        ); then
+        if ! [[ $DB_HOST =~ ^localhost$ \
+            || $DB_HOST =~ ^\[::1\]$ \
+            || $DB_HOST =~ ^([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$ \
+            || $DB_HOST =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
             dialog --msgbox "Hôte de base de données invalide : ${DB_HOST}\n\nAutorisé : localhost, nom de domaine complet ou adresse IPv4." 10 70
             continue
         fi
