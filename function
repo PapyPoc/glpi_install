@@ -436,8 +436,9 @@ function prompt_install_options(){
     rc=$?
     exec 3>&-
     if [ "${rc}" -ne 0 ]; then
-        warn "Formulaire annulé."
-        return 1
+        dialog --title "${MSG_INFO}" --msgbox "Installation annulée par l'utilisateur." 7 60
+        warn "Formulaire annulé." >> "${WARNINGFILE}"
+        exit 1
     fi
     IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
     local _def_rep="${REP_GLPI:-/var/www/html/glpi/}"
