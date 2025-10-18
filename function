@@ -365,7 +365,7 @@ function prompt_install_options(){
             dialog --title "${MSG_INFO}" --msgbox "Erreur : le fichier '${installed_dir}' ne semble pas appartenir à GLPI." 7 60
             return 1
         fi
-    fi
+    fi 
     local api_url
     api_url="https://api.github.com/repos/glpi-project/glpi/tags"
     #local tags
