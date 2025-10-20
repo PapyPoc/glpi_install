@@ -94,7 +94,7 @@ function on_error_install() {
     exit "$rc"
 }
 trap 'on_error_install' ERR
-if source /etc/os-release 2>/dev/null; then
+if . /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
     info "Distribution détectée : ${DISTRO_ID^} ${VERSION_ID:-}"
 else

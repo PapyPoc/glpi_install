@@ -103,7 +103,6 @@ function on_error() {
     dialog --msgbox "Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
     exit "$rc"
 }
-trap 'on_error' ERR
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
     debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
@@ -516,15 +515,19 @@ function check_install() {
     local FIND_REP_GLPI=""
     local installed_version=""
     local version_file=""
-    local FIND_REP_GLPI_LIST=""
+    FIND_REP_GLPI_LIST=""
     # Recherche des installations GLPI existantes
     for path in /var/www /srv /opt /usr/share; do
-        FOUND=$(find "$path" -maxdepth 3 -type d -name "glpi" 2>/dev/null)
-        [[ -n "$FOUND" ]] && FIND_REP_GLPI_LIST+="$FOUND"$'\n'
+        FOUND=$(find "${path}" -maxdepth 3 -type d -name "*glpi*" 2>/dev/null)
+        [[ -n "$FOUND" ]] && FIND_REP_GLPI_LIST+="${FOUND}"$'\n'
     done
+    # Suppression du retour à la ligne final
+    FIND_REP_GLPI_LIST="${FIND_REP_GLPI_LIST%$'\n'}"
+    # echo "${FIND_REP_GLPI_LIST}"$'\n' # Pour Debug
     # Si plusieurs répertoires GLPI trouvés, demander à l'utilisateur de choisir
     if [[ -n "$FIND_REP_GLPI_LIST" ]]; then
-        IFS=$'\n' read -r -d '' -a glpi_dirs <<< "$(printf '%s\0' "$FIND_REP_GLPI_LIST")"
+        IFS= mapfile -d '' -t glpi_dirs <<< "$FIND_REP_GLPI_LIST"
+        # printf '%s\n' "${glpi_dirs[@]}" # Pour Debug
         if [[ ${#glpi_dirs[@]} -gt 1 ]]; then
             # Préparer les arguments pour dialog
             args=()
