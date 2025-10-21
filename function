@@ -1250,11 +1250,6 @@ function maintenance(){
 function backup_glpi() {
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     info "=== Démarrage de la sauvegarde GLPI ===" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-    # Vérification préliminaire
-    if [ -z "${REP_GLPI}" ] || [ -z "${REP_BACKUP_COMPRESS}" ] || [ -z "${INVOKING_HOME}" ]; then
-    warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-        return 1
-    fi
     # Lecture des informations MySQL
     local DB_NAME PASSWORD
     DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
@@ -1325,11 +1320,6 @@ function backup_glpi() {
 function update_glpi() {
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     info "=== Début de la mise à jour GLPI ===" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-    # Vérification de base
-    if [ -z "${REP_BACKUP}" ] || [ -z "${REP_GLPI}" ]; then
-    warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-        return 1
-    fi
     # Restauration des fichiers de configuration et des plugins
     info "${MSG_RESTORE_FILES}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     for DIR in config files plugins marketplace; do
