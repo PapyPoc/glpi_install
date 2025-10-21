@@ -671,30 +671,48 @@ function install_packages(){
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
-        if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "$MSG_PHP_EXT_FAILED"
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "$MSG_LAMP_FAILED"
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
-        if ! systemctl enable mariadb 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! systemctl enable mariadb \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "Échec de l'activation de MariaDB."
             return 1
         fi
-        if ! systemctl restart mariadb 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! systemctl restart mariadb \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "Échec du redémarrage de MariaDB."
             return 1
         fi
         info "$MSG_ACTIVE_START_WEB"
-        if ! systemctl enable apache2 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! systemctl enable apache2 \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "Échec de l'activation d'Apache2."
             return 1
         fi
-        if ! systemctl restart apache2 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! systemctl restart apache2 \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "Échec du redémarrage d'Apache2."
             return 1
         fi
@@ -705,32 +723,53 @@ function install_packages(){
             error "dnf not found, cannot install packages on RHEL-like branch" | tee -a "${ERRORFILE}"
             return 1
         fi
-        if ! dnf makecache --refresh 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! dnf makecache --refresh \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "$MSG_EPEL_FAILED"
             # continue; attempt install may still work
         fi
-        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "$MSG_EPEL_FAILED"
             return 1
         fi
-        if ! dnf module reset -y php nginx mariadb composer 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! dnf module reset -y php nginx mariadb composer \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "$MSG_MODULES_RESET_FAILED"
             return 1
         fi
-        if ! dnf module install -y php:8.2 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! dnf module install -y php:8.2 \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "$MSG_PHP_INSTALL_FAILED"
             return 1
         fi
-        if ! dnf module install -y nginx:1.24 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! dnf module install -y nginx:1.24 \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "$MSG_NGINX_INSTALL_FAILED"
             return 1
         fi
-        if ! dnf module install -y mariadb:10.11 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! dnf module install -y mariadb:10.11 \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "$MSG_MARIADB_INSTALL_FAILED"
             return 1
         fi
         info "$MSG_AUTO_UPDATES"
-        if ! dnf install dnf-automatic -y 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! dnf install dnf-automatic -y \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             error "$MSG_DNF_AUTO_FAILED"
             return 1
         fi
@@ -739,7 +778,10 @@ function install_packages(){
             sed -i 's/^\(;\?\)\(reboot =\).*/\2 when-needed/' /etc/dnf/automatic.conf
             sed -i 's/^\(;\?\)\(upgrade_type =\).*/\2 security/' /etc/dnf/automatic.conf
         }
-        if ! mkdir /etc/systemd/system/dnf-automatic.timer.d 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if ! mkdir /etc/systemd/system/dnf-automatic.timer.d \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             warn "$MSG_DNF_AUTO_DIR_FAILED"
             return 1
         fi
@@ -1369,10 +1411,13 @@ function update_glpi() {
     fi
     # Mise à jour de la base GLPI
     info "${MSG_UPDATE_GLPI_DATABASE}"
-    echo "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
+    debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
     rights_glpi "${REP_GLPI}"
     if check_distro_user "${REP_GLPI}"; then
-        if sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+        if sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2)
+        then
             dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_OK}" --msgbox "${MSG_UPDATE_GLPI_DATABASE_OK}" 0 0
             info "Mise à jour de la base GLPI réussie."
         else
