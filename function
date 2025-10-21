@@ -301,6 +301,10 @@ function prompt_install_options(){
                 dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
                 exit 1
             fi
+            # Convertir le numéro choisi en index du tableau (0-based)
+            index=$((FIND_REP_GLPI - 1))
+            # Récupérer le vrai chemin correspondant
+            FIND_REP_GLPI="${version_map[$index]}"
             # Vérification utilisateur/distro avant exécution
             if check_distro_user "${FIND_REP_GLPI}"; then
                 GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${FIND_REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
@@ -387,13 +391,15 @@ function prompt_install_options(){
             warn "Valeur de version invalide retournée : ${VERSION_SELECT}"
             return 1
         fi
-        local index=$((VERSION_SELECT - 1))
+        # Convertir le numéro choisi en index du tableau (0-based)
+        local index=""
+        index=$((VERSION_SELECT - 1))
+        # Récupérer le vrai tag correspondant
+        VERSION_SELECT="${version_map[$index]}"
         if [ $index -lt 0 ] || [ $index -ge ${#version_map[@]} ]; then
             warn "Index de version hors plage : ${index}"
             return 1
         fi
-        index=$((VERSION_SELECT - 1))
-        VERSION_SELECT="${version_map[$index]}"
         WIDTH_REP=$(( ${#MSG_PARAM_REP} ))
         WIDTH_DB_HOST=$(( ${#MSG_PARAM_DB_HOST} ))
         WIDTH_DB_NAME=$(( ${#MSG_PARAM_DB_NAME} ))
