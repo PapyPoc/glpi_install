@@ -514,7 +514,6 @@ function check_install() {
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
     local FIND_REP_GLPI=""
     local installed_version=""
-    local version_file=""
     FIND_REP_GLPI_LIST=""
     # Recherche des installations GLPI existantes
     for path in /var/www /srv /opt /usr/share; do
@@ -559,22 +558,13 @@ function check_install() {
     if [[ -n "${FIND_REP_GLPI}" ]]; then
         FIND_REP_GLPI="${FIND_REP_GLPI%/}/"
         echo "Répertoire GLPI trouvé : ${FIND_REP_GLPI}" | sudo tee -a "${DEBUGFILE}"
-        version_file="${FIND_REP_GLPI}/version"
-        installed_version=$(head -n1 "${version_file}" | tr -d '[:space:]')
         if [[ "$ID" == "debian" || "$ID" == "ubuntu" ]]; then
-            GLPI_CLI_VERSION=$(sudo -u www-data php "${FIND_REP_GLPI}/bin/console" --version 2>/dev/null | awk '{print $3}' || true)
+            installed_version=$(sudo -u www-data php "${FIND_REP_GLPI}/bin/console" --version 2>/dev/null | awk '{print $3}' || true)
         else
-            GLPI_CLI_VERSION=$(sudo -u nginx php "${FIND_REP_GLPI}/bin/console" --version 2>/dev/null | awk '{print $3}' || true)
+            installed_version=$(sudo -u nginx php "${FIND_REP_GLPI}/bin/console" --version 2>/dev/null | awk '{print $3}' || true)
         fi
-        if [[ -f "${version_file}" && -n "${GLPI_CLI_VERSION}" ]]; then
-            if [[ -z "${installed_version}" ]]; then
-                installed_version="${GLPI_CLI_VERSION}"
-            fi
-            info "Version GLPI détectée : ${installed_version}" 1>> "${DEBUGFILE}"
-        else
-            dialog --title "Erreur" --msgbox "Fichier version introuvable dans ${FIND_REP_GLPI}" 6 60
-            error "Fichier version introuvable dans ${FIND_REP_GLPI}" 2>> "${ERRORFILE}"
-        fi
+        info "Version GLPI détectée : ${installed_version}" 1>> "${DEBUGFILE}"
+        export FIND_REP_GLPI installed_version
         # --- Comparaison ---
         if [[ -n "${installed_version}" && -n "${VERSION_SELECT}" && "${installed_version}" != "${VERSION_SELECT}" ]]; then
             if [[ "$(printf '%s\n%s\n' "${installed_version}" "${VERSION_SELECT}" | sort -V | head -n1)" == "${installed_version}" ]]; then
@@ -582,15 +572,12 @@ function check_install() {
                 if update; then
                     dialog --title "Information" --msgbox "Mise à jour GLPI ${installed_version} → ${VERSION_SELECT} terminée." 6 60
                     info "Mise à jour GLPI ${installed_version} → ${VERSION_SELECT} terminée." 1>> "${DEBUGFILE}"
+                    return 0
                 else
                     dialog --title "Erreur" --msgbox "La mise à jour de GLPI a échoué ou a été annulée." 6 60
                     error "Échec de la mise à jour GLPI." 2>> "${ERRORFILE}"
                     exit 1
                 fi
-            else
-                dialog --title "Information" --sleep 5 --infobox "\nVersion actuelle (${installed_version}) plus récente\nque la cible (${VERSION_SELECT})" 10 50
-                info "Version actuelle (${installed_version}) plus récente que la cible (${VERSION_SELECT})." 1>> "${DEBUGFILE}"
-                exit 1
             fi
         fi
     else
@@ -598,6 +585,7 @@ function check_install() {
         if glpi_install; then
             dialog --title "Information" --msgbox "L'installation de GLPI est terminée." 6 60
             info "Installation de GLPI ${VERSION_SELECT} terminée." 1>> "${DEBUGFILE}"
+            return 0
         else
             dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
             error "Échec de l'installation GLPI."
