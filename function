@@ -267,8 +267,9 @@ function prompt_install_options(){
             done <<< "$FOUND"
         fi
     done
-    # Si plusieurs répertoires GLPI trouvés, demander à l'utilisateur de choisir
+    # Si pas de répertoires GLPI trouvés, lancer l'installation normale
     if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
+        # Si un ou plusieurs répertoires GLPI trouvés, demander à l'utilisateur de choisir le répertoire et la version à mettre à niveau
         if [[ "${#glpi_dirs[@]}" -gt 1 ]]; then
             # Préparer les arguments pour dialog
             args=()
@@ -282,28 +283,6 @@ function prompt_install_options(){
                 first="OFF"
                 ((number++))
             done
-            # Menu de sélection d’installation GLPI
-            exec 3>&1
-            FIND_REP_GLPI=$(dialog \
-                --backtitle "$MSG_TITRE" \
-                --title "${MSG_GLPI_SELECT_INSTALLED}" \
-                --radiolist "${MSG_GLPI_SELECT_INSTALLED_CHOIX}" 20 70 8 \
-                "${args[@]}" \
-                3>&1 1>&2 2>&3)
-            rc=$?
-            exec 3>&-
-            sleep 5
-            if [[ $rc -ne 0 ]]; then
-                { warn "Sélection de l'installation GLPI annulée."; } \
-                    1> >(tee -a "${DEBUGFILE}") \
-                    2> >(tee -a "${ERRORFILE}" >&2)
-                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
-                exit 1
-            fi
-            # Convertir le numéro choisi en index du tableau (0-based)
-            index=$((FIND_REP_GLPI - 1))
-            # Récupérer le vrai chemin correspondant
-            REP_GLPI="${version_map[$index]}"
             # Vérification utilisateur/distro avant exécution
             if check_distro_user "${REP_GLPI}"; then
                 GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
@@ -329,15 +308,37 @@ function prompt_install_options(){
             done
             # Préparation du menu de sélection de version GLPI
             args=()
-            version_map=()
+            version_tags=()
             number=1
             first="ON"
             for tag in "${newer_tags[@]}"; do
                 args+=("${number}" "GLPI ${tag}" "${first}")
-                version_map+=("${tag}")
+                version_tags+=("${tag}")
                 first="OFF"
                 ((number++))
             done
+            # Menu de sélection d’installation GLPI
+            exec 3>&1
+            FIND_REP_GLPI=$(dialog \
+                --backtitle "$MSG_TITRE" \
+                --title "${MSG_GLPI_SELECT_INSTALLED}" \
+                --radiolist "${MSG_GLPI_SELECT_INSTALLED_CHOIX}" 20 70 8 \
+                "${args[@]}" \
+                3>&1 1>&2 2>&3)
+            rc=$?
+            exec 3>&-
+            sleep 5
+            if [[ $rc -ne 0 ]]; then
+                { warn "Sélection de l'installation GLPI annulée."; } \
+                    1> >(tee -a "${DEBUGFILE}") \
+                    2> >(tee -a "${ERRORFILE}" >&2)
+                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
+                exit 1
+            fi
+            # Convertir le numéro choisi en index du tableau (0-based)
+            index=$((FIND_REP_GLPI - 1))
+            # Récupérer le vrai chemin correspondant
+            REP_GLPI="${version_tags[$index]}"
             # Sélecteur de version GLPI
             exec 3>&1
             VERSION_SELECT=$(dialog \
@@ -1001,7 +1002,7 @@ EOF
                 return 1
             fi
             # Change permissions
-            if ! rights_glpi; then
+            if ! rights_glpi "${REP_GLPI}"; then
                 warn "Échec de la modification des droits pour GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                 return 1
             fi
@@ -1046,7 +1047,7 @@ EOF
             chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi
             sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini
             # Change permissions
-            if ! rights_glpi; then
+            if ! rights_glpi "${REP_GLPI}"; then
                 warn "Échec de la modification des droits pour GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                 return 1
             fi
@@ -1131,6 +1132,7 @@ function source_os_release(){
 }
 function rights_glpi(){
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    REP_GLPI="${1:-/var/www/html/glpi}"
     # Changer les droits des répertoires et fichiers
     info "$MSG_RIGHTS_GLPI" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     find "${REP_GLPI}" -type d -exec chmod 755 {} \; 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
@@ -1366,7 +1368,7 @@ function backup_glpi() {
     fi
     info "=== Sauvegarde GLPI terminée avec succès ===" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     sleep 2
-    export REP_BACKUP
+    export REP_BACKUP REP_GLPI
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Mise à jour de GLPI
@@ -1422,7 +1424,7 @@ function update_glpi() {
     fi
     # Mise à jour de la base GLPI
     info "${MSG_UPDATE_GLPI_DATABASE}"
-    rights_glpi
+    rights_glpi "${REP_GLPI}"
     if check_distro_user "${REP_GLPI}"; then
         if sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
             dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_OK}" --msgbox "${MSG_UPDATE_GLPI_DATABASE_OK}" 0 0
