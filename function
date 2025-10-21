@@ -564,42 +564,6 @@ function validate_db_user() {
         return 1
     fi
 }
-# Vérifie si GLPI est installé ou pas
-function check_install() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-    # Si GLPI est déjà installé
-    if [[ -n "${FIND_REP_GLPI}" ]]; then
-        FIND_REP_GLPI="${FIND_REP_GLPI%/}/"
-        echo "Répertoire GLPI trouvé : ${FIND_REP_GLPI}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-        # --- Comparaison ---
-        if [[ -n "${GLPI_CLI_VERSION}" && -n "${VERSION_SELECT}" && "${GLPI_CLI_VERSION}" != "${VERSION_SELECT}" ]]; then
-            if [[ "$(printf '%s\n%s\n' "${GLPI_CLI_VERSION}" "${VERSION_SELECT}" | sort -V | head -n1)" == "${GLPI_CLI_VERSION}" ]]; then
-                dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_UPDATE}\n\nGLPI ${GLPI_CLI_VERSION} → ${VERSION_SELECT}" 10 50
-                if update; then
-                    dialog --title "Information" --msgbox "Mise à jour GLPI ${GLPI_CLI_VERSION} → ${VERSION_SELECT} terminée." 6 60
-                    info "Mise à jour GLPI ${GLPI_CLI_VERSION} → ${VERSION_SELECT} terminée." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-                    return 0
-                else
-                    dialog --title "Erreur" --msgbox "La mise à jour de GLPI a échoué ou a été annulée." 6 60
-                    error "Échec de la mise à jour GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-                    exit 1
-                fi
-            fi
-        else
-            dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
-            if glpi_install; then
-                dialog --title "Information" --msgbox "L'installation de GLPI est terminée." 6 60
-                info "Installation de GLPI ${VERSION_SELECT} terminée." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-                return 0
-            else
-                dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
-                error "Échec de l'installation GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-                exit 1
-            fi
-        fi
-    fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-}
 # Exécuter les tâches avec barre de progression
 function glpi_install() {
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
