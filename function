@@ -361,7 +361,7 @@ function prompt_install_options(){
             echo "Version GLPI installée : ${GLPI_CLI_VERSION}" # Pour Debug
             echo "Version GLPI sélectionnée pour mise à jour : ${VERSION_SELECT}" # Pour Debug
             info "${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${FIND_REP_GLPI}"
-            dialog --title "${MSG_INFO}" --msgbox "${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${FIND_REP_GLPI}\n\n \
+            dialog --title "${MSG_INFO}" --msgbox "\n\n${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${FIND_REP_GLPI}\n\n \
                 ${MSG_UPGRADE1}${GLPI_CLI_VERSION}${MSG_UPGRADE2}${VERSION_SELECT}" 10 100
             export VERSION_SELECT FIND_REP_GLPI GLPI_CLI_VERSION
             # Lancement de la mise à jour
