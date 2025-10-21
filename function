@@ -303,10 +303,10 @@ function prompt_install_options(){
             # Convertir le numéro choisi en index du tableau (0-based)
             index=$((FIND_REP_GLPI - 1))
             # Récupérer le vrai chemin correspondant
-            FIND_REP_GLPI="${version_map[$index]}"
+            REP_GLPI="${version_map[$index]}"
             # Vérification utilisateur/distro avant exécution
-            if check_distro_user "${FIND_REP_GLPI}"; then
-                GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${FIND_REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
+            if check_distro_user "${REP_GLPI}"; then
+                GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
             fi
             # Récupération des versions GLPI disponibles sur GitHub
             tags=""
@@ -357,16 +357,19 @@ function prompt_install_options(){
             index=$((VERSION_SELECT - 1))
             # Récupérer le vrai tag correspondant
             VERSION_SELECT="${version_map[$index]}"
-            echo "Répertoire GLPI sélectionné : ${FIND_REP_GLPI}" # Pour Debug
+            info "${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${REP_GLPI}"
+            dialog --title "${MSG_INFO}" --msgbox "\n${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${REP_GLPI}\n\n${MSG_UPGRADE1}${GLPI_CLI_VERSION}${MSG_UPGRADE2}${VERSION_SELECT}" 10 100
+            export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
+            export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME
+            echo "Répertoire GLPI sélectionné : ${REP_GLPI}" # Pour Debug
             echo "Version GLPI installée : ${GLPI_CLI_VERSION}" # Pour Debug
             echo "Version GLPI sélectionnée pour mise à jour : ${VERSION_SELECT}" # Pour Debug
-            info "${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${FIND_REP_GLPI}"
-            dialog --title "${MSG_INFO}" --msgbox "\n${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${FIND_REP_GLPI}\n\n${MSG_UPGRADE1}${GLPI_CLI_VERSION}${MSG_UPGRADE2}${VERSION_SELECT}" 10 100
-            export VERSION_SELECT FIND_REP_GLPI GLPI_CLI_VERSION
+            echo "URL de téléchargement : ${DOWNLOADLINK}" # Pour Debug
+            echo "Répertoire de sauvegarde : ${REP_BACKUP_COMPRESS}" # Pour Debug
+            echo "Répertoire d'invocation : ${INVOKING_HOME}" # Pour Debug
+            sleep 15
             # Lancement de la mise à jour
-            sleep 50
             update
-
         fi
     else
         tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
