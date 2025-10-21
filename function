@@ -354,6 +354,7 @@ function prompt_install_options(){
                 exit 1
             fi
             # Convertir le numéro choisi en index du tableau (0-based)
+            local index=""
             index=$((VERSION_SELECT - 1))
             # Récupérer le vrai tag correspondant
             VERSION_SELECT="${version_map[$index]}"
@@ -367,6 +368,7 @@ function prompt_install_options(){
             # Lancement de la mise à jour
             sleep 50
             update
+
         fi
     else
         tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
