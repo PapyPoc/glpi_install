@@ -353,23 +353,21 @@ function prompt_install_options(){
                 warn "Sélection de la version annulée."
                 exit 1
             fi
-            # Vérification du choix utilisateur
-            if ! [[ "${VERSION_SELECT}" =~ ^[0-9]+$ ]]; then
-                warn "Valeur de version invalide retournée : ${VERSION_SELECT}"
-                exit 1
-            fi
-            local index=$((VERSION_SELECT - 1))
-            if (( index < 0 || index >= ${#version_map[@]} )); then
-                warn "Index de version hors plage : ${index}"
-                exit 1
-            fi
+            # Convertir le numéro choisi en index du tableau (0-based)
+            index=$((VERSION_SELECT - 1))
+            # Récupérer le vrai tag correspondant
+            VERSION_SELECT="${version_map[$index]}"
+            echo "Répertoire GLPI sélectionné : ${FIND_REP_GLPI}" # Pour Debug
+            echo "Version GLPI installée : ${GLPI_CLI_VERSION}" # Pour Debug
+            echo "Version GLPI sélectionnée pour mise à jour : ${VERSION_SELECT}" # Pour Debug
+            sleep 5
+            dialog --title "${MSG_INFO}" --msgbox "${MSG_UPGRADE} - ${GLPI_CLI_VERSION}" 10 70
+            info "${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${FIND_REP_GLPI}"
+            export VERSION_SELECT FIND_REP_GLPI GLPI_CLI_VERSION
+            # Lancement de la mise à jour
+            sleep 50
+            update
         fi
-        echo "Répertoire GLPI sélectionné : ${FIND_REP_GLPI}" # Pour Debug
-        echo "Version GLPI installée : ${GLPI_CLI_VERSION}" # Pour Debug
-        echo "Version GLPI sélectionnée pour mise à jour : ${VERSION_SELECT}" # Pour Debug
-        sleep 5
-        dialog --title "${MSG_INFO}" --msgbox "${MSG_UPGRADE} - ${GLPI_CLI_VERSION}" 10 70
-        info "${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${FIND_REP_GLPI}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     else
         tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
         local args=() first=ON number=1 version_map=()
@@ -483,7 +481,6 @@ function prompt_install_options(){
         export DB_HOST REP_GLPI DB_NAME DB_USER VERSION_SELECT
     fi
     # Assignation des valeurs finales
-    
     export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
