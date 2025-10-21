@@ -1402,7 +1402,6 @@ function update_glpi() {
     fi
     # Suppression de la sauvegarde
     info "${MSG_REMOVE_OLD_FILES}"
-    info "${MSG_REMOVE_OLD_FILES}"
     if [ -d "${REP_BACKUP}" ]; then
         rm -rf "${REP_BACKUP:?}"
         info "Répertoire ${REP_BACKUP} supprimé avec succès."
