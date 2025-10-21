@@ -105,94 +105,82 @@ function on_error() {
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
-    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Définir les variables de tâche
     local task_key="$1" task_cmd="$2" index="$3" total="$4"
     # Afficher les informations de la tâche
     info "Tâche: $index/$total - $task_key"
     info "$MSG_COMMAND: $task_cmd"
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" | tee -a "${DEBUGFILE}"
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): START: $task_cmd" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # --- Exécution de la commande ---
     local output exit_code
     output=$(eval "$task_cmd" 2>&1)
     exit_code=$?
     # --- Résultat ---
     if (( exit_code == 0 )); then
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): SUCCESS: $task_cmd" | tee -a "${DEBUGFILE}"
-        echo "$output" | tee -a "${DEBUGFILE}"
+        echo "$output" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     else
-        echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd" | tee -a "${DEBUGFILE}"
+        echo "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         echo "$output" | tee -a "$ERRORFILE"
         warn "$MSG_ERROR_TASK: $task_key (exit=$exit_code)" | tee -a "$ERRORFILE"
-        debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (échec) de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+        debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (échec) de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return $exit_code
     fi
-    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     return 0
-    #local task_key="$1"
-    #local task_cmd="$2"
-    #local index="$3"
-    #local total="$4"
-    #info "Tâche: $index/$total - $task_key"
-    #info "$MSG_COMMAND: $task_cmd"
-    #debug "$(date '+%F %T') [INFO] START: $task_cmd" 1 >>"${DEBUGFILE}"
-    #local output
-    #output=$(eval "$task_cmd" )
-    #local exit_code=$?
-    #echo "Code d'exit : $exit_code" 1>> "${DEBUGFILE}"
-    #if [[ $exit_code -eq 0 ]]; then
-    #    info "$(date '+%F %T') [INFO] SUCCESS: $task_cmd" 1>> "${DEBUGFILE}"
-    #    echo "$output" 1>> "${DEBUGFILE}"
-    #elif [[ $exit_code -ne 0 ]]; then
-    #    error "$(date '+%F %T') [ERROR] $MSG_ERROR_TASK: $task_key (exit=$exit_code)" 1>> "${ERRORFILE}"
-    #    echo "$output" 2>> "${ERRORFILE}"
-    #    return 1
-    #fi
+}
+# Vérifie si la version est compatible
+function compatible() {
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    local version="$1"
+    local -n versions_array="$2"
+    [[ ${versions_array[*]} =~ ${version} ]]
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
 function check_distro(){
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>> "${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Vérifie si le fichier os-release existe
     source_os_release
     # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
     if [[ "${ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
         if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
-            info "$MSG_DISTRO_OK" 1>> "${DEBUGFILE}"
+            info "$MSG_DISTRO_OK" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 0
         else
-            warn "$MSG_DISTRO_NONOK"  >>"${DEBUGFILE}"
-            warn "$MSG_FORCE_DISTRO"  >>"${DEBUGFILE}"
+            warn "$MSG_DISTRO_NONOK" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+            warn "$MSG_FORCE_DISTRO" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             if [ -t 0 ]; then
                 info "$MSG_FORCE_DISTRO_QUESTION"
                 read -r RESPONSE
                 case $RESPONSE in
                     O|o|Y|y)
-                        info "$MSG_CONTINUING" 1>> "${DEBUGFILE}"
+                        info "$MSG_CONTINUING" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                         ;;
                     N|n)
-                        info "$MSG_EXITING" 1>> "${DEBUGFILE}"
+                        info "$MSG_EXITING" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                         return 1
                         ;;
                     *)
-                        warn "$MSG_INVALID_ANSWER"  >>"${DEBUGFILE}"
+                        warn "$MSG_INVALID_ANSWER" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                         return 1
                         ;;
                 esac
             else
-                warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO"  >>"${DEBUGFILE}"
+                warn "$MSG_SCRIPT_NON_INTERACTIVE_DISTRO" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                 return 1
             fi
         fi
         export VERSION_ID ID
     else
-        warn "$MSG_DISTRO_INVALID"  >>"${DEBUGFILE}"
+        warn "$MSG_DISTRO_INVALID" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Chargement du fichier de langue
 function load_language() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     local syslang="${LC_ALL:-${LANG:-}}"
     if [[ $syslang =~ ^fr ]]; then
         LANG_FILE="$REP_SCRIPT/lang/fr_lang.ini"
@@ -253,7 +241,246 @@ function load_language() {
     else
         warn "Language file not found: $LANG_FILE"
     fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+}
+function check_distro_user(){
+    local rep=$1
+    WEB_USER=$(stat -c '%U' "${rep}")
+    export WEB_USER
+}
+# Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
+function prompt_install_options(){
+    clear
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Début de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    local FIND_REP_GLPI=""
+    # Recherche des installations GLPI existantes
+    local glpi_dirs=()
+    # Parcours des répertoires standards à explorer
+    for path in ${PATHS_TO_CHECK}; do
+        # Recherche des dossiers contenant "glpi" jusqu’à 3 niveaux de profondeur
+        FOUND=$(find "${path}" -maxdepth 3 -type d -name "*glpi*" 2>/dev/null)
+        # Si un ou plusieurs répertoires sont trouvés, on les ajoute au tableau
+        if [[ -n "$FOUND" ]]; then
+            # On lit chaque ligne de la sortie de find et on l’ajoute au tableau
+            while IFS= read -r dir; do
+                glpi_dirs+=("$dir")
+            done <<< "$FOUND"
+        fi
+    done
+    echo "${glpi_dirs[@]}" # Pour Debug
+    # Si plusieurs répertoires GLPI trouvés, demander à l'utilisateur de choisir
+    if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
+        if [[ "${#glpi_dirs[@]}" -gt 1 ]]; then
+            # Préparer les arguments pour dialog
+            args=()
+            version_map=()
+            number=1
+            first="ON"
+            # Correction : boucle while → for (syntaxe correcte)
+            for dir in "${glpi_dirs[@]}"; do
+                args+=("${number}" "GLPI ${dir}" "${first}")
+                version_map+=("${dir}")
+                first="OFF"
+                ((number++))
+            done
+            # Menu de sélection d’installation GLPI
+            exec 3>&1
+            FIND_REP_GLPI=$(dialog \
+                --backtitle "$MSG_TITRE" \
+                --title "${MSG_GLPI_SELECT_INSTALLED}" \
+                --radiolist "${MSG_GLPI_SELECT_INSTALLED_CHOIX}" 20 70 8 \
+                "${args[@]}" \
+                3>&1 1>&2 2>&3)
+            rc=$?
+            exec 3>&-
+            if [[ $rc -ne 0 ]]; then
+                { warn "Sélection de l'installation GLPI annulée."; } \
+                    1> >(tee -a "${DEBUGFILE}") \
+                    2> >(tee -a "${ERRORFILE}" >&2)
+                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
+                exit 1
+            fi
+            # Vérification utilisateur/distro avant exécution
+            if check_distro_user "${FIND_REP_GLPI}"; then
+                GLPI_CLI_VERSION=$(
+                    sudo -u "${WEB_USER}" php -d variables_order=EGPCS "${FIND_REP_GLPI}/bin/console" --no-ansi --version \
+                        1> >(tee -a "${DEBUGFILE}") \
+                        2> >(tee -a "${ERRORFILE}" >&2) |
+                    awk '{print $3}' || true
+                )
+            fi
+            # Récupération des versions GLPI disponibles sur GitHub
+            tags=""
+            api_url="https://api.github.com/repos/glpi-project/glpi/tags"
+            tags=$(curl -s "${api_url}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
+            # Récupère les tags au format X.Y.Z
+            tags=$(curl -s "${api_url}" \
+                | jq -r '.[].name' \
+                | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+                | grep -v -E '(rc|beta|alpha)' \
+                | uniq \
+                | head -n 16) 
+            # Filtrage : ne garder que les versions avant GLPI_CLI_VERSION (donc plus récentes) ---
+            newer_tags=()
+            for tag in ${tags}; do
+                echo "Comparing installed version ${GLPI_CLI_VERSION} with tag ${tag}"
+                if [[ "${tag}" == "${GLPI_CLI_VERSION}" ]]; then
+                    break  # On s'arrête dès qu'on atteint la version installée
+                fi
+                newer_tags+=("${tag}")
+            done
+            # Préparation du menu de sélection de version GLPI
+            args=()
+            version_map=()
+            number=1
+            first="ON"
+            for tag in "${newer_tags[@]}"; do
+                args+=("${number}" "GLPI ${tag}" "${first}")
+                version_map+=("${tag}")
+                first="OFF"
+                ((number++))
+            done
+            # Sélecteur de version GLPI
+            exec 3>&1
+            VERSION_SELECT=$(dialog \
+                --backtitle "$MSG_TITRE" \
+                --title "${MSG_PARAM_VERSION}" \
+                --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 \
+                "${args[@]}" \
+                3>&1 1>&2 2>&3)
+            rc=$?
+            exec 3>&-
+            if [[ "${rc}" -ne 0 ]]; then
+                warn "Sélection de la version annulée."
+                exit 1
+            fi
+            # Vérification du choix utilisateur
+            if ! [[ "${VERSION_SELECT}" =~ ^[0-9]+$ ]]; then
+                warn "Valeur de version invalide retournée : ${VERSION_SELECT}"
+                exit 1
+            fi
+            local index=$((VERSION_SELECT - 1))
+            if (( index < 0 || index >= ${#version_map[@]} )); then
+                warn "Index de version hors plage : ${index}"
+                exit 1
+            fi
+        fi
+        dialog --title "${MSG_INFO}" --msgbox "${MSG_UPGRADE} - ${GLPI_CLI_VERSION}" 10 70
+        pause 5
+        info "${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${FIND_REP_GLPI}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    else
+        tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
+        local args=() first=ON number=1 version_map=()
+        while IFS= read -r tag; do
+            args+=("${number}" "GLPI ${tag}" "${first}")
+            version_map+=("${tag}")
+            first=OFF
+            number=$((number + 1))
+        done <<< "${tags}"
+        exec 3>&1
+        VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" \
+        --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 "${args[@]}" 3>&1 1>&2 2>&3)
+        local rc=$?
+        exec 3>&-
+        if [ "${rc}" -ne 0 ]; then
+            warn "Sélection de la version annulée."
+            return 1
+        fi
+        # VERSION_SELECT retourne le tag choisi (ici nous utilisons des tags numériques mapping -> version_map)
+        if ! [[ "${VERSION_SELECT}" =~ ^[0-9]+$ ]]; then
+            warn "Valeur de version invalide retournée : ${VERSION_SELECT}"
+            return 1
+        fi
+        local index=$((VERSION_SELECT - 1))
+        if [ $index -lt 0 ] || [ $index -ge ${#version_map[@]} ]; then
+            warn "Index de version hors plage : ${index}"
+            return 1
+        fi
+        index=$((VERSION_SELECT - 1))
+        VERSION_SELECT="${version_map[$index]}"
+        WIDTH_REP=$(( ${#MSG_PARAM_REP} ))
+        WIDTH_DB_HOST=$(( ${#MSG_PARAM_DB_HOST} ))
+        WIDTH_DB_NAME=$(( ${#MSG_PARAM_DB_NAME} ))
+        WIDTH_DB_USER=$(( ${#MSG_PARAM_DB_USER} ))
+        WIDTH=$(( WIDTH_REP > WIDTH_DB_HOST ? WIDTH_REP : WIDTH_DB_HOST ))
+        WIDTH=$(( WIDTH > WIDTH_DB_NAME ? WIDTH : WIDTH_DB_NAME ))
+        WIDTH=$(( WIDTH > WIDTH_DB_USER ? WIDTH : WIDTH_DB_USER ))
+        WIDTH=$(( WIDTH + 6 ))
+        local _def_rep="" rep_glpi="" _def_db_host="" db_host="" _def_db_name="" db_name="" _def_db_user="" db_user=""
+        if [ -n "${FIND_REP_GLPI}" ]; then
+            _def_rep="REP_GLPI:-${FIND_REP_GLPI}"
+        else
+            _def_rep="REP_GLPI:-/var/www/html/glpi/"
+        fi
+        local _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
+        while true; do
+            exec 3>&1
+            form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" \
+                --form "${MSG_GLPI_SELECT_PARAM_1} ${VERSION_SELECT} ${MSG_GLPI_SELECT_PARAM_2}" 18 68 8 \
+                "📁 ${MSG_PARAM_REP}"     1 2 "${_def_rep}" 1 ${WIDTH} 20 40 \
+                "🗄️ ${MSG_PARAM_DB_HOST}" 3 2 "${_def_db_host}" 3 ${WIDTH} 20 20 \
+                "💾 ${MSG_PARAM_DB_NAME}" 5 2 "${_def_db}" 5 ${WIDTH} 20 20 \
+                "👤 ${MSG_PARAM_DB_USER}" 7 2 "${_def_user}" 7 ${WIDTH} 20 20 \
+                2>&1 1>&3)
+            rc=$?
+            exec 3>&-
+            # Transformer les lignes du formulaire en variables
+            IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
+            rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
+            db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
+            db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
+            db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
+            rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
+            db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
+            db_name="${db_name//[^A-Za-z0-9_]/_}"
+            db_user="${db_user//[^A-Za-z0-9_]/_}"
+            [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
+            [ -z "$db_host" ] && db_host="$_def_db_host"
+            [ -z "$db_name" ] && db_name="$_def_db"
+            [ -z "$db_user" ] && db_user="$_def_user"
+            if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+                db_name="glpi_${db_name}"
+            fi
+            rep_glpi="${rep_glpi//\\//}"
+            if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
+                rep_glpi="${_def_rep}"
+            fi
+            rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
+            REP_GLPI="${rep_glpi%/}/"
+            DB_HOST="$db_host"
+            DB_NAME="$db_name"
+            DB_USER="$db_user"
+            # Si annulation ou ESC
+            if [[ $rc -ne 0 ]]; then
+                warn "Formulaire annulé par l’utilisateur." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                dialog --title "${MSG_INFO}" --msgbox "Installation annulée par l'utilisateur." 7 60
+                exit 1
+            fi
+            # --- VALIDATIONS ---
+            # Répertoire d’installation
+            if ! validate_glpi_path "$REP_GLPI"; then
+                continue
+            fi
+            # Hôte de la base de données
+            if ! validate_db_host "$DB_HOST"; then
+                continue
+            fi
+            # Nom de la base de données
+            if ! validate_db_name "$DB_NAME"; then
+                continue
+            fi
+            # Utilisateur de la base de données
+            if ! validate_db_user "$DB_USER"; then
+                continue
+            fi
+            # Si tout est valide
+            break
+        done
+    fi
+    # Assignation des valeurs finales
+    export DB_HOST REP_GLPI DB_NAME DB_USER VERSION_SELECT FIND_REP_GLPI GLPI_CLI_VERSION
+    export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Valide le répertoire d’installation de GLPI
 function validate_glpi_path() {
@@ -344,259 +571,45 @@ function validate_db_user() {
         return 1
     fi
 }
-# Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
-function prompt_install_options(){
-    clear
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Début de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
-    
-    local tags="" installed_version="" installed_dir=""
-    installed_dir=$(find /var/www -type f -name 'console' -print -quit 2>/dev/null)
-    if [ -n "${installed_dir}" ]; then
-        if grep -qi "glpi" "$installed_dir"; then
-            # Déterminer le répertoire racine de GLPI
-            #local installed_root
-            installed_root=$(dirname "$(dirname "${installed_dir}")")
-            installed_version=$(ls "${installed_root}"/version 2>/dev/null || true)
-            installed_version="${installed_version//[[:space:]]/}"
-            # Normaliser avec slash final
-            REP_GLPI="${installed_root%/}/"
-        else
-            dialog --title "${MSG_INFO}" --msgbox "Erreur : le fichier '${installed_dir}' ne semble pas appartenir à GLPI." 7 60
-            return 1
-        fi
-    fi
-    local api_url
-    api_url="https://api.github.com/repos/glpi-project/glpi/tags"
-    #local tags
-    tags=$(curl -s "${api_url}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vr | uniq | head -n 16)
-    if [ -n "${tags}" ]; then
-        if [ -n "${installed_version}" ]; then
-            tags=$(printf '%s\n' "${tags}" | sort -V | awk -v v="${installed_version}" '
-                function version_gt(a,b,   i, n1,n2,part1,part2) {
-                    n1 = split(a, parts1, ".")
-                    n2 = split(b, parts2, ".")
-                    for (i = 1; i <= (n1 > n2 ? n1 : n2); i++) {
-                        part1 = parts1[i] + 0
-                        part2 = parts2[i] + 0
-                        if (part1 > part2) return 1
-                        if (part1 < part2) return 0
-                    }
-                    return 0
-                }
-                version_gt($0, v)
-            ' | sort -Vr | head -n 16)
-        else
-            tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
-        fi
-    else
-        dialog --title "${MSG_INFO}" --msgbox "${MSG_GITHUB_VERSIONS_FAILED}" 7 60
-        warn "${MSG_GITHUB_VERSIONS_FAILED}"
-        return 1
-    fi
-    local args=() first=ON number=1 version_map=()
-    while IFS= read -r tag; do
-        args+=("${number}" "GLPI ${tag}" "${first}")
-        version_map+=("${tag}")
-        first=OFF
-        number=$((number + 1))
-    done <<< "${tags}"
-    exec 3>&1
-    VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" --clear \
-    --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 "${args[@]}" 3>&1 1>&2 2>&3)
-    local rc=$?
-    exec 3>&-
-    if [ "${rc}" -ne 0 ]; then
-        warn "Sélection de la version annulée."
-        return 1
-    fi
-    # VERSION_SELECT retourne le tag choisi (ici nous utilisons des tags numériques mapping -> version_map)
-    if ! [[ "${VERSION_SELECT}" =~ ^[0-9]+$ ]]; then
-        warn "Valeur de version invalide retournée : ${VERSION_SELECT}"
-        return 1
-    fi
-    local index=$((VERSION_SELECT - 1))
-    if [ $index -lt 0 ] || [ $index -ge ${#version_map[@]} ]; then
-        warn "Index de version hors plage : ${index}"
-        return 1
-    fi
-    index=$((VERSION_SELECT - 1))
-    VERSION_SELECT="${version_map[$index]}"
-     WIDTH_REP=$(( ${#MSG_PARAM_REP} ))
-     WIDTH_DB_HOST=$(( ${#MSG_PARAM_DB_HOST} ))
-     WIDTH_DB_NAME=$(( ${#MSG_PARAM_DB_NAME} ))
-     WIDTH_DB_USER=$(( ${#MSG_PARAM_DB_USER} ))
-     WIDTH=$(( WIDTH_REP > WIDTH_DB_HOST ? WIDTH_REP : WIDTH_DB_HOST ))
-     WIDTH=$(( WIDTH > WIDTH_DB_NAME ? WIDTH : WIDTH_DB_NAME ))
-     WIDTH=$(( WIDTH > WIDTH_DB_USER ? WIDTH : WIDTH_DB_USER ))
-     WIDTH=$(( WIDTH + 6 ))
-     form
-     IFS
-     rep_glpi db_host db_name db_user
-     _def_rep="${REP_GLPI:-/var/www/html/glpi/}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
-    while true; do
-        exec 3>&1
-        form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" --clear \
-            --form "${MSG_GLPI_SELECT_PARAM_1} ${VERSION_SELECT} ${MSG_GLPI_SELECT_PARAM_2}" 18 68 8 \
-            "📁 ${MSG_PARAM_REP}"     1 2 "${REP_GLPI:-/var/www/html/glpi/}" 1 ${WIDTH} 20 40 \
-            "🗄️ ${MSG_PARAM_DB_HOST}" 3 2 "${DB_HOST:-localhost}"            3 ${WIDTH} 20 20 \
-            "💾 ${MSG_PARAM_DB_NAME}" 5 2 "${DB_NAME:-glpi}"                 5 ${WIDTH} 20 20 \
-            "👤 ${MSG_PARAM_DB_USER}" 7 2 "${DB_USER:-glpi_user}"            7 ${WIDTH} 20 20 \
-            2>&1 1>&3)
-        rc=$?
-        exec 3>&-
-        # Transformer les lignes du formulaire en variables
-        IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
-        rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
-        db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
-        db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
-        db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
-        rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
-        db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
-        db_name="${db_name//[^A-Za-z0-9_]/_}"
-        db_user="${db_user//[^A-Za-z0-9_]/_}"
-        [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
-        [ -z "$db_host" ] && db_host="$_def_db_host"
-        [ -z "$db_name" ] && db_name="$_def_db"
-        [ -z "$db_user" ] && db_user="$_def_user"
-        if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-            db_name="glpi_${db_name}"
-        fi
-        rep_glpi="${rep_glpi//\\//}"
-        if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
-            rep_glpi="${_def_rep}"
-        fi
-        rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
-        REP_GLPI="${rep_glpi%/}/"
-        DB_HOST="$db_host"
-        DB_NAME="$db_name"
-        DB_USER="$db_user"
-        # Si annulation ou ESC
-        if [[ $rc -ne 0 ]]; then
-            warn "Formulaire annulé par l’utilisateur." >>"${DEBUGFILE}"
-            dialog --title "${MSG_INFO}" --msgbox "Installation annulée par l'utilisateur." 7 60
-            exit 1
-        fi
-        # --- VALIDATIONS ---
-        # Répertoire d’installation
-        if ! validate_glpi_path "$REP_GLPI"; then
-            continue
-        fi
-        # Hôte de la base de données
-        if ! validate_db_host "$DB_HOST"; then
-            continue
-        fi
-        # Nom de la base de données
-        if ! validate_db_name "$DB_NAME"; then
-            continue
-        fi
-        # Utilisateur de la base de données
-        if ! validate_db_user "$DB_USER"; then
-            continue
-        fi
-        # Si tout est valide
-        break
-    done
-    # Assignation des valeurs finales
-    DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
-    export DB_HOST REP_GLPI DB_NAME DB_USER DOWNLOADLINK tags
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
-}
-# Vérifie si la version est compatible
-function compatible() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
-    local version="$1"
-    local -n versions_array="$2"
-    [[ ${versions_array[*]} =~ ${version} ]]
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
-}
 # Vérifie si GLPI est installé ou pas
 function check_install() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
-    local FIND_REP_GLPI=""
-    local installed_version=""
-    FIND_REP_GLPI_LIST=""
-    # Recherche des installations GLPI existantes
-    for path in /var/www /srv /opt /usr/share; do
-        FOUND=$(find "${path}" -maxdepth 3 -type d -name "*glpi*" 2>/dev/null)
-        [[ -n "$FOUND" ]] && FIND_REP_GLPI_LIST+="${FOUND}"$'\n'
-    done
-    # Suppression du retour à la ligne final
-    FIND_REP_GLPI_LIST="${FIND_REP_GLPI_LIST%$'\n'}"
-    # echo "${FIND_REP_GLPI_LIST}"$'\n' # Pour Debug
-    # Si plusieurs répertoires GLPI trouvés, demander à l'utilisateur de choisir
-    if [[ -n "$FIND_REP_GLPI_LIST" ]]; then
-        IFS= mapfile -d '' -t glpi_dirs <<< "$FIND_REP_GLPI_LIST"
-        # printf '%s\n' "${glpi_dirs[@]}" # Pour Debug
-        if [[ ${#glpi_dirs[@]} -gt 1 ]]; then
-            # Préparer les arguments pour dialog
-            args=()
-            number=1
-            first="ON"
-            for dir in "${glpi_dirs[@]}"; do
-                args+=("$number" "$dir" "$first")
-                first="OFF"
-                ((number++))
-            done
-            exec 3>&1
-            local selection
-            selection=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_GLPI_SELECT_INSTALLED}" --clear \
-            --radiolist "${MSG_GLPI_SELECT_INSTALLED_CHOIX}" 20 70 8 "${args[@]}" 3>&1 1>&2 2>&3)
-            local rc=$?
-            exec 3>&-
-            if [[ $rc -ne 0 ]]; then
-                warn "Sélection de l'installation GLPI annulée."  >>"${DEBUGFILE}"
-                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
-                exit 1
-            fi
-            local index=$((selection - 1))
-            FIND_REP_GLPI="${glpi_dirs[$index]}"
-        else
-            FIND_REP_GLPI="${glpi_dirs[0]}"
-        fi
-    fi
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Si GLPI est déjà installé
     if [[ -n "${FIND_REP_GLPI}" ]]; then
         FIND_REP_GLPI="${FIND_REP_GLPI%/}/"
-        echo "Répertoire GLPI trouvé : ${FIND_REP_GLPI}" | sudo tee -a "${DEBUGFILE}"
-        if [[ "$ID" == "debian" || "$ID" == "ubuntu" ]]; then
-            installed_version=$(sudo -u www-data php "${FIND_REP_GLPI}/bin/console" --version 2>/dev/null | awk '{print $3}' || true)
-        else
-            installed_version=$(sudo -u nginx php "${FIND_REP_GLPI}/bin/console" --version 2>/dev/null | awk '{print $3}' || true)
-        fi
-        info "Version GLPI détectée : ${installed_version}" 1>> "${DEBUGFILE}"
-        export FIND_REP_GLPI installed_version
+        echo "Répertoire GLPI trouvé : ${FIND_REP_GLPI}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         # --- Comparaison ---
-        if [[ -n "${installed_version}" && -n "${VERSION_SELECT}" && "${installed_version}" != "${VERSION_SELECT}" ]]; then
-            if [[ "$(printf '%s\n%s\n' "${installed_version}" "${VERSION_SELECT}" | sort -V | head -n1)" == "${installed_version}" ]]; then
-                dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_UPDATE}\n\nGLPI ${installed_version} → ${VERSION_SELECT}" 10 50
+        if [[ -n "${GLPI_CLI_VERSION}" && -n "${VERSION_SELECT}" && "${GLPI_CLI_VERSION}" != "${VERSION_SELECT}" ]]; then
+            if [[ "$(printf '%s\n%s\n' "${GLPI_CLI_VERSION}" "${VERSION_SELECT}" | sort -V | head -n1)" == "${GLPI_CLI_VERSION}" ]]; then
+                dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_UPDATE}\n\nGLPI ${GLPI_CLI_VERSION} → ${VERSION_SELECT}" 10 50
                 if update; then
-                    dialog --title "Information" --msgbox "Mise à jour GLPI ${installed_version} → ${VERSION_SELECT} terminée." 6 60
-                    info "Mise à jour GLPI ${installed_version} → ${VERSION_SELECT} terminée." 1>> "${DEBUGFILE}"
+                    dialog --title "Information" --msgbox "Mise à jour GLPI ${GLPI_CLI_VERSION} → ${VERSION_SELECT} terminée." 6 60
+                    info "Mise à jour GLPI ${GLPI_CLI_VERSION} → ${VERSION_SELECT} terminée." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                     return 0
                 else
                     dialog --title "Erreur" --msgbox "La mise à jour de GLPI a échoué ou a été annulée." 6 60
-                    error "Échec de la mise à jour GLPI." 2>> "${ERRORFILE}"
+                    error "Échec de la mise à jour GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                     exit 1
                 fi
             fi
-        fi
-    else
-        dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
-        if glpi_install; then
-            dialog --title "Information" --msgbox "L'installation de GLPI est terminée." 6 60
-            info "Installation de GLPI ${VERSION_SELECT} terminée." 1>> "${DEBUGFILE}"
-            return 0
         else
-            dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
-            error "Échec de l'installation GLPI."
-            exit 1
+            dialog --title "GLPI" --sleep 5 --infobox "\n\n${MSG_GLPI_NEW}\n\nGLPI ${VERSION_SELECT}" 10 50
+            if glpi_install; then
+                dialog --title "Information" --msgbox "L'installation de GLPI est terminée." 6 60
+                info "Installation de GLPI ${VERSION_SELECT} terminée." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 0
+            else
+                dialog --title "Erreur" --msgbox "L'installation de GLPI a échoué ou a été annulée." 6 60
+                error "Échec de l'installation GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                exit 1
+            fi
         fi
     fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Exécuter les tâches avec barre de progression
 function glpi_install() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     declare -A tasks=(
         ["$MSG_T01"]="update_distro"
         ["$MSG_T02"]="install_packages"
@@ -621,29 +634,28 @@ function glpi_install() {
         echo "XXX"
         echo "$task_index/$total_tasks - $task_key"
         echo "XXX"
-        debug "$(date '+%F %T'): [START] $task_key" >> "${DEBUGFILE}"
+        debug "$(date '+%F %T'): [START] $task_key" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         # --- Exécution silencieuse de la tâche
-        if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
-            :
-            debug "$(date '+%F %T'): [END] $task_key" >> "${DEBUGFILE}"
+        if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            debug "$(date '+%F %T'): [END] $task_key" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         else
             echo "100"
             echo "XXX"
             echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
             echo "XXX"
-            warn "$(date '+%F %T'): [ERROR] $task_key error." >> "${DEBUGFILE}"
+            warn "$(date '+%F %T'): [ERROR] $task_key error." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
-            error "$MSG_ERROR_INSTALL\n\nConsultez : ${ERRORFILE}" >> "${ERRORFILE}"
+            error "$MSG_ERROR_INSTALL\n\nConsultez : ${ERRORFILE}" | tee -a "${ERRORFILE}"
             sleep 3
             exit 1
         fi
     done
-    ) | dialog --clear --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120 0
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    ) | dialog --clear --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge 8 120 0
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Mise à jour de la distribution
 function update_distro(){
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
            info "$MSG_UPGRADE_DISTRO"
            timedatectl set-ntp true # Synchronise l'heure
@@ -655,11 +667,11 @@ function update_distro(){
            sleep 5
            yum update -y && yum upgrade -y
 	fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Adresse IP de la machine
 function network_info() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Détection de l’interface principale (hors loopback et interfaces virtuelles)
     INTERFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/dev/ {print $5; exit}')
     if [[ -z "$INTERFACE" ]]; then
@@ -670,17 +682,17 @@ function network_info() {
     # Vérification et export
     if [[ -n "$IPADRESS" ]]; then
         export IPADRESS
-        info "$(date '+%F %T'): INFO: Interface détectée : ${INTERFACE}, IP : ${IPADRESS}" 1>> "${DEBUGFILE}"
+        info "$(date '+%F %T'): INFO: Interface détectée : ${INTERFACE}, IP : ${IPADRESS}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     else
-    warn "Impossible de déterminer l’adresse IP du serveur via l’interface ${INTERFACE:-inconnue}" >>"${DEBUGFILE}"
+    warn "Impossible de déterminer l’adresse IP du serveur via l’interface ${INTERFACE:-inconnue}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         IPADRESS="127.0.0.1"
         export IPADRESS
     fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Installation des éléments nécessaire
 function install_packages(){
-    debug "$(date '+%F %T') [$$][DEBUG:install_packages] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG:install_packages] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     source_os_release
     if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
         sleep 1
@@ -688,77 +700,77 @@ function install_packages(){
         # update cache first
         apt-get update
         if command -v apt-get update; then
-            echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get update" >> "${DEBUGFILE}"
+            echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get update" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             if ! apt-get update; then
                 warn "apt-get update failed"
                 # continue, maybe cached; but log
             fi
         else
-            error "apt-get not found, cannot install packages on Debian/Ubuntu branch" 2>> "${ERRORFILE}"
+            error "apt-get not found, cannot install packages on Debian/Ubuntu branch" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
-        if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
-            error "$MSG_PHP_EXT_FAILED" 2>> "${ERRORFILE}"
+        if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "$MSG_PHP_EXT_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         info "$MSG_INSTALL_SERVICE"
-        if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php; then
-            error "$MSG_LAMP_FAILED" 2>> "${ERRORFILE}"
+        if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "$MSG_LAMP_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
-        if ! systemctl enable mariadb; then
-            error "Échec de l'activation de MariaDB." 2>> "${ERRORFILE}"
+        if ! systemctl enable mariadb 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "Échec de l'activation de MariaDB." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
-        if ! systemctl restart mariadb; then
-            error "Échec du redémarrage de MariaDB." 2>> "${ERRORFILE}"
+        if ! systemctl restart mariadb 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "Échec du redémarrage de MariaDB." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         info "$MSG_ACTIVE_START_WEB"
-        if ! systemctl enable apache2; then
-            error "Échec de l'activation d'Apache2." 2>> "${ERRORFILE}"
+        if ! systemctl enable apache2 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "Échec de l'activation d'Apache2." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
-        if ! systemctl restart apache2 ; then
-            error "Échec du redémarrage d'Apache2." 2>> "${ERRORFILE}"
+        if ! systemctl restart apache2 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "Échec du redémarrage d'Apache2." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
     elif [[ "${ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
         sleep 1
         dnf makecache --refresh
         if ! command -v dnf >/dev/null 2>&1; then
-            error "dnf not found, cannot install packages on RHEL-like branch" 2>> "${ERRORFILE}"
+            error "dnf not found, cannot install packages on RHEL-like branch" | tee -a "${ERRORFILE}"
             return 1
         fi
-        if ! dnf makecache --refresh; then
-            error "$MSG_EPEL_FAILED" 2>> "${ERRORFILE}"
+        if ! dnf makecache --refresh 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "$MSG_EPEL_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             # continue; attempt install may still work
         fi
-        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm; then
-            error "$MSG_EPEL_FAILED" 2>> "${ERRORFILE}"
+        if ! dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "$MSG_EPEL_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
-        if ! dnf module reset -y php nginx mariadb composer; then
-            error "$MSG_MODULES_RESET_FAILED" 2>> "${ERRORFILE}"
+        if ! dnf module reset -y php nginx mariadb composer 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "$MSG_MODULES_RESET_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
-        if ! dnf module install -y php:8.2; then
-            error "$MSG_PHP_INSTALL_FAILED" 2>> "${ERRORFILE}"
+        if ! dnf module install -y php:8.2 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "$MSG_PHP_INSTALL_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
-        if ! dnf module install -y nginx:1.24; then
-            error "$MSG_NGINX_INSTALL_FAILED" 2>> "${ERRORFILE}"
+        if ! dnf module install -y nginx:1.24 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "$MSG_NGINX_INSTALL_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
-        if ! dnf module install -y mariadb:10.11; then
-            error "$MSG_MARIADB_INSTALL_FAILED" 2>> "${ERRORFILE}"
+        if ! dnf module install -y mariadb:10.11 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "$MSG_MARIADB_INSTALL_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         info "$MSG_AUTO_UPDATES"
-        if ! dnf install dnf-automatic -y; then
-            error "$MSG_DNF_AUTO_FAILED" 2>> "${ERRORFILE}"
+        if ! dnf install dnf-automatic -y 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            error "$MSG_DNF_AUTO_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         {
@@ -766,8 +778,8 @@ function install_packages(){
             sed -i 's/^\(;\?\)\(reboot =\).*/\2 when-needed/' /etc/dnf/automatic.conf
             sed -i 's/^\(;\?\)\(upgrade_type =\).*/\2 security/' /etc/dnf/automatic.conf
         }
-        if ! mkdir /etc/systemd/system/dnf-automatic.timer.d; then
-            warn "$MSG_DNF_AUTO_DIR_FAILED" 2>>"${DEBUGFILE}"
+        if ! mkdir /etc/systemd/system/dnf-automatic.timer.d 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            warn "$MSG_DNF_AUTO_DIR_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf << 'EOF'
@@ -782,43 +794,43 @@ RandomizedDelaySec=60m
 Persistent=true
 EOF
         if ! systemctl enable --now dnf-automatic.timer; then
-            warn "$MSG_DNF_AUTO_ACTIVATE_FAILED" 2>>"${DEBUGFILE}"
+            warn "$MSG_DNF_AUTO_ACTIVATE_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         info "$MSG_INSTALL_EXT_PHP"
         if ! dnf install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2}; then
-            warn "$MSG_PHP_EXT_FAILED" 2>>"${DEBUGFILE}"
+            warn "$MSG_PHP_EXT_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         info "$MSG_INSTALL_SERVICE lamp..."
         if ! dnf install -y crontabs logrotate cronie tar nginx mariadb-server mariadb perl curl jq php epel-release; then
-            warn "$MSG_LAMP_FAILED" 2>>"${DEBUGFILE}"
+            warn "$MSG_LAMP_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         sed -i 's/^\(;\?\)\(user =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         sed -i 's/^\(;\?\)\(group =\).*/\2 nginx/' /etc/php-fpm.d/www.conf
         info "$MSG_ACTIVE_START_WEB MariaDB, d'ENGINE X et de PHP-FPM"
         if ! systemctl enable --now mariadb nginx php-fpm; then
-            warn "$MSG_SERVICES_START_FAILED" 2>>"${DEBUGFILE}"
+            warn "$MSG_SERVICES_START_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         if ! firewall-cmd --permanent --zone=public --add-service=http || ! firewall-cmd --reload; then
-            warn "$MSG_FIREWALL_FAILED" 2>>"${DEBUGFILE}"
+            warn "$MSG_FIREWALL_FAILED" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
     fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Configuration de la base de données MariaDB
 function mariadb_configure() { 
     {
-        debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1>> "${DEBUGFILE}"
+        debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}"
         # Détecter la commande MySQL/MariaDB
         info "$MSG_BDD_CONFIG"
-    } 1>> "${DEBUGFILE}"
+    } | tee -a "${DEBUGFILE}"
     MYSQL_CMD=$(command -v mysql || command -v mariadb || echo mysql)
     if [ -z "$MYSQL_CMD" ]; then 
-        error "Commande MySQL/MariaDB introuvable" 2>> "${ERRORFILE}"
+        error "Commande MySQL/MariaDB introuvable" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
     sleep 1
@@ -836,7 +848,7 @@ function mariadb_configure() {
     _sql_root+="\nGRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';"
     _sql_root+="\nFLUSH PRIVILEGES;"
     if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
-        warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc" 2>> "${ERRORFILE}"
+        warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
     # Détection du fuseau horaire
@@ -869,11 +881,11 @@ function mariadb_configure() {
     fi
     systemctl restart mariadb || warn "Impossible de redémarrer MariaDB (vérifiez le service)"
     sleep 5
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Téléchargement et décompression de GLPI
 function install_glpi(){
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
     # Téléchargement de GLPI
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
@@ -889,19 +901,30 @@ function install_glpi(){
     tar xzf "$tmp_file" --strip-components=1 -C "$REP_GLPI"
     rm -f "$tmp_file"
     sleep 5;
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Mise en place des réglage pour GLPI
 function setup_glpi(){
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     source_os_release
-    info "$MSG_CONFIG_GLPI" 1>> "${DEBUGFILE}"
+    local CMD="${REP_GLPI}/bin/console db:install \
+ --db-host localhost \
+ --db-port=3306 \
+ --db-name=${DB_NAME} \
+ --db-user=${DB_USER} \
+ --db-password=${SQLGLPIPWD} \
+ --default-language=${LANGUAGE} \
+ --force \
+ --no-telemetry \
+ --quiet \
+ --no-interaction"
+    info "$MSG_CONFIG_GLPI" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     mkdir -p /var/log/glpi 
     mkdir -p /etc/glpi/config 
     mkdir -p /var/lib/glpi/files 
     mv -f "${REP_GLPI}"/files /var/lib/glpi ||
     {
-        warn "Échec du déplacement du répertoire files de GLPI." >>"${DEBUGFILE}"
+        warn "Échec du déplacement du répertoire files de GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     }
     sudo tee /etc/glpi/config/local_define.php  <<'EOF'
@@ -918,9 +941,10 @@ EOF
     }
 EOF
     network_info
-    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        # Configuration d'Apache pour GLPI
-        sudo tee /etc/apache2/sites-available/glpi.conf  <<EOF
+    if check_distro_user "${REP_GLPI}"; then
+        if [[ "${WEB_USER}" == "www-data" ]]; then
+            # Configuration d'Apache pour GLPI
+            sudo tee /etc/apache2/sites-available/glpi.conf  <<EOF
 <VirtualHost *:80>
     ServerName ${IPADRESS}
     DocumentRoot ${REP_GLPI}/public
@@ -936,61 +960,56 @@ EOF
     CustomLog /var/log/glpi/access.log combined
 </VirtualHost>
 EOF
-        phpversion=$(php -v | grep -i '(cli)' | awk '{print $2}' | cut -d. -f1,2)
-        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 =on/' /etc/php/"$phpversion"/apache2/php.ini
-        sleep 1
-        # Disable Apache Web Server Signature
-        echo "ServerSignature Off" >> /etc/apache2/apache2.conf
-        echo "ServerTokens Prod" >> /etc/apache2/apache2.conf
-        # Activation du module rewrite d'apache
-        {
-            # Enable Apache modules and site configuration
-            # Mode rewrite activé
-            a2enmod rewrite
-            # Déactiver le site par défaut
-            a2dissite 000-default.conf
-            # Activer le site GLPI
-            a2ensite glpi.conf;
-            # Recharger la configuration d'Apache
-            systemctl reload apache2
-            # Change permissions
-            rights_glpi || { 
-                warn "Échec de la modification des droits pour GLPI." >>"${DEBUGFILE}"
+            phpversion=$(php -v | grep -i '(cli)' | awk '{print $2}' | cut -d. -f1,2)
+            sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 =on/' /etc/php/"$phpversion"/apache2/php.ini
+            sleep 1
+            # Disable Apache Web Server Signature
+            echo "ServerSignature Off" >> /etc/apache2/apache2.conf
+            echo "ServerTokens Prod" >> /etc/apache2/apache2.conf
+            # Activation du module rewrite d'apache
+            if ! a2enmod rewrite | tee -a "${DEBUGFILE}"; then
+                warn "Échec de l'activation du module rewrite d'Apache." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                 return 1
-            }
-        } || {
-            warn "Échec de la configuration d'Apache pour GLPI." >>"${DEBUGFILE}"
-            return 1
-        }
-        # Installation de GLPI en ligne de commande
-        CMD="${REP_GLPI}/bin/console db:install \
- --db-host localhost \
- --db-port=3306 \
- --db-name=${DB_NAME} \
- --db-user=${DB_USER} \
- --db-password=${SQLGLPIPWD} \
- --default-language=${LANGUAGE} \
- --force \
- --no-telemetry \
- --quiet \
- --no-interaction"
-        echo "$(date '+%Y-%m-%d %H:%M:%S') - [INFO] Exécution : sudo -u www-data php ${CMD}" 1>> "${DEBUGFILE}" || true
-        # Exécuter la commande en tant que www-data. Utiliser sudo tee pour écrire vers les fichiers protégés.
-        if eval "sudo -u www-data php ${CMD}" 1>"${DEBUGFILE}" 2>> "${ERRORFILE}"; then
-            info "Installation GLPI terminée avec succès." 1>> "${DEBUGFILE}"
-        else
-            warn "Échec de l'installation GLPI via console." >>"${DEBUGFILE}"
-            return 1
-        fi
-        systemctl restart apache2
-        # Configuration de la tâche Cron
-        echo "*/2 * * * * www-data /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi 
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        network_info
-        sudo tee /etc/nginx/conf.d/glpi.conf << EOF
+            fi
+            # Déactiver le site par défaut
+            if ! a2dissite 000-default.conf | tee -a "${DEBUGFILE}"; then
+                warn "Échec de la désactivation du site par défaut d'Apache." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 1
+            fi
+            # Activer le site GLPI
+            if ! a2ensite glpi.conf | tee -a "${DEBUGFILE}"; then
+                warn "Échec de l'activation du site GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 1
+            fi
+            # Recharger la configuration d'Apache
+            if ! systemctl reload apache2 | tee -a "${DEBUGFILE}"; then
+                warn "Échec du rechargement d'Apache." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 1
+            fi
+            # Installation de GLPI en ligne de commande
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - [INFO] Exécution : sudo -u ${WEB_USER} php ${CMD}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2) || true
+            # Exécuter la commande en tant que "${WEB_USER}". Utiliser sudo tee pour écrire vers les fichiers protégés.
+            if eval sudo -u "${WEB_USER}" php "${CMD}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+                info "Installation GLPI terminée avec succès." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+            else
+                warn "Échec de l'installation GLPI via console." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 1
+            fi
+            # Change permissions
+            if ! rights_glpi; then
+                warn "Échec de la modification des droits pour GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 1
+            fi
+            if ! systemctl restart apache2; then
+                warn "Échec du redémarrage d'Apache." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 1
+            fi
+        elif [[ "${WEB_USER}" == "nginx" ]]; then
+            network_info
+            sudo tee /etc/nginx/conf.d/glpi.conf << EOF
 server {
     listen 80;
-    server_name "${IPADRESS}";
+    server_name ${IPADRESS};
     root ${REP_GLPI}public;
     location / {
         try_files \$uri /index.php\$is_args\$args;
@@ -1004,7 +1023,7 @@ server {
     }
 }
 EOF
-        sudo tee /etc/logrotate.d/glpi << EOF
+            sudo tee /etc/logrotate.d/glpi << EOF
 # Rotate GLPI logs daily, only if not empty
 # Save 14 days old logs under compressed mode
 /var/lib/glpi/files/_log/*.log {
@@ -1017,43 +1036,50 @@ EOF
     create 644 nginx nginx
 }
 EOF
-        chmod 0644 /etc/logrotate.d/glpi
-        chown root:root /etc/logrotate.d/glpi
-        chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi
-        sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini
-        # Change permissions
-        rights_glpi || { 
-            warn "Échec de la modification des droits pour GLPI." >>"${DEBUGFILE}"
-            return 1
-        }
-        # Recharger la configuration de Nginx
-        systemctl reload nginx php-fpm || {
-            warn "Échec du rechargement de Nginx ou PHP-FPM." >>"${DEBUGFILE}"
-            return 1
-        }
-        sleep 2
-        # Installation de GLPI en ligne de commande
-        CMD="php ${REP_GLPI}bin/console db:install --db-host=\"localhost\" --db-port=3306 --db-name=${DB_NAME} --db-user=${DB_USER} --db-password=\"${SQLGLPIPWD}\" --default-language=\"${LANGUAGE}\" --force --no-telemetry --no-interaction"
-        eval sudo -u nginx "${CMD}"
-        echo "*/2 * * * * nginx /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
+            chmod 0644 /etc/logrotate.d/glpi
+            chown root:root /etc/logrotate.d/glpi
+            chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi
+            sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini
+            # Change permissions
+            if ! rights_glpi; then
+                warn "Échec de la modification des droits pour GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 1
+            fi
+            # Recharger la configuration de Nginx
+            if ! systemctl reload nginx php-fpm; then
+                warn "Échec du rechargement de Nginx ou PHP-FPM." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 1
+            fi
+            sleep 2
+            # Installation de GLPI en ligne de commande
+            if eval sudo -u "${WEB_USER}" "${CMD}"; then
+                info "Installation GLPI terminée avec succès." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+            else
+                warn "Échec de l'installation GLPI via console." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+                return 1
+            fi
+        fi
+        # Configuration de la tâche Cron
+        echo "*/2 * * * * ${WEB_USER} /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
     sleep 5
-    rm -Rf "${REP_GLPI}"install/install.php || {
-        warn "Échec de la suppression du script d'installation de GLPI." >>"${DEBUGFILE}"
+    if ! rm -Rf "${REP_GLPI}install/install.php"; then
+        warn "Échec de la suppression du script d'installation de GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
-    }
+    fi
     sleep 2
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
-    info "${MSG_CHANGE_MDP_GLPI}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    info "${MSG_CHANGE_MDP_GLPI}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Ensure we have a mysql client command; fallback to detecting it if not set
+    local MYSQL_CMD
     MYSQL_CMD=$(command -v mysql  || command -v mariadb || echo mysql)
     # Verify mysql client exists
     if ! command -v "${MYSQL_CMD}"; then
-        warn "mysql client not found: ${MYSQL_CMD}"
+        warn "Client mysql pas trouvé: ${MYSQL_CMD}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
     # Construire la requête SQL et exécuter via -e
@@ -1066,16 +1092,16 @@ function maj_user_glpi(){
     _sql_user+="\nUPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';"
     _sql_user+="\nUPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';"
     _sql_user+="\nUPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"
-    echo "${_sql_user}" 1>> "${DEBUGFILE}"
+    echo "${_sql_user}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Execute the SQL commands
     if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}"; then
-        error "$MSG_ERROR_TASK: base de données - échec des modifications en bloc" 2>> "${ERRORFILE}"
+        error "$MSG_ERROR_TASK: base de données - échec des modifications en bloc" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 function source_os_release(){
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     if [[ -f /etc/os-release ]]; then
         # shellcheck disable=SC1091
         . /etc/os-release
@@ -1091,56 +1117,42 @@ function source_os_release(){
         VERSION_ID=$(uname -r)
     fi
     if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
-    warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release"  >>"${DEBUGFILE}"
+        warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
     export ID VERSION_ID
-    info "$(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}" 1>> "${DEBUGFILE}"
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    info "$(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 function rights_glpi(){
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Changer les droits des répertoires et fichiers
-    {
-        info "$MSG_RIGHTS_GLPI"
-        for dir in /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"; do
-            [[ -d "$dir" ]] || continue
-            find "$dir" -type d -exec chmod 755 {} \;
-            find "$dir" -type f -exec chmod 644 {} \;
-        done
-    }
+    info "$MSG_RIGHTS_GLPI" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    find "${REP_GLPI}" -type d -exec chmod 755 {} \; 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    find "${REP_GLPI}" -type f -exec chmod 644 {} \; 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Changer le propriétaire des répertoires
-    case "${ID}" in
-        debian|ubuntu)
-            {
-                sudo chown -Rc www-data:www-data /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"
-            }
-            ;;
-        almalinux|centos|rocky|rhel)
-            {
-                sudo chown -Rc nginx:nginx /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"
-                if command -v semanage; then
-                    setsebool -P httpd_can_network_connect on
-                    setsebool -P httpd_can_network_connect_db on
-                    setsebool -P httpd_can_sendmail on
-                    for p in "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}/marketplace"; do
-                        semanage fcontext -a -t httpd_sys_rw_content_t "${p}(/.*)?"
-                    done
-                    restorecon -R "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}/marketplace"
-                else
-                    error "$(date '+%F %T'): WARN: semanage non disponible — SELinux non configuré" 2>> "${ERRORFILE}"
-                fi
-            }
-            ;;
-        *)
-            error "$(date '+%F %T'): WARN: Distribution ${ID:-unknown} non reconnue — aucun changement propriétaire" 2>> "${ERRORFILE}"
-            ;;
-    esac
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    if check_distro_user "${REP_GLPI}"; then
+        sudo chown -Rc "${WEB_USER}":"${WEB_USER}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"
+    fi
+    # SELinux configuration
+    if [[ "${WEB_USER}" == "nginx" ]]; then
+        if command -v semanage; then
+            setsebool -P httpd_can_network_connect on
+            setsebool -P httpd_can_network_connect_db on
+            setsebool -P httpd_can_sendmail on
+            for p in "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}/marketplace"; do
+                semanage fcontext -a -t httpd_sys_rw_content_t "${p}(/.*)?"
+            done
+            restorecon -R "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}/marketplace"
+        else
+            error "$(date '+%F %T'): WARN: semanage non disponible — SELinux non configuré" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+        fi
+    fi
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Afficher le résultat final
 function display_result() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     MESSAGE=""
 	if [[ -f "${FICHIER_MSG}" ]]; then
         while IFS= read -r ligne; do
@@ -1154,11 +1166,11 @@ function display_result() {
         dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_NONOK}" --msgbox "${MSG_NONOK}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
         exit 1
     fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
 function write_credentials(){
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "$FICHIER_MSG" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
@@ -1216,11 +1228,11 @@ EOF
  If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Fonction principale pour exécuter les tâches avec barre de progression
 function update() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     declare -A tasks=(
         ["$MSG_T20"]="maintenance 1"
         ["$MSG_T21"]="update_distro"
@@ -1257,40 +1269,33 @@ function update() {
     ) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
     # Récupérer le code de retour du sous-shell
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    warn "Une tâche a échoué pendant l'exécution de update()." >>"${DEBUGFILE}"
+    warn "Une tâche a échoué pendant l'exécution de update()." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
-    info "Toutes les tâches ont été exécutées avec succès." 1>> "${DEBUGFILE}"
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    info "Toutes les tâches ont été exécutées avec succès." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Activé ou déactivé le mode maintenance (1 ou 0)
 function maintenance(){ 
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    check_distro_user "${REP_GLPI}"
     if [ "$1" == "1" ]; then
-        warn "${MSG_ACTIVE_SERVICE}" 1>> "${DEBUGFILE}"
-        if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable
-        elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable
-        fi
+        info "${MSG_ACTIVE_SERVICE}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+        sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:enable
     elif [ "$1" == "0" ]; then
-        info "$MSG_DEACTIVE_SERVICE" 1>> "${DEBUGFILE}"
-        if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable
-        elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable
-        fi
+        info "${MSG_DEACTIVE_SERVICE}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+        sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:disable 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)   
     fi
 	sleep 2;
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Sauvegarde de la base de donnée et des fichiers de GLPI
 function backup_glpi() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
-    info "=== Démarrage de la sauvegarde GLPI ===" 1>> "${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    info "=== Démarrage de la sauvegarde GLPI ===" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Vérification préliminaire
     if [ -z "${REP_GLPI}" ] || [ -z "${REP_BACKUP_COMPRESS}" ] || [ -z "${INVOKING_HOME}" ]; then
-    warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" >>"${DEBUGFILE}"
+    warn "Variables d'environnement manquantes (REP_GLPI, REP_BACKUP_COMPRESS, INVOKING_HOME)" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
     # Lecture des informations MySQL
@@ -1298,73 +1303,78 @@ function backup_glpi() {
     DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     if [ -z "${DB_NAME}" ] || [ -z "${PASSWORD}" ]; then
-    warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt" >>"${DEBUGFILE}"
+    warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
     # Détermination de l’outil de dump
     local MYSQLDUMP_CMD
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
     # Répertoires de sauvegarde
+    local BDD_BACKUP REP_BACKUP 
     REP_BACKUP="${INVOKING_HOME}/backup_glpi_$(date +"%Y-%m-%d")"
-    local BDD_BACKUP; BDD_BACKUP="bdd_glpi_$(date +"%Y-%m-%d_%H-%M-%S").sql"
-    mkdir -p "${REP_BACKUP}"
+    BDD_BACKUP="bdd_glpi_$(date +"%Y-%m-%d_%H-%M-%S").sql"
+    if ! mkdir -p "${REP_BACKUP}"; then
+        warn "Échec de la création du répertoire de sauvegarde : ${REP_BACKUP}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+        return 1
+    fi
     # --- Sauvegarde BDD ---
-    info "${MSG_MYSQL_DUMP}" 1>> "${DEBUGFILE}"
-    if ${MYSQLDUMP_CMD} -u root -p"${PASSWORD}" --databases "${DB_NAME}" > "${REP_BACKUP}/${BDD_BACKUP}" 2>> "${ERRORFILE}"; then
-        info "${MSG_DUMP_SUCCESS}" 1>> "${DEBUGFILE}"
+    info "${MSG_MYSQL_DUMP}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    if eval "${MYSQLDUMP_CMD} -u root -p\"${PASSWORD}\" --databases \"${DB_NAME}\" > \"${REP_BACKUP}/${BDD_BACKUP}\" \
+    1> >(tee -a \"${DEBUGFILE}\") 2> >(tee -a \"${ERRORFILE}\" >&2)"; then
+        info "${MSG_DUMP_SUCCESS}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     else
-    warn "Échec de la sauvegarde de la base ${DB_NAME}" >>"${DEBUGFILE}"
+    warn "Échec de la sauvegarde de la base ${DB_NAME}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
     # --- Sauvegarde des fichiers ---
-    info "${MSG_SITE_COPY}" 1>> "${DEBUGFILE}"
+    info "${MSG_SITE_COPY}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     for SRC in "/etc/glpi/config" "/var/lib/glpi/files" "${REP_GLPI}/plugins" "${REP_GLPI}/marketplace" "${REP_GLPI}/inc/downstream.php"; do
         if [ -e "${SRC}" ]; then
             cp -Rf "${SRC}" "${REP_BACKUP}/"
         else
-            warn "Source manquante : ${SRC}" >>"${DEBUGFILE}"
+            warn "Source manquante : ${SRC}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         fi
     done
-    info "${MSG_SITE_COPY_OK}" 1>> "${DEBUGFILE}"
+    info "${MSG_SITE_COPY_OK}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # --- Compression ---
-    info "${MSG_COMPRESS_BACKUP}" 1>> "${DEBUGFILE}"
+    info "${MSG_COMPRESS_BACKUP}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     mkdir -p "${REP_BACKUP_COMPRESS}"
     local BACKUP_FILE; BACKUP_FILE="${REP_BACKUP_COMPRESS}/backup_glpi_$(date +"%Y-%m-%d_%H-%M-%S").tar.gz"
     if tar -czf "${BACKUP_FILE}" -C "${REP_BACKUP}" . 2>> "${ERRORFILE}"; then
-        info "${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})" 1>> "${DEBUGFILE}"
+        info "${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         # Vérifier que le fichier compressé n'est pas vide
         if [ ! -s "${BACKUP_FILE}" ]; then
-            warn "Fichier de sauvegarde vide, suppression annulée." >>"${DEBUGFILE}"
+            warn "Fichier de sauvegarde vide, suppression annulée." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             return 1
         fi
         # Suppression sécurisée de l’ancien GLPI
         info "${MSG_REMOVE_OLD_GLPI_DIR}"
         if [ -n "${REP_GLPI}" ] && [ -d "${REP_GLPI}" ]; then
             rm -rf "${REP_GLPI:?}/"
-            info "Répertoire ${REP_GLPI} supprimé." 1>> "${DEBUGFILE}"
+            info "Répertoire ${REP_GLPI} supprimé." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         else
-            warn "Répertoire GLPI introuvable : ${REP_GLPI}" >>"${DEBUGFILE}"
+            warn "Répertoire GLPI introuvable : ${REP_GLPI}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         fi
     else
-    warn "${MSG_COMPRESS_BACKUP_FAILED}" >>"${DEBUGFILE}"
+    warn "${MSG_COMPRESS_BACKUP_FAILED}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
-    info "=== Sauvegarde GLPI terminée avec succès ===" 1>> "${DEBUGFILE}"
+    info "=== Sauvegarde GLPI terminée avec succès ===" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     sleep 2
     export REP_BACKUP
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }
 # Mise à jour de GLPI
 function update_glpi() {
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
-    info "=== Début de la mise à jour GLPI ===" >>"${DEBUGFILE}" 
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    info "=== Début de la mise à jour GLPI ===" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Vérification de base
     if [ -z "${REP_BACKUP}" ] || [ -z "${REP_GLPI}" ]; then
-    warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." >>"${DEBUGFILE}"
+    warn "Variables REP_BACKUP ou REP_GLPI non définies, arrêt de la mise à jour." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         return 1
     fi
-    # --- Étape 1 : restauration des fichiers de configuration et des plugins ---
-    info "${MSG_RESTORE_FILES}" >>"${DEBUGFILE}"
+    # Restauration des fichiers de configuration et des plugins
+    info "${MSG_RESTORE_FILES}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     for DIR in config files plugins marketplace; do
         SRC="${REP_BACKUP}/${DIR}"
         if [ -d "${SRC}" ]; then
@@ -1376,55 +1386,52 @@ function update_glpi() {
             esac
             mkdir -p "${DEST}"
             if compgen -G "${SRC}/*" > /dev/null; then
-                if cp -Rf "${SRC}/"* "${DEST}/" 2>> "${ERRORFILE}"; then
-                    info "Restauration de ${DIR} vers ${DEST} terminée." >>"${DEBUGFILE}"
+                if cp -Rf "${SRC}/"* "${DEST}/" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+                    info "Restauration de ${DIR} vers ${DEST} terminée." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                 else
-                    warn "Erreur lors de la copie de ${DIR}." 2>>"${DEBUGFILE}"
+                    warn "Erreur lors de la copie de ${DIR}." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
                 fi
             else
-                warn "Répertoire ${SRC} vide, rien à copier." 2>>"${DEBUGFILE}"
+                warn "Répertoire ${SRC} vide, rien à copier." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
             fi
         fi
     done
-    # --- Étape 2 : restauration du fichier downstream.php ---
-    info "Restauration du fichier downstream.php si présent." >>"${DEBUGFILE}"
+    # Restauration du fichier downstream.php
+    info "Restauration du fichier downstream.php si présent." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     if [ -f "${REP_BACKUP}/inc/downstream.php" ]; then
         mkdir -p "${REP_GLPI}/inc"
-        if cp -Rf "${REP_BACKUP}/inc/downstream.php" "${REP_GLPI}/inc/" 2>> "${ERRORFILE}"; then
-            info "Fichier downstream.php restauré." >>"${DEBUGFILE}"
+        if cp -Rf "${REP_BACKUP}/inc/downstream.php" "${REP_GLPI}/inc/" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            info "Fichier downstream.php restauré." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         else
-            warn "Erreur lors de la restauration de downstream.php" 2>> "${ERRORFILE}"
+            warn "Erreur lors de la restauration de downstream.php." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
         fi
     fi
-    # --- Étape 3 : suppression de la sauvegarde ---
-    info "${MSG_REMOVE_OLD_FILES}" >>"${DEBUGFILE}"
-    info "${MSG_REMOVE_OLD_FILES}" >>"${DEBUGFILE}"
+    # Suppression de la sauvegarde
+    info "${MSG_REMOVE_OLD_FILES}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    info "${MSG_REMOVE_OLD_FILES}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     if [ -d "${REP_BACKUP}" ]; then
         rm -rf "${REP_BACKUP:?}"
-        info "Répertoire ${REP_BACKUP} supprimé avec succès." >>"${DEBUGFILE}"
+        info "Répertoire ${REP_BACKUP} supprimé avec succès." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     else
-        warn "Répertoire ${REP_BACKUP} introuvable." 2>> "${ERRORFILE}"
+        warn "Répertoire ${REP_BACKUP} introuvable." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     fi
-    # --- Étape 4 : mise à jour de la base GLPI ---
+    # Mise à jour de la base GLPI
     info "${MSG_UPDATE_GLPI_DATABASE}"
     rights_glpi
-    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-        sudo -u www-data php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force 1>"${DEBUGFILE}" 2>> "${ERRORFILE}"
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-        sudo -u nginx php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force 1>"${DEBUGFILE}" 2>> "${ERRORFILE}"
+    if check_distro_user "${REP_GLPI}"; then
+        if sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2); then
+            dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_OK}" --msgbox "${MSG_UPDATE_GLPI_DATABASE_OK}" 0 0
+            info "Mise à jour de la base GLPI réussie." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+        else
+            warn "Échec de la mise à jour de la base GLPI." 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+        fi
     fi
-    if [ $? -eq 0 ]; then
-        info "Mise à jour de la base GLPI réussie." >>"${DEBUGFILE}"
-    else
-        warn "Échec de la mise à jour de la base GLPI." 2>> "${ERRORFILE}"
-        return 1
-    fi
-    # --- Étape 5 : nettoyage final ---
+    # Nettoyage final
     info "${MSG_UPDATE_CLEAN}"
-    rm -f "${REP_GLPI}/install/install.php" 2>> "${ERRORFILE}"
-    rm -rf "${REP_BACKUP}/backup_glpi" 2>> "${ERRORFILE}"
+    rm -f "${REP_GLPI}/install/install.php" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    rm -rf "${REP_BACKUP}/backup_glpi" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 
-    info "=== Fin de la mise à jour GLPI ===" >>"${DEBUGFILE}"
+    info "=== Fin de la mise à jour GLPI ===" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     sleep 2
-    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" >>"${DEBUGFILE}"
+    debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}" 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 }

@@ -17,16 +17,16 @@ trap 'on_error' ERR
 load_language # Fichier de langue
 # Regarde si la distribution est conforme
 info "${MSG_START_SCRIPT}" >> "${DEBUGFILE}"
-info "${MSG_CHECK_DISTRIBUTION}" >> "${DEBUGFILE}"
-if ! check_distro; then
-   dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISTRO_CHECK_FAILED}" 6 50
-    error "${MSG_DISTRO_CHECK_ERROR}" 2>> "${ERRORFILE}"
-    exit 1
-fi
 info "${MSG_PROMPT_INSTALL_OPTIONS}" >> "${DEBUGFILE}"
 if ! prompt_install_options; then # Demande les options d'installation
     dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_PROMPT_OPTIONS_FAILED}" 6 70
     error "${MSG_PROMPT_OPTIONS_ERROR}" 2>> "${ERRORFILE}"
+    exit 1
+fi
+info "${MSG_CHECK_DISTRIBUTION}" >> "${DEBUGFILE}"
+if ! check_distro; then
+   dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISTRO_CHECK_FAILED}" 6 50
+    error "${MSG_DISTRO_CHECK_ERROR}" 2>> "${ERRORFILE}"
     exit 1
 fi
 info "${MSG_CHECK_INSTALL}" >> "${DEBUGFILE}"
