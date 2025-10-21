@@ -1403,7 +1403,7 @@ function update_glpi() {
     # Suppression de la sauvegarde
     info "${MSG_REMOVE_OLD_FILES}"
     if [ -d "${REP_BACKUP}" ]; then
-        rm -rf "${REP_BACKUP:?}"
+        sudo rm -rf "${REP_BACKUP:?}"
         info "Répertoire ${REP_BACKUP} supprimé avec succès."
     else
         warn "Répertoire ${REP_BACKUP} introuvable."
