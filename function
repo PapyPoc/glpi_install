@@ -281,8 +281,6 @@ function prompt_install_options(){
             first="OFF"
             ((number++))
         done
-
-
         # Vérification utilisateur/distro avant exécution
         if check_distro_user "${REP_GLPI}"; then
             GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
@@ -295,24 +293,20 @@ function prompt_install_options(){
         # Filtrage : ne garder que les versions avant GLPI_CLI_VERSION (donc plus récentes) ---
         newer_tags=()
         for tag in ${tags}; do
+            echo "Comparing tag: ${tag} with installed version: ${GLPI_CLI_VERSION}" # Pour Debug
             if [[ "${tag}" == "${GLPI_CLI_VERSION}" ]]; then
                 break  # On s'arrête dès qu'on atteint la version installée
             fi
             newer_tags+=("${tag}")
         done
         # Préparation du menu de sélection de version GLPI
-        find_version=()
-        version_map=()
-        number=1
-        first="ON"
+        tag=""; find_version=(); version_map=(); number=1; first="ON"
         for tag in "${newer_tags[@]}"; do
             find_version+=("${number}" "GLPI ${tag}" "${first}")
             version_map+=("${tag}")
             first="OFF"
             ((number++))
         done
-
-
         # Menu de sélection d’installation GLPI
         exec 3>&1
         FIND_REP_GLPI=$(dialog \
@@ -333,9 +327,6 @@ function prompt_install_options(){
             dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
             return 1
         fi
-
-
-        
         # Sélecteur de version GLPI
         exec 3>&1
         VERSION_SELECT=$(dialog \
