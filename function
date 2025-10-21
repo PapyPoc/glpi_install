@@ -267,7 +267,6 @@ function prompt_install_options(){
             done <<< "$FOUND"
         fi
     done
-    echo "${glpi_dirs[@]}" # Pour Debug
     # Si plusieurs répertoires GLPI trouvés, demander à l'utilisateur de choisir
     if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
         if [[ "${#glpi_dirs[@]}" -gt 1 ]]; then
@@ -293,6 +292,8 @@ function prompt_install_options(){
                 3>&1 1>&2 2>&3)
             rc=$?
             exec 3>&-
+            echo "Répertoire GLPI sélectionné : ${FIND_REP_GLPI}" # Pour Debug
+            sleep 5
             if [[ $rc -ne 0 ]]; then
                 { warn "Sélection de l'installation GLPI annulée."; } \
                     1> >(tee -a "${DEBUGFILE}") \
@@ -302,12 +303,7 @@ function prompt_install_options(){
             fi
             # Vérification utilisateur/distro avant exécution
             if check_distro_user "${FIND_REP_GLPI}"; then
-                GLPI_CLI_VERSION=$(
-                    sudo -u "${WEB_USER}" php -d variables_order=EGPCS "${FIND_REP_GLPI}/bin/console" --no-ansi --version \
-                        1> >(tee -a "${DEBUGFILE}") \
-                        2> >(tee -a "${ERRORFILE}" >&2) |
-                    awk '{print $3}' || true
-                )
+                GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${FIND_REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
             fi
             # Récupération des versions GLPI disponibles sur GitHub
             tags=""
