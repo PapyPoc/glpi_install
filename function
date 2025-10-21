@@ -323,7 +323,6 @@ function prompt_install_options(){
             # Filtrage : ne garder que les versions avant GLPI_CLI_VERSION (donc plus récentes) ---
             newer_tags=()
             for tag in ${tags}; do
-                echo "Comparing installed version ${GLPI_CLI_VERSION} with tag ${tag}"
                 if [[ "${tag}" == "${GLPI_CLI_VERSION}" ]]; then
                     break  # On s'arrête dès qu'on atteint la version installée
                 fi
