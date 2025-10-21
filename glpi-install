@@ -29,12 +29,6 @@ if ! prompt_install_options; then # Demande les options d'installation
     error "${MSG_PROMPT_OPTIONS_ERROR}" 2>> "${ERRORFILE}"
     exit 1
 fi
-info "${MSG_CHECK_INSTALL}" >> "${DEBUGFILE}"
-if ! check_install "${REP_GLPI}"; then # Vérifie l'installation de GLPI
-    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_CHECK_INSTALL_FAILED}" 6 60
-    error "${MSG_CHECK_INSTALL_ERROR}" 2>> "${ERRORFILE}"
-    exit 1
-fi
 info "${MSG_DISPLAY_RESULT}" >> "${DEBUGFILE}"
 if ! display_result; then # Affiche le résultat de l'installation
     dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISPLAY_RESULT_FAILED}" 6 50
