@@ -36,7 +36,7 @@ function warn(){
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
     # echo -e "${ORANGE}${expanded}${NC}" # Couleur orange # Affichage à l'écran désactivé
-    printf '%s\n' "${expanded}" | tee -a "${WARNINGFILE}" >/dev/null # Affichage dans le fichier d'alerte
+    printf '%s\n' "${expanded}" | tee -a "${ERRORFILE}" >/dev/null # Affichage dans le fichier d'alerte
 }
 # Affichage d'information en bleu
 function info(){
