@@ -97,15 +97,19 @@ function on_error() {
     local cmd=$BASH_COMMAND
     local line=${BASH_LINENO[0]}
 
-    echo "Erreur détectée : '${cmd}' (code=$rc) à la ligne $line"
-    echo "Pile d’appels :"
-    for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
-        echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}"
-    done
-    echo "──────────────────────────────"
+    local message="Erreur détectée : '${cmd}' (code=$rc) à la ligne $line\n"
+    message+="Pile d’appels :\n"
 
-    #dialog --msgbox "Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
-    pause 10
+    for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
+        message+="  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}\n"
+    done
+
+    message+="──────────────────────────────"
+
+    dialog --backtitle "Erreur" \
+           --title "Erreur détectée" \
+           --msgbox "$message" 60 100 || true
+    error "$message" 1>> "${ERRORFILE}"
     exit "$rc"
 }
 # Exécuter une tâche et gérer les erreurs et les logs
@@ -590,7 +594,7 @@ function validate_db_user() {
 function run_sequence() {
     local mode="$1"
     debug "$(date '+%F %T') [$$][DEBUG: Début de ${FUNCNAME[0]:-main}] Mode=${mode}"
-
+    trap 'on_error' ERR
     declare -A tasks
     local task_order=()
 
