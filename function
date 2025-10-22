@@ -1432,11 +1432,11 @@ function update_glpi() {
         local CMD="${REP_GLPI}/bin/console db:update --force --no-telemetry --quiet --no-interaction"
         # shellcheck disable=SC2086
         if sudo -u "${WEB_USER}" php ${CMD} 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
-            show_dialog msgbox "${MSG_TITRE_OK}" "${MSG_UPDATE_GLPI_DATABASE_OK}"
+            dialog --title "${MSG_TITRE_OK}" --msgbox "Mise à jour de la base GLPI réussie.\n\nProfitez de GLPI ${VERSION_SELECT} !" 7 50
             info "Mise à jour de la base GLPI réussie."
         else
             warn "Échec de la mise à jour de la base GLPI (voir ${ERRORFILE})."
-            show_dialog msgbox "${MSG_DIALOG_ERROR_TITLE}" "Erreur lors de la mise à jour de la base GLPI."
+            dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "Erreur lors de la mise à jour de la base GLPI."
         fi
     fi
     # Nettoyage final
