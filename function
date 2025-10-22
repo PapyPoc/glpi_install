@@ -1413,6 +1413,8 @@ function update_glpi() {
     debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
     rights_glpi "${REP_GLPI}"
     if check_distro_user "${REP_GLPI}"; then
+        debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
+        debug "Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
         if sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force \
             | sudo tee -a "${DEBUGFILE}" \
             2> >(sudo tee -a "${ERRORFILE}" >&2)
