@@ -47,12 +47,12 @@ else
 fi
 for LOGFILE in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
     if [ -s "${LOGFILE}" ]; then
-        dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
-               --msgbox "${MSG_WARN_CHECK_LOG} ${LOGFILE}" 8 70
+        LOGFILES+="${LOGFILE} "
     else
         rm -rf "${LOGFILE}"
     fi
 done
+dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${LOGFILES}" 8 70
 if [ -s "${INFOFILE}" ]; then
     dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${INFOFILE}" 8 70
 fi
