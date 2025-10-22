@@ -1405,7 +1405,7 @@ function update_glpi() {
     fi
     # Suppression de la sauvegarde
     info "${MSG_REMOVE_OLD_FILES}"
-    if [ -d "${REP_BACKUP}" ]; then
+    if [ -d "${INVOKING_HOME}" ]; then
         find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*" -exec rm -rf {} + >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
         info "Répertoire ${REP_BACKUP} supprimé avec succès."
     else
@@ -1431,12 +1431,8 @@ function update_glpi() {
     fi
     # Nettoyage final
     info "${MSG_UPDATE_CLEAN}"
-    if find "${REP_GLPI}/install/" -maxdepth 1 -type f -name "install.php" \
-        -exec rm -f {} + \
-        > >(tee -a "${DEBUGFILE}") \
-        2> >(tee -a "${ERRORFILE}" >&2)
-    then
-        info "Fichier install.php supprimé dans ${REP_GLPI}/install/"
+    if find "${REP_GLPI}/install/" -maxdepth 1 -type f -name "install.php" -exec sudo rm -f {} +  ; then
+        info "Fichier ${REP_GLPI}/install/install.php supprimé avec succès."
     else
         warn "Impossible de supprimer install.php dans ${REP_GLPI}/install/"
     fi
