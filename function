@@ -669,12 +669,12 @@ function update_distro(){
            info "$MSG_UPGRADE_DISTRO"
            timedatectl set-ntp true # Synchronise l'heure
            sleep 5
-           apt-get update && apt-get upgrade -y
+           apt-get update && apt-get upgrade -y >> "${UPDATEFILE}" 2>> "${ERRORFILE}"
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
            info "$MSG_UPGRADE_DISTRO"
            chronyc makestep # Synchronise l'heure
            sleep 5
-           yum update -y && yum upgrade -y
+           yum update -y && yum upgrade -y >> "${UPDATEFILE}" 2>> "${ERRORFILE}"
 	fi
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
@@ -707,11 +707,10 @@ function install_packages(){
         sleep 1
         export DEBIAN_FRONTEND=noninteractive
         # update cache first
-        apt-get update
-        if command -v apt-get update; then
+        if command -v apt-get update >> "${UPDATEFILE}" 2>> "${ERRORFILE}"; then
             echo "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get update"
-            if ! apt-get update; then
-                warn "apt-get update failed"
+            if ! apt-get upgrade -y >> "${UPDATEFILE}" 2>> "${ERRORFILE}"; then
+                warn "apt-get upgrade failed"
                 # continue, maybe cached; but log
             fi
         else
@@ -1341,7 +1340,7 @@ function backup_glpi() {
     # --- Compression ---
     info "${MSG_COMPRESS_BACKUP}"
     mkdir -p "${REP_BACKUP_COMPRESS}"
-    local BACKUP_FILE; BACKUP_FILE="${REP_BACKUP_COMPRESS}/backup_glpi_$(date +"%Y-%m-%d_%H-%M-%S").tar.gz"
+    local BACKUP_FILE; BACKUP_FILE="${REP_BACKUP_COMPRESS}/glpi_$(date +"%Y-%m-%d")_${GLPI_VERSION}.tar.gz"
     if tar -czf "${BACKUP_FILE}" -C "${REP_BACKUP}" . 2>> "${ERRORFILE}"; then
         info "${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})"
         # Vérifier que le fichier compressé n'est pas vide
