@@ -644,15 +644,17 @@ function run_sequence() {
             if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
                 echo "$progress"
                 echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_OK}"
+                echo "$task_index/$total_tasks - $task_key ${MSG_OK}"
                 echo "XXX"
                 debug "$(date '+%F %T') [$$][DEBUG: Tâche '${task_key}' commande '${tasks[$task_key]}' terminée avec succès.]"
+                sleep 1
             else
                 echo "100"
                 echo "XXX"
                 echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
                 echo "XXX"
                 debug "$(date '+%F %T') [$$][DEBUG: Tâche '${task_key}' commande '${tasks[$task_key]}' échouée.]"
+                sleep 5
                 return 1   # stoppe la boucle sur échec
             fi
             sleep 0.5
