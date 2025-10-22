@@ -1401,9 +1401,11 @@ function update_glpi() {
     done
     # Restauration du fichier downstream.php
     info "Restauration du fichier downstream.php si présent."
-    if [ -f "${REP_BACKUP}/downstream.php" ]; then
-        mkdir -p "${REP_GLPI}/inc"
-        if cp -Rf "${REP_BACKUP}/downstream.php" "${REP_GLPI}/inc/" >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+    debug "Vérification de l'existence de ${REP_BACKUP}downstream.php"
+    sleep 10
+    if [ -f "${REP_BACKUP}downstream.php" ]; then
+        mkdir -p "${REP_GLPI}/inc" >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
+        if cp -Rf "${REP_BACKUP}downstream.php" "${REP_GLPI}/inc/" >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "Fichier downstream.php restauré."
         else
             warn "Erreur lors de la restauration de downstream.php."
@@ -1424,9 +1426,8 @@ function update_glpi() {
     if check_install_user "${REP_GLPI}"; then
         debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
         debug "Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
-        if sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force \
-        >> >(sudo tee -a "${DEBUGFILE}") \
-        2>> >(sudo tee -a "${ERRORFILE}" >&2); then
+        local CMD="${REP_GLPI}/bin/console db:update --force --no-telemetry --quiet --no-interaction"
+        if sudo -u "${WEB_USER}" php "${CMD}" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_OK}" --msgbox "${MSG_UPDATE_GLPI_DATABASE_OK}" 0 0
             info "Mise à jour de la base GLPI réussie."
         else
