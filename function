@@ -97,14 +97,15 @@ function on_error() {
     local cmd=$BASH_COMMAND
     local line=${BASH_LINENO[0]}
 
-    echo "Erreur détectée : '${cmd}' (code=$rc) à la ligne $line" | tee -a "$ERRORFILE" >&2
-    echo "Pile d’appels :" >> "$ERRORFILE"
+    echo "Erreur détectée : '${cmd}' (code=$rc) à la ligne $line"
+    echo "Pile d’appels :"
     for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
-        echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}" >> "$ERRORFILE"
+        echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}"
     done
-    echo "──────────────────────────────" >> "$ERRORFILE"
+    echo "──────────────────────────────"
 
-    dialog --msgbox "Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
+    #dialog --msgbox "Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
+    pause 10
     exit "$rc"
 }
 # Exécuter une tâche et gérer les erreurs et les logs
@@ -254,20 +255,22 @@ function load_language() {
     fi
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}"
 }
-function check_distro_user(){
-    local Rep=$1
-    if stat -c '%U' "${Rep}" >/dev/null 2>&1; then
-        WEB_USER=$(stat -c '%U' "${Rep}")
+function check_install_user(){
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    REP_GLPI="${1:-/var/www/html/glpi}"
+    if WEB_USER=$(stat -c '%U' "${REP_GLPI}") >/dev/null 2>&1; then
         debug "Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
+        debug "Répertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
     else
-        warn "Impossible de déterminer l'utilisateur web pour le répertoire ${Rep}."
+        warn "Impossible de déterminer l'utilisateur web pour le répertoire ${REP_GLPI}."
         return 1
     fi
-    export WEB_USER
+    debug "Utilisateur web détecté : ${WEB_USER}"
+    export WEB_USER REP_GLPI
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
 function prompt_install_options(){
-    clear
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Recherche des installations GLPI existantes
     FIND_REP_GLPI=""
@@ -299,7 +302,7 @@ function prompt_install_options(){
             ((number++))
         done
         # Vérification utilisateur/distro avant exécution
-        if check_distro_user "${REP_GLPI}"; then
+        if check_install_user "${REP_GLPI}"; then
             GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
         fi
         # Récupération des versions GLPI disponibles sur GitHub
@@ -958,7 +961,7 @@ EOF
     }
 EOF
     network_info
-    if check_distro_user "${REP_GLPI}"; then
+    if check_install_user "${REP_GLPI}"; then
         if [[ "${WEB_USER}" == "www-data" ]]; then
             # Configuration d'Apache pour GLPI
             sudo tee /etc/apache2/sites-available/glpi.conf  <<EOF
@@ -1296,7 +1299,7 @@ function update() {
 # Activé ou déactivé le mode maintenance (1 ou 0)
 function maintenance(){ 
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    check_distro_user "${REP_GLPI}"
+    check_install_user "${REP_GLPI}"
     if [ "$1" == "1" ]; then
         info "${MSG_ACTIVE_SERVICE}"
         sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:enable
@@ -1426,7 +1429,7 @@ function update_glpi() {
     info "${MSG_UPDATE_GLPI_DATABASE}"
     debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
     rights_glpi "${REP_GLPI}"
-    if check_distro_user "${REP_GLPI}"; then
+    if check_install_user "${REP_GLPI}"; then
         debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
         debug "Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
         if sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" db:update --quiet --no-interaction --force \
