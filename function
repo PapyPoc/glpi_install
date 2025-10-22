@@ -1429,8 +1429,9 @@ function update_glpi() {
     if check_install_user "${REP_GLPI}"; then
         debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
         debug "Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
-        local CMD=("${REP_GLPI}/bin/console" "db:update" "--force" "--no-telemetry" "--quiet" "--no-interaction")
-        if sudo -u "${WEB_USER}" php "${CMD[@]}" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+        local CMD="${REP_GLPI}/bin/console db:update --force --no-telemetry --quiet --no-interaction"
+        # shellcheck disable=SC2086
+        if sudo -u "${WEB_USER}" php ${CMD} 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             show_dialog msgbox "${MSG_TITRE_OK}" "${MSG_UPDATE_GLPI_DATABASE_OK}"
             info "Mise à jour de la base GLPI réussie."
         else
