@@ -16,23 +16,23 @@ trap 'on_error' ERR
 . "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
 # Regarde si la distribution est conforme
-info "${MSG_START_SCRIPT}" >> "${DEBUGFILE}"
-info "${MSG_CHECK_DISTRIBUTION}" >> "${DEBUGFILE}"
-if ! check_distro; then
+info "${MSG_START_SCRIPT}"
+info "${MSG_CHECK_DISTRIBUTION}"
+if ! check_distro; then # Vérifie la distribution
    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISTRO_CHECK_FAILED}" 6 50
-    error "${MSG_DISTRO_CHECK_ERROR}" 2>> "${ERRORFILE}"
+    error "${MSG_DISTRO_CHECK_ERROR}"
     exit 1
 fi
-info "${MSG_PROMPT_INSTALL_OPTIONS}" >> "${DEBUGFILE}"
+info "${MSG_PROMPT_INSTALL_OPTIONS}"
 if ! prompt_install_options; then # Demande les options d'installation
     dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_PROMPT_OPTIONS_FAILED}" 6 70
-    error "${MSG_PROMPT_OPTIONS_ERROR}" 2>> "${ERRORFILE}"
+    error "${MSG_PROMPT_OPTIONS_ERROR}"
     exit 1
 fi
-info "${MSG_DISPLAY_RESULT}" >> "${DEBUGFILE}"
+info "${MSG_DISPLAY_RESULT}"
 if ! display_result; then # Affiche le résultat de l'installation
     dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISPLAY_RESULT_FAILED}" 6 50
-    error "${MSG_DISPLAY_RESULT_ERROR}" 2>> "${ERRORFILE}"
+    error "${MSG_DISPLAY_RESULT_ERROR}"
     exit 1
 fi
 if [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
@@ -46,19 +46,19 @@ else
     exit 1
 fi
 if [ -s "${ERRORFILE}" ]; then
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG}" 8 70
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${ERRORFILE}" 8 70
 else
-    rm -f "${ERRORFILE}"
+    find "${INVOKING_HOME}" -maxdepth 1 -type d -name "${ERRORFILE}" -exec rm -rf {} +
 fi
 if [ -s "${DEBUGFILE}" ]; then
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG}" 8 70
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${DEBUGFILE}" 8 70
 else
-    rm -f "${DEBUGFILE}"
+    find "${INVOKING_HOME}" -maxdepth 1 -type d -name "${DEBUGFILE}" -exec rm -rf {} +
 fi
-if [ -s "${DEBUGFILE}" ]; then
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG}" 8 70
+if [ -s "${UPDATEFILE}" ]; then
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${UPDATEFILE}" 8 70
 else
-    rm -f "${DEBUGFILE}"
+    find "${INVOKING_HOME}" -maxdepth 1 -type d -name "${UPDATEFILE}" -exec rm -rf {} +
 fi
 info "${MSG_END_SCRIPT}" >> "${DEBUGFILE}"
 exit 0

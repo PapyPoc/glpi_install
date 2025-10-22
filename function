@@ -35,8 +35,8 @@ function warn(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e "${ORANGE}${expanded}${NC}" # Couleur orange
-    printf '%s\n' "${expanded}" | tee -a "${WARNINGFILE}" >/dev/null
+    # echo -e "${ORANGE}${expanded}${NC}" # Couleur orange # Affichage à l'écran désactivé
+    printf '%s\n' "${expanded}" | tee -a "${WARNINGFILE}" >/dev/null # Affichage dans le fichier d'alerte
 }
 # Affichage d'information en bleu
 function info(){
@@ -48,8 +48,8 @@ function info(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e "${CYAN}${expanded}${NC}" # Couleur cyan
-    printf '%s\n' "${expanded}" | tee -a "${DEBUGFILE}" >/dev/null
+    # echo -e "${CYAN}${expanded}${NC}" # Couleur cyan # Affichage à l'écran désactivé
+    printf '%s\n' "${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 # Affichage debug en normal
 function debug(){
@@ -61,8 +61,8 @@ function debug(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e "${NC}${expanded}${NC}" # Couleur normale
-    printf '%s\n' "${expanded}" | tee -a "${DEBUGFILE}" >/dev/null
+    # echo -e "${NC}${expanded}${NC}" # Couleur normale Affichage à l'écran désactivé
+    printf '%s\n' "${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 # Exporter une liste blanche de variables utilisées dans les fichiers de langue pour que envsubst puisse les remplacer
 function export_display_env() {
@@ -366,13 +366,12 @@ function prompt_install_options(){
         dialog --title "${MSG_INFO}" --msgbox "\n${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${REP_GLPI}\n\n${MSG_UPGRADE1}${GLPI_CLI_VERSION}${MSG_UPGRADE2}${VERSION_SELECT}" 10 100
         export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
         export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME
-        echo "Répertoire GLPI sélectionné : ${REP_GLPI}" # Pour Debug
-        echo "Version GLPI installée : ${GLPI_CLI_VERSION}" # Pour Debug
-        echo "Version GLPI sélectionnée pour mise à jour : ${VERSION_SELECT}" # Pour Debug
-        echo "URL de téléchargement : ${DOWNLOADLINK}" # Pour Debug
-        echo "Répertoire de sauvegarde : ${REP_BACKUP_COMPRESS}" # Pour Debug
-        echo "Répertoire d'invocation : ${INVOKING_HOME}" # Pour Debug
-        sleep 15
+        debug "Répertoire GLPI sélectionné : ${REP_GLPI}" # Pour Debug
+        debug "Version GLPI installée : ${GLPI_CLI_VERSION}" # Pour Debug
+        debug "Version GLPI sélectionnée pour mise à jour : ${VERSION_SELECT}" # Pour Debug
+        debug "URL de téléchargement : ${DOWNLOADLINK}" # Pour Debug
+        debug "Répertoire de sauvegarde : ${REP_BACKUP_COMPRESS}" # Pour Debug
+        debug "Répertoire d'invocation : ${INVOKING_HOME}" # Pour Debug
         # Lancement de la mise à jour
         update
     else
