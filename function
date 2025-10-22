@@ -1348,7 +1348,8 @@ function backup_glpi() {
     # --- Compression ---
     info "${MSG_COMPRESS_BACKUP}"
     mkdir -p "${REP_BACKUP_COMPRESS}"
-    local BACKUP_FILE; BACKUP_FILE="${REP_BACKUP_COMPRESS}/glpi_$(date +"%Y-%m-%d")_${GLPI_CLI_VERSION}->${VERSION_SELECT}.tar.gz"
+    local BACKUP_FILE
+    BACKUP_FILE="${REP_BACKUP_COMPRESS}/glpi_$(date +"%Y-%m-%d")_${GLPI_CLI_VERSION}->${VERSION_SELECT}.tar.gz"
     if tar -czf "${BACKUP_FILE}" -C "${REP_BACKUP}" . 2>> "${ERRORFILE}"; then
         info "${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})"
         # Vérifier que le fichier compressé n'est pas vide
@@ -1359,7 +1360,7 @@ function backup_glpi() {
         # Suppression sécurisée de l’ancien GLPI
         info "${MSG_REMOVE_OLD_GLPI_DIR}"
         if [ -n "${REP_GLPI}" ] && [ -d "${REP_GLPI}" ]; then
-            rm -rf "${REP_GLPI:?}/"
+            rm -rf "${REP_GLPI:?}/" >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
             info "Répertoire ${REP_GLPI} supprimé."
         else
             warn "Répertoire GLPI introuvable : ${REP_GLPI}"
@@ -1401,8 +1402,8 @@ function update_glpi() {
         fi
     done
     # Restauration du fichier downstream.php
-    info "Restauration du fichier ${REP_BACKUP}downstream.php si présent."
-    info "Vérification de l'existence de ${REP_BACKUP}downstream.php"
+    info "Restauration du fichier ${REP_BACKUP}/downstream.php si présent."
+    info "Vérification de l'existence de ${REP_BACKUP}/downstream.php"
     sleep 10
     if [ -f "${REP_BACKUP}downstream.php" ]; then
         mkdir -p "${REP_GLPI}/inc" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"
