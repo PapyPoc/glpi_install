@@ -1402,22 +1402,21 @@ function update_glpi() {
         fi
     done
     # Restauration du fichier downstream.php
-    info "Restauration du fichier ${REP_BACKUP}/downstream.php si présent."
-    info "Vérification de l'existence de ${REP_BACKUP}/downstream.php"
-    sleep 10
-    if [ -f "${REP_BACKUP}downstream.php" ]; then
+    REP_BACKUP=$(find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*")
+    info "Restauration du fichier ${REP_BACKUP}downstream.php si présent."
+    info "Vérification de l'existence de ${REP_BACKUP}downstream.php"
+    if [ -f "${REP_BACKUP}/downstream.php" ]; then
         mkdir -p "${REP_GLPI}/inc" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"
-        if cp -Rf "${REP_BACKUP}downstream.php" "${REP_GLPI}/inc/" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+        if cp -Rf "${REP_BACKUP}/downstream.php" "${REP_GLPI}/inc/" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "Fichier downstream.php restauré."
         else
             warn "Erreur lors de la restauration de downstream.php."
         fi
     fi
-    sleep 10
     # Suppression de la sauvegarde
     info "${MSG_REMOVE_OLD_FILES}"
     if [ -d "${INVOKING_HOME}" ]; then
-        # find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*" -exec rm -rf {} + >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
+        find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*" -exec rm -rf {} + >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
         info "Répertoire ${REP_BACKUP} supprimé avec succès."
     else
         warn "Répertoire ${REP_BACKUP} introuvable."
