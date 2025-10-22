@@ -45,20 +45,15 @@ else
     error "$MSG_ERROR_FICHIER_MSG" 1>> "${ERRORFILE}"
     exit 1
 fi
-if [ -s "${ERRORFILE}" ]; then
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${ERRORFILE}" 8 70
-else
-    find "${INVOKING_HOME}" -maxdepth 1 -type d -name "${ERRORFILE}" -exec rm -rf {} +
-fi
-if [ -s "${DEBUGFILE}" ]; then
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${DEBUGFILE}" 8 70
-else
-    find "${INVOKING_HOME}" -maxdepth 1 -type d -name "${DEBUGFILE}" -exec rm -rf {} +
-fi
-if [ -s "${UPDATEFILE}" ]; then
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${UPDATEFILE}" 8 70
-else
-    find "${INVOKING_HOME}" -maxdepth 1 -type d -name "${UPDATEFILE}" -exec rm -rf {} +
+for LOGFILE in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
+    if [ -s "${LOGFILE}" ]; then
+        dialog --title "${MSG_DIALOG_WARNING_TITLE}" \
+               --msgbox "${MSG_WARN_CHECK_LOG} ${LOGFILE}" 8 70
+    else
+        rm -rf "${LOGFILE}"
+    fi
+done
+if [ -s "${INFOFILE}" ]; then
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${INFOFILE}" 8 70
 fi
 info "${MSG_END_SCRIPT}" >> "${DEBUGFILE}"
-exit 0

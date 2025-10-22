@@ -93,7 +93,9 @@ function on_error_install() {
     dialog --msgbox "Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
     exit "$rc"
 }
+# Gestion des erreurs avec trap
 trap 'on_error_install' ERR
+# Détection de la distribution
 if . /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
     info "Distribution détectée : ${DISTRO_ID^} ${VERSION_ID:-}"
@@ -101,6 +103,7 @@ else
     warn "Distribution non détectée ou non prise en charge."
     exit 1
 fi
+# Définir le groupe administrateur en fonction de la distribution
 case "${DISTRO_ID}" in
     debian|ubuntu)
         ADMIN_GROUP="sudo"
@@ -125,17 +128,20 @@ if [ "$EUID" -ne 0 ]; then
         exit 1
     fi
 fi
+# Vérification et installation des dépendances
 if ensure_dependencies "${DEPENDENCIES}"; then
     info "Toutes les dépendances sont satisfaites."
 else
     warn "Échec de la vérification ou installation des dépendances."
     exit 1
 fi
+# Redémarrer le script si des dépendances ont été installées
 if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     info "Dépendances installées. Redémarrage du script..."
     sleep 3
     exec bash "${REP_SCRIPT}/$(basename "$0")" "$@"
 fi
+# Clonage ou mise à jour du dépôt git
 if [ -d "${REP_SCRIPT}/glpi_install" ]; then
     cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}" && cd ..
 else

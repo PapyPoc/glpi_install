@@ -48,6 +48,7 @@ TECHGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 NORMGLPIPWD=$(openssl rand -base64 48 | cut -c1-12)
 REP_BACKUP_COMPRESS="${INVOKING_HOME}/archive_GLPI"
 FICHIER_MSG="${INVOKING_HOME}/sauve_mdp.txt"
+INFOFILE="${INVOKING_HOME}/info.log"
 ERRORFILE="${INVOKING_HOME}/error.log"
 DEBUGFILE="${INVOKING_HOME}/debug.log"
 UPDATEFILE="${INVOKING_HOME}/update.log"
@@ -63,6 +64,7 @@ export DB_NAME DB_USER BDD_BACKUP
 export FICHIER_MSG DEBUGFILE ERRORFILE UPDATEFILE
 export INVOKING_USER INVOKING_HOME DEBUG_ENTRY DEBUG_END
 # Initialisation des fichiers de log
+: > "$INFOFILE"
 : > "$ERRORFILE"
 : > "$DEBUGFILE"
 : > "$UPDATEFILE"

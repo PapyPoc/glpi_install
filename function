@@ -49,7 +49,7 @@ function info(){
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
     # echo -e "${CYAN}${expanded}${NC}" # Couleur cyan # Affichage à l'écran désactivé
-    printf '%s\n' "${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
+    printf '%s\n' "${expanded}" | tee -a "${INFOFILE}" >/dev/null # Affichage dans le fichier d'info
 }
 # Affichage debug en normal
 function debug(){
@@ -1426,7 +1426,6 @@ function update_glpi() {
     debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
     rights_glpi "${REP_GLPI}"
     if check_install_user "${REP_GLPI}"; then
-        DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
         debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
         debug "Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
         local CMD="${REP_GLPI}/bin/console db:update --force --no-telemetry --quiet --no-interaction"
