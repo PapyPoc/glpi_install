@@ -149,6 +149,11 @@ function check_distro(){
     source_os_release
     # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
     if [[ "${ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
+        if [[ "$ID" == "debian" || "$ID" == "ubuntu" ]]; then
+            WEB_USER="www-data"
+        else
+            WEB_USER="nginx"
+        fi
         if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
             info "$MSG_DISTRO_OK"
             return 0
@@ -181,6 +186,7 @@ function check_distro(){
         warn "$MSG_DISTRO_INVALID"
         return 1
     fi
+    export VERSION_ID ID WEB_USER
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}"
 }
 # Chargement du fichier de langue
@@ -249,8 +255,14 @@ function load_language() {
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}"
 }
 function check_distro_user(){
-    local rep=$1
-    WEB_USER=$(stat -c '%U' "${rep}")
+    local Rep=$1
+    if stat -c '%U' "${Rep}" >/dev/null 2>&1; then
+        WEB_USER=$(stat -c '%U' "${Rep}")
+        debug "Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
+    else
+        warn "Impossible de déterminer l'utilisateur web pour le répertoire ${Rep}."
+        return 1
+    fi
     export WEB_USER
 }
 # Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
@@ -1135,7 +1147,7 @@ function rights_glpi(){
     find "${REP_GLPI}" -type d -exec chmod 755 {} \; 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     find "${REP_GLPI}" -type f -exec chmod 644 {} \; 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Changer le propriétaire des répertoires
-    if check_distro_user "${REP_GLPI}"; then
+    if check_distro ; then
         sudo chown -Rc "${WEB_USER}":"${WEB_USER}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}"
     fi
     # SELinux configuration
