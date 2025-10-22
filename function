@@ -662,8 +662,8 @@ function run_sequence() {
     ) | dialog --clear --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
 
     # Vérifie le code retour du sous-shell
-    if [ ${PIPESTATUS[0]} -ne 0 ]; then
-        warn "Une tâche a échoué pendant l'exécution de ${mode}()."
+    if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+        warn "Une tâche a échoué pendant l'exécution de ${mode}() commande '${tasks[$task_key]}' ${MSG_NONOK}."
         debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Mode=${mode} (échec)"
         return 1
     fi
@@ -1403,7 +1403,7 @@ function update_glpi() {
     done
     # Restauration du fichier downstream.php
     info "Restauration du fichier downstream.php si présent."
-    debug "Vérification de l'existence de ${REP_BACKUP}downstream.php"
+    info "Vérification de l'existence de ${REP_BACKUP}downstream.php"
     sleep 10
     if [ -f "${REP_BACKUP}downstream.php" ]; then
         mkdir -p "${REP_GLPI}/inc" >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
@@ -1416,7 +1416,7 @@ function update_glpi() {
     # Suppression de la sauvegarde
     info "${MSG_REMOVE_OLD_FILES}"
     if [ -d "${INVOKING_HOME}" ]; then
-        find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*" -exec rm -rf {} + >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
+        # find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*" -exec rm -rf {} + >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
         info "Répertoire ${REP_BACKUP} supprimé avec succès."
     else
         warn "Répertoire ${REP_BACKUP} introuvable."
