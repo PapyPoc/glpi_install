@@ -376,7 +376,7 @@ function prompt_install_options(){
         debug "Répertoire de sauvegarde : ${REP_BACKUP_COMPRESS}" # Pour Debug
         debug "Répertoire d'invocation : ${INVOKING_HOME}" # Pour Debug
         # Lancement de la mise à jour
-        update
+        run_sequence "update"
     else
         tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
         local args=() first=ON number=1 version_map=()
@@ -488,6 +488,7 @@ function prompt_install_options(){
             break
         done
         export DB_HOST REP_GLPI DB_NAME DB_USER VERSION_SELECT
+        run_sequence "install"
     fi
     # Assignation des valeurs finales
     export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
@@ -544,7 +545,7 @@ function validate_db_host() {
     dbhost_err "$clean_host"
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
-# 🔧 Helper message d'erreur + log
+# Helper message d'erreur + log
 function dbhost_err() {
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     v=$1
@@ -585,51 +586,81 @@ function validate_db_user() {
     fi
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
-# Exécuter les tâches avec barre de progression
-function glpi_install() {
-    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    declare -A tasks=(
-        ["$MSG_T01"]="update_distro"
-        ["$MSG_T02"]="install_packages"
-        ["$MSG_T03"]="network_info"
-        ["$MSG_T04"]="mariadb_configure"
-        ["$MSG_T05"]="install_glpi"
-        ["$MSG_T06"]="setup_glpi"
-        ["$MSG_T07"]="maj_user_glpi"
-        ["$MSG_T08"]="write_credentials"
-    )
-    local task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
+# Sequence principale d'installation et de mise à jour de GLPI
+function run_sequence() {
+    local mode="$1"
+    debug "$(date '+%F %T') [$$][DEBUG: Début de ${FUNCNAME[0]:-main}] Mode=${mode}"
+
+    declare -A tasks
+    local task_order=()
+
+    case "$mode" in
+        install)
+            tasks=(
+                ["$MSG_T01"]="update_distro"
+                ["$MSG_T02"]="install_packages"
+                ["$MSG_T03"]="network_info"
+                ["$MSG_T04"]="mariadb_configure"
+                ["$MSG_T05"]="install_glpi"
+                ["$MSG_T06"]="setup_glpi"
+                ["$MSG_T07"]="maj_user_glpi"
+                ["$MSG_T08"]="write_credentials"
+            )
+            task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
+            ;;
+        update)
+            tasks=(
+                ["$MSG_T20"]="maintenance 1"
+                ["$MSG_T21"]="update_distro"
+                ["$MSG_T22"]="backup_glpi"
+                ["$MSG_T23"]="install_glpi"
+                ["$MSG_T24"]="update_glpi"
+                ["$MSG_T25"]="maintenance 0"
+            )
+            task_order=("$MSG_T20" "$MSG_T21" "$MSG_T22" "$MSG_T23" "$MSG_T24" "$MSG_T25")
+            ;;
+        *)
+            warn "Mode inconnu : ${mode}"
+            return 1
+            ;;
+    esac
+
     local total_tasks=${#task_order[@]}
     local task_index=0
-    (
-    task_index=0
-    for task_key in "${task_order[@]}"; do
-        task_index=$((task_index + 1))
-        progress=$((task_index * 100 / total_tasks))
 
-        # --- Affichage progression
-        echo "$progress"
-        echo "XXX"
-        echo "$task_index/$total_tasks - $task_key"
-        echo "XXX"
-        debug "$(date '+%F %T'): [START] $task_key"
-        # --- Exécution silencieuse de la tâche
-        if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
-            debug "$(date '+%F %T'): [END] $task_key"
-        else
-            echo "100"
+    (
+        for task_key in "${task_order[@]}"; do
+            task_index=$((task_index + 1))
+            progress=$((task_index * 100 / total_tasks))
+            echo "$progress"
             echo "XXX"
-            echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+            echo "$task_index/$total_tasks - $task_key"
             echo "XXX"
-            warn "$(date '+%F %T'): [ERROR] $task_key error."
-            dialog --title "Erreur" --msgbox "\n${MSG_ERROR_INSTALL}\n\nConsultez : ${ERRORFILE}" 8 70
-            error "$MSG_ERROR_INSTALL\n\nConsultez : ${ERRORFILE}" | tee -a "${ERRORFILE}"
-            sleep 3
-            exit 1
-        fi
-    done
-    ) | dialog --clear --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge 8 120 0
-    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
+                echo "$progress"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_OK}"
+                echo "XXX"
+            else
+                echo "100"
+                echo "XXX"
+                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+                echo "XXX"
+                return 1   # stoppe la boucle sur échec
+            fi
+            sleep 0.5
+        done
+    ) | dialog --clear --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
+
+    # Vérifie le code retour du sous-shell
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then
+        warn "Une tâche a échoué pendant l'exécution de ${mode}()."
+        debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Mode=${mode} (échec)"
+        return 1
+    fi
+
+    info "Toutes les tâches du mode '${mode}' ont été exécutées avec succès."
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Mode=${mode} (succès)"
 }
 # Mise à jour de la distribution
 function update_distro(){
@@ -1250,51 +1281,6 @@ EOF
 EOF
 	fi
         debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    }
-# Fonction principale pour exécuter les tâches avec barre de progression
-function update() {
-    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    declare -A tasks=(
-        ["$MSG_T20"]="maintenance 1"
-        ["$MSG_T21"]="update_distro"
-        ["$MSG_T22"]="backup_glpi"
-        ["$MSG_T23"]="install_glpi"
-        ["$MSG_T24"]="update_glpi"
-        ["$MSG_T25"]="maintenance 0"
-    )
-    task_order=("$MSG_T20" "$MSG_T21" "$MSG_T22" "$MSG_T23" "$MSG_T24" "$MSG_T25")
-    total_tasks=${#task_order[@]}
-    task_index=0
-    (
-        for task_key in "${task_order[@]}"; do
-            task_index=$((task_index + 1))
-            progress=$((task_index * 100 / total_tasks))
-            echo "$progress"
-            echo "XXX"
-            echo "$task_index/$total_tasks - $task_key"
-            echo "XXX"
-            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
-                echo "$progress"
-                echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_OK}"
-                echo "XXX"
-            else
-                echo "100"
-                echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
-                echo "XXX"
-                return 1   # <-- remonte l'erreur au parent
-            fi
-            sleep 0.5
-        done
-    ) | dialog --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
-    # Récupérer le code de retour du sous-shell
-    if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    warn "Une tâche a échoué pendant l'exécution de update()."
-        return 1
-    fi
-    info "Toutes les tâches ont été exécutées avec succès."
-    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Activé ou déactivé le mode maintenance (1 ou 0)
 function maintenance(){ 
