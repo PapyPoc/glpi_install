@@ -23,7 +23,7 @@ function error(){
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
     echo -e "${ROUGE}${expanded}${NC}" # Couleur rouge
-    printf '%s\n' "${expanded}" | tee -a "${DEBUGFILE}" >/dev/null
+    printf '%s\n' "${expanded}" | tee -a "${ERRORFILE}" >/dev/null
 }
 # Affichage d'alerte en orange
 function warn(){
@@ -1416,10 +1416,11 @@ function update_glpi() {
     # Suppression de la sauvegarde
     info "${MSG_REMOVE_OLD_FILES}"
     if [ -d "${INVOKING_HOME}" ]; then
-        find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*" -exec rm -rf {} + >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
-        info "Répertoire ${REP_BACKUP} supprimé avec succès."
-    else
-        warn "Répertoire ${REP_BACKUP} introuvable."
+        if find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*" -exec rm -rf {} + >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+            info "Répertoire ${REP_BACKUP} supprimé avec succès."
+        else
+            warn "Répertoire ${REP_BACKUP} introuvable."
+        fi
     fi
     # Mise à jour de la base GLPI
     info "${MSG_UPDATE_GLPI_DATABASE}"
