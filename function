@@ -1328,8 +1328,7 @@ function backup_glpi() {
     fi
     # --- Sauvegarde BDD ---
     info "${MSG_MYSQL_DUMP}"
-    if eval "${MYSQLDUMP_CMD} -u root -p\"${PASSWORD}\" --databases \"${DB_NAME}\" > \"${REP_BACKUP}/${BDD_BACKUP}\" \
-    1> >(tee -a \"${DEBUGFILE}\") 2> >(tee -a \"${ERRORFILE}\" >&2)"; then
+    if eval "${MYSQLDUMP_CMD} -u root -p\"${PASSWORD}\" --databases \"${DB_NAME}\" > \"${REP_BACKUP}/${BDD_BACKUP}\""; then
         info "${MSG_DUMP_SUCCESS}"
     else
     warn "Échec de la sauvegarde de la base ${DB_NAME}"
