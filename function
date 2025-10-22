@@ -1320,7 +1320,6 @@ function backup_glpi() {
     local MYSQLDUMP_CMD
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
     # Répertoires de sauvegarde
-    local BDD_BACKUP REP_BACKUP 
     REP_BACKUP="${INVOKING_HOME}/backup_glpi_$(date +"%Y-%m-%d")"
     BDD_BACKUP="bdd_glpi_$(date +"%Y-%m-%d_%H-%M-%S").sql"
     if ! mkdir -p "${REP_BACKUP}"; then
@@ -1402,7 +1401,7 @@ function update_glpi() {
         fi
     done
     # Restauration du fichier downstream.php
-    info "Restauration du fichier downstream.php si présent."
+    info "Restauration du fichier ${REP_BACKUP}downstream.php si présent."
     info "Vérification de l'existence de ${REP_BACKUP}downstream.php"
     sleep 10
     if [ -f "${REP_BACKUP}downstream.php" ]; then
