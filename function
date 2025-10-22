@@ -1426,16 +1426,18 @@ function update_glpi() {
     debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
     rights_glpi "${REP_GLPI}"
     if check_install_user "${REP_GLPI}"; then
+        DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
         debug "Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
         debug "Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
-        local CMD="${REP_GLPI}/bin/console db:update --force --no-telemetry --quiet --no-interaction"
+        debug "Nom de la base de données pour la mise à jour : ${DB_NAME}"
+        local CMD="${REP_GLPI}/bin/console db:update --db-name=${DB_NAME} --force --no-telemetry --quiet --no-interaction"
         if sudo -u "${WEB_USER}" php "${CMD}" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_OK}" --msgbox "${MSG_UPDATE_GLPI_DATABASE_OK}" 0 0
             info "Mise à jour de la base GLPI réussie."
         else
             warn "Échec de la mise à jour de la base GLPI."
             dialog --backtitle "${MSG_TITRE}" --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "Erreur lors de la mise à jour de la base GLPI." 0 0
-            return 1
+            # return 1
         fi
     fi
     # Nettoyage final
