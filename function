@@ -235,11 +235,8 @@ function load_language() {
 function check_install_user(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     REP_GLPI="${1:-/var/www/html/glpi}"
-    if WEB_USER=$(stat -c '%U' "${REP_GLPI}") >/dev/null 2>&1; then
-        debug "Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
-        debug "Répertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
-    else
-        warn "Impossible de déterminer l'utilisateur web pour le répertoire ${REP_GLPI}."
+    if ! WEB_USER=$(stat -c '%U' "${REP_GLPI}") >/dev/null 2>&1; then
+        debug "Impossible de déterminer l'utilisateur web pour le répertoire ${REP_GLPI}."
         return 1
     fi
     debug "Utilisateur web détecté : ${WEB_USER}"
@@ -1161,6 +1158,17 @@ function maj_user_glpi(){
     fi
     # Construire la requête SQL et exécuter via -e
     local _sql_user
+    debug "Préparation des commandes SQL pour mettre à jour les mots de passe des utilisateurs GLPI."
+    debug "Utilisation de la commande MySQL: ${MYSQL_CMD}"
+    debug "Base de données: ${DB_NAME}, Utilisateur: ${DB_USER}", "Mot de passe SQL: ${SQLGLPIPWD}"
+    debug "Nouveaux mots de passe des utilisateurs GLPI:"
+    debug "  - glpi: ${ADMINGLPIPWD}"
+    debug "  - post-only: ${POSTGLPIPWD}"
+    debug "  - tech: ${TECHGLPIPWD}"
+    debug "  - normal: ${NORMGLPIPWD}"
+    debug "Mots de passe des utilisateurs GLPI seront mis à jour."
+    debug "Fuseau horaire: ${TIMEZONE}, Langue: ${LANGUAGE}, Adresse IP: ${IPADRESS}"
+    debug "Construction des commandes SQL..."
     _sql_user="USE '${DB_NAME}'; "
     _sql_user+="UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi'; "
     _sql_user+="UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only'; "

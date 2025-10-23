@@ -50,17 +50,18 @@ if [ -s "${FICHIER_MSG}" ]; then
     fi
 fi
 # Affichage des fichiers de logs s'ils existent
-if [ -s "${ERRORFILE}" ] || [ -s "${DEBUGFILE}" ] || [ -s "${UPDATEFILE}" ]; then
+LOGFILES="${ERRORFILE} ${DEBUGFILE} ${UPDATEFILE}"
+if [ -s "${LOGFILES}" ]; then
     info "Affichage des fichiers de logs à l'utilisateur."
-    LOGFILES=""
-    for LOGFILES in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
-        if [ -s "${LOGFILES}" ]; then
-            LOGFILES+="${LOGFILES} "
+    LOGFILEP=""
+    for LOGFILE in ${LOGFILES}; do
+        if [ -s "${LOGFILE}" ]; then
+            LOGFILEP+="${LOGFILE} "
         else
-            rm -rf "${LOGFILES}"
+            rm -rf "${LOGFILE}"
         fi
     done
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${LOGFILES}" 8 70
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${LOGFILEP}" 8 70
 fi
 # Affichage du fichier d'information s'il existe
 if [ -s "${INFOFILE}" ]; then
