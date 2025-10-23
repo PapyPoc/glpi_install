@@ -1048,6 +1048,10 @@ EOF
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
 EOF
+    if ! rights_glpi "${REP_GLPI}"; then
+        warn "❌ Échec de la modification des droits pour GLPI."
+        return 1
+    fi
     info "✅ Configuration du serveur web pour GLPI : ${REP_GLPI}"
     if check_install_user "${REP_GLPI}"; then
         info "✅ Utilisateur web détecté : ${WEB_USER}"
