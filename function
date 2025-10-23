@@ -291,7 +291,6 @@ function prompt_install_options(){
             fi
             newer_tags+=("${tag}")
         done
-        echo "Versions GLPI plus récentes que ${GLPI_CLI_VERSION} : ${newer_tags[*]}" # Pour Debug
         # Préparation du menu de sélection de version GLPI
         tag=""; find_version=(); version_map=(); number=1; first="ON"
         for tag in "${newer_tags[@]}"; do
@@ -342,12 +341,6 @@ function prompt_install_options(){
         dialog --title "${MSG_INFO}" --msgbox "\n${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${REP_GLPI}\n\n${MSG_UPGRADE1}${GLPI_CLI_VERSION}${MSG_UPGRADE2}${VERSION_SELECT}" 10 100
         export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
         export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME GLPI_CLI_VERSION
-        debug "Répertoire GLPI sélectionné : ${REP_GLPI}" # Pour Debug
-        debug "Version GLPI installée : ${GLPI_CLI_VERSION}" # Pour Debug
-        debug "Version GLPI sélectionnée pour mise à jour : ${VERSION_SELECT}" # Pour Debug
-        debug "URL de téléchargement : ${DOWNLOADLINK}" # Pour Debug
-        debug "Répertoire de sauvegarde : ${REP_BACKUP_COMPRESS}" # Pour Debug
-        debug "Répertoire d'invocation : ${INVOKING_HOME}" # Pour Debug
         # Lancement de la mise à jour
         run_sequence "update"
     else
@@ -469,12 +462,6 @@ function prompt_install_options(){
         local DB_NAME="${DB_NAME}"
         local DB_USER="${DB_USER}"
         local VERSION_SELECT="${VERSION_SELECT}"
-        debug "Répertoire GLPI sélectionné : ${REP_GLPI}" # Pour Debug
-        debug "Hôte de la base de données : ${DB_HOST}" # Pour Debug
-        debug "Nom de la base de données : ${DB_NAME}" # Pour Debug
-        debug "Utilisateur de la base de données : ${DB_USER}" # Pour Debug
-        debug "Version GLPI sélectionnée pour installation : ${VERSION_SELECT}" # Pour Debug
-        debug "URL de téléchargement : ${DOWNLOADLINK}" # Pour Debug
         # Lancement de l’installation
         run_sequence "install"
     fi
@@ -1158,17 +1145,17 @@ function maj_user_glpi(){
     fi
     # Construire la requête SQL et exécuter via -e
     local _sql_user
-    debug "Préparation des commandes SQL pour mettre à jour les mots de passe des utilisateurs GLPI."
-    debug "Utilisation de la commande MySQL: ${MYSQL_CMD}"
-    debug "Base de données: ${DB_NAME}, Utilisateur: ${DB_USER}", "Mot de passe SQL: ${SQLGLPIPWD}"
-    debug "Nouveaux mots de passe des utilisateurs GLPI:"
-    debug "  - glpi: ${ADMINGLPIPWD}"
-    debug "  - post-only: ${POSTGLPIPWD}"
-    debug "  - tech: ${TECHGLPIPWD}"
-    debug "  - normal: ${NORMGLPIPWD}"
-    debug "Mots de passe des utilisateurs GLPI seront mis à jour."
-    debug "Fuseau horaire: ${TIMEZONE}, Langue: ${LANGUAGE}, Adresse IP: ${IPADRESS}"
-    debug "Construction des commandes SQL..."
+    debug "Préparation des commandes SQL pour mettre à jour les mots de passe des utilisateurs GLPI." # Pour le débogage
+    debug "Utilisation de la commande MySQL: ${MYSQL_CMD}" # Pour le débogage
+    debug "Base de données: ${DB_NAME}, Utilisateur: ${DB_USER}", "Mot de passe SQL: ${SQLGLPIPWD}" # Pour le débogage
+    debug "Nouveaux mots de passe des utilisateurs GLPI:" # Pour le débogage
+    debug "  - glpi: ${ADMINGLPIPWD}" # Pour le débogage
+    debug "  - post-only: ${POSTGLPIPWD}" # Pour le débogage
+    debug "  - tech: ${TECHGLPIPWD}" # Pour le débogage
+    debug "  - normal: ${NORMGLPIPWD}" # Pour le débogage
+    debug "Mots de passe des utilisateurs GLPI seront mis à jour." # Pour le débogage
+    debug "Fuseau horaire: ${TIMEZONE}, Langue: ${LANGUAGE}, Adresse IP: ${IPADRESS}" # Pour le débogage
+    debug "Construction des commandes SQL..." # Pour le débogage
     _sql_user="USE '${DB_NAME}'; "
     _sql_user+="UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi'; "
     _sql_user+="UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only'; "
