@@ -239,7 +239,41 @@ function check_install_user(){
     export WEB_USER REP_GLPI
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
-# Demander à l'utilisateur de choisir la version de GLPI (16 dernières), le répertoire d'installation, le nom de la base et l'utilisateur BDD via dialog
+# Choisir entre une installation ou la mise à jour de GLPI
+function choose_install_or_update(){
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    local INSTALL_OR_UPDATE rc
+    exec 3>&1
+    INSTALL_OR_UPDATE=$(dialog \
+        --backtitle "${MSG_TITRE:-Choix pour GLPI}" \
+        --title "${MSG_INSTALL_OR_UPDATE:-Choix entre: Installation ou Mise à jour}" \
+        --radiolist "${MSG_INSTALL_OR_UPDATE_CHOIX:-Veuillez choisir une option}" 15 60 2 \
+        1 "${MSG_INSTALL_NEW:-Nouvelle installation}" ON \
+        2 "${MSG_UPDATE_EXISTING:-Mise à jour}" OFF \
+        3>&1 1>&2 2>&3)
+    rc=$?
+    exec 3>&-
+    if [[ $rc -ne 0 ]]; then
+        echo "❌ Sélection annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
+        dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
+        return 1
+    fi
+    echo "${INSTALL_OR_UPDATE}: choix de l'utilisateur pour installation ou mise à jour."
+    export INSTALL_OR_UPDATE
+    if [[ "${INSTALL_OR_UPDATE}" -eq 1 ]]; then
+        dialog --title "Installation" --msgbox "${MSG_INSTALL_NEW_SELECT:-Veuillez confirmer la nouvelle installation}" 7 50
+        echo "✅ ${MSG_INSTALL_NEW:-Nouvelle installation} sélectionné."
+        #choose_installation_options 1
+    else
+        dialog --title "Mise à jour" --msgbox "${MSG_UPDATE_EXISTING_SELECT:-Veuillez confirmer la mise à jour}" 7 50
+        #choose_installation_options 2
+        echo "✅ ${MSG_UPDATE_EXISTING:-Mise à jour en cours} sélectionné."
+    fi
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    return 0
+}
+#  Demander à l'utilisateur de choisir le répertoire d'installation,
+# la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Recherche des installations GLPI existantes
