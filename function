@@ -496,7 +496,8 @@ function prompt_install_options(){
         run_sequence "install"
     fi
     # Assignation des valeurs finales
-    export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
+    DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
+    export DOWNLOADLINK
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Valide le répertoire d’installation de GLPI
@@ -598,7 +599,8 @@ function run_sequence() {
     trap 'on_error' ERR
     declare -A tasks
     local task_order=()
-
+    export DOWNLOADLINK
+    debug "RUN_SEQUENCE : Lien de téléchargement : ${DOWNLOADLINK}"
     case "$mode" in
         install)
             tasks=(
@@ -677,6 +679,8 @@ function run_sequence() {
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
     debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Début de ${FUNCNAME[1]:-main}"
+    export DOWNLOADLINK
+    debug "RUN_TASK : Lien de téléchargement : ${DOWNLOADLINK}"
     # Définir les variables de tâche
     local task_key="$1" task_cmd="$2" index="$3" total="$4"
     # Afficher les informations de la tâche
