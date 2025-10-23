@@ -11,7 +11,7 @@ clear # Nettoyer le terminal
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
 # shellcheck disable=SC1091
 . "${REP_SCRIPT}/function" # Fichier de fonctions
-trap 'on_error' ERR
+#trap 'on_error' ERR
 # shellcheck disable=SC1091
 . "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
