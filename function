@@ -1048,15 +1048,15 @@ EOF
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
 EOF
-    network_info
     info "✅ Configuration du serveur web pour GLPI : ${REP_GLPI}"
     if check_install_user "${REP_GLPI}"; then
         info "✅ Utilisateur web détecté : ${WEB_USER}"
         if [[ "${WEB_USER}" == "www-data" ]]; then
+            network_info
             debug "Configuration pour Apache avec utilisateur ${WEB_USER}" # Pour le débogage
             # Configuration d'Apache pour GLPI
             info "✅ Configuration Virtual host d'Apache pour GLPI"
-            sudo tee /etc/apache2/sites-available/glpi.conf  <<EOF
+            if ! tee /etc/apache2/sites-available/glpi.conf <<EOF > /dev/null
 <VirtualHost *:80>
     ServerName ${IPADRESS}
     DocumentRoot ${REP_GLPI}/public
@@ -1072,6 +1072,14 @@ EOF
     CustomLog /var/log/glpi/access.log combined
 </VirtualHost>
 EOF
+            then
+                # 'tee' a ÉCHOUÉ. On affiche l'erreur et on quitte.
+                erreur "❌ Échec de la création du fichier de configuration d'Apache pour GLPI."
+                return 1
+            else
+                # 'tee' a RÉUSSI. On peut continuer ou afficher un succès.
+                echo "✅ Fichier de configuration GLPI créé avec succès."
+            fi
             phpversion=$(php -v | grep -i '(cli)' | awk '{print $2}' | cut -d. -f1,2)
             sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 =on/' /etc/php/"$phpversion"/apache2/php.ini
             sleep 1
