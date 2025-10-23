@@ -424,9 +424,9 @@ function prompt_install_options(){
         WIDTH=$(( WIDTH + 6 ))
         local _def_rep="" rep_glpi="" _def_db_host="" db_host="" _def_db_name="" db_name="" _def_db_user="" db_user=""
         if [ -n "${FIND_REP_GLPI}" ]; then
-            _def_rep="REP_GLPI:-${FIND_REP_GLPI}"
+            _def_rep="${REP_GLPI:-${FIND_REP_GLPI}}"
         else
-            _def_rep="REP_GLPI:-/var/www/html/glpi/"
+            _def_rep="${REP_GLPI:-/var/www/html/glpi/}"
         fi
         local _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
         while true; do
