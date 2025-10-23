@@ -867,6 +867,7 @@ function manage_service() {
 function get_timezone() {
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Détection du fuseau horaire
+    info "✅ ${MSG_DETECT_TIMEZONE:-Détection du fuseau horaire...}"
     if [ -z "${TIMEZONE:-}" ]; then
         local tzfile=""
         if command -v timedatectl >/dev/null 2>&1; then
@@ -888,7 +889,7 @@ function get_timezone() {
         fi
         TIMEZONE="${TIMEZONE:-UTC}"
         export TIMEZONE
-        info "✅ Fuseau horaire détecté : ${TIMEZONE}"
+        echo "✅ Fuseau horaire détecté : ${TIMEZONE}"
     fi
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
@@ -910,10 +911,10 @@ function mariadb_configure() {
     debug "Création de la base de données : ${DB_NAME}" # Pour le débogage
     debug "Création de l'utilisateur de la base de données : ${DB_USER} avec mot de passe ${SQLGLPIPWD}" # Pour le débogage
     debug "Attribution des privilèges à l'utilisateur de la base de données" # Pour le débogage
-    # Construire la commande SQL et l'exécuter avec -e (évite les problèmes d'heredoc et de quoting)
+    debug "Configuration du fuseau horaire de la base de données : ${TIMEZONE}" # Pour le débogage
     # --- Construction sécurisée du script SQL ---
     local _sql_root
-    _sql_root=$(cat <<SQL
+    _sql_root=$(cat <<-SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
@@ -923,15 +924,17 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
 CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
 GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
-SET GLOBAL time_zone = '${TIMEZONE}';
-SET time_zone = '${TIMEZONE}';
+-- Configuration du fuseau horaire
+SET GLOBAL time_zone = '${TIMEZONE:-UTC}';
+SET time_zone = '${TIMEZONE:-UTC}';
+-- Droits sur les tables timezone
 GRANT SELECT ON mysql.time_zone_transition TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_transition_type TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
-    )
+)
     # --- Application des commandes SQL ---
     if ! PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
         warn "❌ ${MSG_ERROR_TASK:-Erreur}: configuration SQL initiale échouée."
