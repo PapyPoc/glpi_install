@@ -1065,9 +1065,9 @@ EOF
                 return 1
             fi
             # Installation de GLPI en ligne de commande
-            debug "$(date '+%Y-%m-%d %H:%M:%S') - [INFO] Exécution : sudo -u ${WEB_USER} php ${CMD}" || true
+            debug "$(date '+%Y-%m-%d %H:%M:%S') - [INFO] Exécution : sudo -u ${WEB_USER} php ${CMD[*]}"
             # Exécuter la commande en tant que "${WEB_USER}". Utiliser sudo tee pour écrire vers les fichiers protégés.
-            if sudo -u "${WEB_USER}" "${CMD[@]}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+            if sudo -u "${WEB_USER}" "${CMD[@]}" | tee -a "${DEBUGFILE}" 2>>"${ERRORFILE}"; then
                 info "✅ Installation GLPI terminée avec succès."
             else
                 warn "❌ Échec de l’installation GLPI via la console. Consulte ${ERRORFILE} pour plus de détails."
