@@ -1209,6 +1209,7 @@ SQL
         error "${MSG_ERROR_TASK:-Erreur} : échec de la mise à jour des utilisateurs GLPI."
         return 1
     fi
+    info "Comptes GLPI mis à jour avec succès dans ${DB_NAME}."
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 function source_os_release(){
