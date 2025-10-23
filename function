@@ -1015,9 +1015,13 @@ EOF
     }
 EOF
     network_info
+    info "✅ Configuration du serveur web pour GLPI : ${REP_GLPI}"
     if check_install_user "${REP_GLPI}"; then
+        info "✅ Utilisateur web détecté : ${WEB_USER}"
         if [[ "${WEB_USER}" == "www-data" ]]; then
+            debug "Configuration pour Apache avec utilisateur ${WEB_USER}" # Pour le débogage
             # Configuration d'Apache pour GLPI
+            info "✅ Configuration Virtual host d'Apache pour GLPI"
             sudo tee /etc/apache2/sites-available/glpi.conf  <<EOF
 <VirtualHost *:80>
     ServerName ${IPADRESS}
