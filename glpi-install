@@ -11,49 +11,60 @@ clear # Nettoyer le terminal
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
 # shellcheck disable=SC1091
 . "${REP_SCRIPT}/function" # Fichier de fonctions
-#trap 'on_error' ERR
+trap 'on_error' ERR
 # shellcheck disable=SC1091
 . "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
 # Regarde si la distribution est conforme
 info "${MSG_START_SCRIPT}"
+# Vérifie la distribution
 info "${MSG_CHECK_DISTRIBUTION}"
-if ! check_distro; then # Vérifie la distribution
-   dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISTRO_CHECK_FAILED}" 6 50
+if ! check_distro; then
+    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISTRO_CHECK_FAILED}" 6 50
     error "${MSG_DISTRO_CHECK_ERROR}"
     exit 1
 fi
+# Demande les options d'installation ou de mise à jour
 info "${MSG_PROMPT_INSTALL_OPTIONS}"
 if ! prompt_install_options; then # Demande les options d'installation
-    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_PROMPT_OPTIONS_FAILED}" 6 70
-    error "${MSG_PROMPT_OPTIONS_ERROR}"
+    info "Arrêt de l'installation par l'utilisateur."
     exit 1
 fi
-info "${MSG_DISPLAY_RESULT}"
-if ! display_result; then # Affiche le résultat de l'installation
-    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_DISPLAY_RESULT_FAILED}" 6 50
-    error "${MSG_DISPLAY_RESULT_ERROR}"
-    exit 1
-fi
+# Droit sur le fichier de sauvegarde des mots de passe
 if [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
     chmod 600 "${FICHIER_MSG}"
     chown root:root "${FICHIER_MSG}"
     dialog --title "${MSG_DIALOG_INFO_TITLE}" --msgbox "${MSG_BACKUP_CREATED}" 6 60
-    echo "${MSG_BACKUP_CREATED}" 1>> "${DEBUGFILE}"
+    info "${MSG_BACKUP_CREATED}"
 else
     dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_BACKUP_NOT_FOUND}" 6 60
-    error "$MSG_ERROR_FICHIER_MSG" 1>> "${ERRORFILE}"
+    error "$MSG_ERROR_FICHIER_MSG"
     exit 1
 fi
-for LOGFILE in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
-    if [ -s "${LOGFILE}" ]; then
-        LOGFILES+="${LOGFILE} "
-    else
-        rm -rf "${LOGFILE}"
+# Afficher le fichier de sauvegarde des mots de passe
+if [ -s "${FICHIER_MSG}" ]; then
+    info "${MSG_DISPLAY_RESULT}"
+    if ! display_result; then # Affiche le résultat de l'installation
+        info "Message d'information affiché à l'utilisateur fermé."
+        exit 1
     fi
-done
-dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${LOGFILES}" 8 70
+fi
+# Affichage des fichiers de logs s'ils existent
+if [ -s "${ERRORFILE}" ] || [ -s "${DEBUGFILE}" ] || [ -s "${UPDATEFILE}" ]; then
+    info "Affichage des fichiers de logs à l'utilisateur."
+    LOGFILES=""
+    for LOGFILES in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
+        if [ -s "${LOGFILES}" ]; then
+            LOGFILES+="${LOGFILES} "
+        else
+            rm -rf "${LOGFILES}"
+        fi
+    done
+    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${LOGFILES}" 8 70
+fi
+# Affichage du fichier d'information s'il existe
 if [ -s "${INFOFILE}" ]; then
+    info "Affichage du fichier d'information à l'utilisateur."
     dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_WARN_CHECK_LOG} ${INFOFILE}" 8 70
 fi
-info "${MSG_END_SCRIPT}" >> "${DEBUGFILE}"
+info "${MSG_END_SCRIPT}"
