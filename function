@@ -1145,6 +1145,8 @@ function maj_user_glpi(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${MSG_CHANGE_MDP_GLPI}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
+    network_info
+    get_timezone
     local MYSQL_CMD
     MYSQL_CMD=$(command -v mysql  || command -v mariadb || echo mysql)
     # Verify mysql client exists
@@ -1153,8 +1155,8 @@ function maj_user_glpi(){
         return 1
     fi
     # --- Vérification des variables critiques ---
-    if [ -z "${DB_NAME:-}" ] || [ -z "${DB_USER:-}" ] || [ -z "${SQLGLPIPWD:-}" ]; then
-        error "Variables manquantes : DB_NAME, DB_USER ou SQLGLPIPWD"
+    if [ -z "${DB_NAME:-}" ] || [ -z "${DB_USER:-}" ] || [ -z "${SQLGLPIPWD:-}" ] || [ -z "${IPADRESS:-}" ]; then
+        error "Variables manquantes : DB_NAME, DB_USER, SQLGLPIPWD, IPADRESS"
         return 1
     fi
 
