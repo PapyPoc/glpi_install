@@ -33,7 +33,7 @@ function ensure_dependencies(){
     if [ -z "$missing" ]; then
         return 0
     fi
-    echo "Dépendances manquantes : ${missing}. Tentative d'installation..."
+    info "Dépendances manquantes : ${missing}. Tentative d'installation..."
     local pkgmgr install_cmd
     local pkgs="$missing"
     if command -v apt-get >/dev/null; then
