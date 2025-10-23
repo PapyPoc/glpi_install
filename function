@@ -461,7 +461,10 @@ function prompt_install_options(){
         local REP_GLPI="${REP_GLPI}"
         local DB_NAME="${DB_NAME}"
         local DB_USER="${DB_USER}"
+        local INVOKING_HOME="${PWD}"
+        local TIMEZONE="${TIMEZONE:-UTC}"
         local VERSION_SELECT="${VERSION_SELECT}"
+        export DOWNLOADLINK DB_HOST REP_GLPI DB_NAME DB_USER INVOKING_HOME TIMEZONE
         # Lancement de l’installation
         run_sequence "install"
     fi
@@ -562,12 +565,10 @@ function validate_db_user() {
 # Sequence principale d'installation et de mise à jour de GLPI
 function run_sequence() {
     local mode="$1"
-    debug "$(date '+%F %T') [$$][DEBUG: Début de ${FUNCNAME[0]:-main}] Mode=${mode}"
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     trap 'on_error' ERR
     declare -A tasks
     local task_order=()
-    export DOWNLOADLINK
-    debug "RUN_SEQUENCE : Lien de téléchargement : ${DOWNLOADLINK}"
     case "$mode" in
         install)
             tasks=(
@@ -641,13 +642,11 @@ function run_sequence() {
     fi
 
     info "Toutes les tâches du mode '${mode}' ont été exécutées avec succès."
-    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Mode=${mode} (succès)"
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Exécuter une tâche et gérer les erreurs et les logs
 function run_task() {
-    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Début de ${FUNCNAME[1]:-main}"
-    export DOWNLOADLINK
-    debug "RUN_TASK : Lien de téléchargement : ${DOWNLOADLINK}"
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Définir les variables de tâche
     local task_key="$1" task_cmd="$2" index="$3" total="$4"
     # Afficher les informations de la tâche
@@ -669,7 +668,7 @@ function run_task() {
         debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (échec) de la tâche ${task_key} - ${index}/${total} - ${task_cmd}"
         return $exit_code
     fi
-    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}"
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     return 0
 }
 # Mise à jour de la distribution
@@ -881,66 +880,90 @@ EOF
     fi
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
+function get_timezone() {
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    # Détection du fuseau horaire
+    if [ -z "${TIMEZONE:-}" ]; then
+        local tzfile=""
+        if command -v timedatectl >/dev/null 2>&1; then
+            TIMEZONE=$(timedatectl show -p Timezone --value 2>/dev/null || true)
+        fi
+        if [ -z "${TIMEZONE:-}" ] && [ -f /etc/timezone ]; then
+            TIMEZONE=$(head -n 1 /etc/timezone 2>/dev/null || true)
+        fi
+        if [ -z "${TIMEZONE:-}" ]; then
+            if [ -L /etc/localtime ] || [ -f /etc/localtime ]; then
+                tzfile=$(readlink -f /etc/localtime 2>/dev/null || true)
+                if [[ "$tzfile" == *"/usr/share/zoneinfo/"* ]]; then
+                    TIMEZONE="${tzfile#*/usr/share/zoneinfo/}"
+                fi
+            fi
+        fi
+        if [ -z "${TIMEZONE:-}" ] && [ -f /etc/sysconfig/clock ]; then
+            TIMEZONE=$(awk -F= '/^ZONE/ {gsub(/"/,"",$2); print $2}' /etc/sysconfig/clock 2>/dev/null || true)
+        fi
+        TIMEZONE="${TIMEZONE:-UTC}"
+        export TIMEZONE
+        info "Fuseau horaire détecté : ${TIMEZONE}"
+    fi
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+}
 # Configuration de la base de données MariaDB
-function mariadb_configure() { 
-    {
-        debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-        # Détecter la commande MySQL/MariaDB
-        info "$MSG_BDD_CONFIG"
-    } | tee -a "${DEBUGFILE}"
+function mariadb_configure() {
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    # Détecter la commande MySQL/MariaDB
+    info "$MSG_BDD_CONFIG"
     MYSQL_CMD=$(command -v mysql || command -v mariadb || echo mysql)
     if [ -z "$MYSQL_CMD" ]; then 
         error "Commande MySQL/MariaDB introuvable"
         return 1
     fi
-    sleep 1
+    get_timezone
+    debug "Utilisation de la commande : ${MYSQL_CMD}" # Pour le débogage
+    debug "Configuration de la base de données MariaDB/MySQL" # Pour le débogage
+    debug "Connexion à l'hôte de la base de données : ${DB_HOST}" # Pour le débogage
+    debug "Modification du mot de passe de l'utilisateur root de la base de données : ${SQLROOTPWD}" # Pour le débogage
+    debug "Création de la base de données : ${DB_NAME}" # Pour le débogage
+    debug "Création de l'utilisateur de la base de données : ${DB_USER} avec mot de passe ${SQLGLPIPWD}" # Pour le débogage
+    debug "Attribution des privilèges à l'utilisateur de la base de données" # Pour le débogage
     # Construire la commande SQL et l'exécuter avec -e (évite les problèmes d'heredoc et de quoting)
+    # --- Construction sécurisée du script SQL ---
     local _sql_root
-    _sql_root="ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';"
-    _sql_root+="\nDELETE FROM mysql.user WHERE User='';"
-    _sql_root+="\nDELETE FROM mysql.user WHERE User='root' AND Host!='localhost';"
-    _sql_root+="\nDROP DATABASE IF EXISTS test;"
-    _sql_root+="\nDELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';"
-    _sql_root+="\nGRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;"
-    _sql_root+="\nCREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;"
-    _sql_root+="\nCREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';"
-    _sql_root+="\nGRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';"
-    _sql_root+="\nGRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';"
-    _sql_root+="\nFLUSH PRIVILEGES;"
-    if ! MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
-        warn "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
+    _sql_root=$(
+        cat <<SQL
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
+DELETE FROM mysql.user WHERE User='';
+DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
+DROP DATABASE IF EXISTS test;
+DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+    )
+    # --- Application des commandes SQL ---
+    if ! PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
+        warn "${MSG_ERROR_TASK:-Erreur}: configuration SQL initiale échouée."
         return 1
     fi
-    # Détection du fuseau horaire
-    if [ -z "${TIMEZONE:-}" ]; then
-        if command -v timedatectl; then
-            TIMEZONE=$(timedatectl show -p Timezone --value || true)
-        fi
-        if [ -z "${TIMEZONE:-}" ] && [ -f /etc/timezone ]; then
-            TIMEZONE=$(sed -n '1p' /etc/timezone || true)
-        fi
-        if [ -z "${TIMEZONE:-}" ]; then
-            if [ -L /etc/localtime ] || [ -f /etc/localtime ]; then
-                tzfile=$(readlink -f /etc/localtime || true)
-                case "$tzfile" in
-                    */usr/share/zoneinfo/*) TIMEZONE=${tzfile#*/usr/share/zoneinfo/} ;;
-                esac
-            fi
-        fi
-        if [ -z "${TIMEZONE:-}" ] && [ -f /etc/sysconfig/clock ]; then
-            TIMEZONE=$(awk -F= '/^ZONE/ {gsub(/"/,"",$2); print $2}' /etc/sysconfig/clock || true)
-        fi
-        TIMEZONE=${TIMEZONE:-UTC}
-        export TIMEZONE
-        info "Fuseau horaire détecté : ${TIMEZONE}"
-    fi
-    info "$MSG_TIMEZONE_CONFIG"
-    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql; then
-        warn "$MSG_ERROR_TASK: import du timezone échoué"
+
+    # --- Import des informations de fuseaux horaires ---
+    info "${MSG_TIMEZONE_CONFIG:-Import des fuseaux horaires dans MySQL...}"
+    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql; then
+        warn "${MSG_ERROR_TASK:-Erreur}: import du timezone échoué."
         return 1
     fi
-    systemctl restart mariadb || warn "Impossible de redémarrer MariaDB (vérifiez le service)"
-    sleep 5
+    # --- Redémarrage du service ---
+    if systemctl is-active --quiet mariadb; then
+        systemctl restart mariadb || warn "Impossible de redémarrer le service MariaDB."
+    else
+        warn "MariaDB n'est pas actif, démarrage forcé..."
+        systemctl start mariadb || warn "Échec du démarrage de MariaDB."
+    fi
+    sleep 3
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Téléchargement et décompression de GLPI
@@ -1140,7 +1163,17 @@ function maj_user_glpi(){
     MYSQL_CMD=$(command -v mysql  || command -v mariadb || echo mysql)
     # Verify mysql client exists
     if ! command -v "${MYSQL_CMD}"; then
-        warn "Client mysql pas trouvé: ${MYSQL_CMD}"
+        warn "Client MySQL introuvable : ${MYSQL_CMD}"
+        return 1
+    fi
+    # --- Vérification des variables critiques ---
+    if [ -z "${DB_NAME:-}" ] || [ -z "${DB_USER:-}" ] || [ -z "${SQLGLPIPWD:-}" ]; then
+        error "Variables manquantes : DB_NAME, DB_USER ou SQLGLPIPWD"
+        return 1
+    fi
+
+    if [ -z "${ADMINGLPIPWD:-}" ] || [ -z "${POSTGLPIPWD:-}" ] || [ -z "${TECHGLPIPWD:-}" ] || [ -z "${NORMGLPIPWD:-}" ]; then
+        error "Un ou plusieurs mots de passe GLPI ne sont pas définis"
         return 1
     fi
     # Construire la requête SQL et exécuter via -e
@@ -1156,18 +1189,24 @@ function maj_user_glpi(){
     debug "Mots de passe des utilisateurs GLPI seront mis à jour." # Pour le débogage
     debug "Fuseau horaire: ${TIMEZONE}, Langue: ${LANGUAGE}, Adresse IP: ${IPADRESS}" # Pour le débogage
     debug "Construction des commandes SQL..." # Pour le débogage
-    _sql_user="USE '${DB_NAME}'; "
-    _sql_user+="UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi'; "
-    _sql_user+="UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only'; "
-    _sql_user+="UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech'; "
-    _sql_user+="UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal'; "
-    _sql_user+="UPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone'; "
-    _sql_user+="UPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language'; "
-    _sql_user+="UPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';"
-    echo "${_sql_user}"
-    # Execute the SQL commands
-    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}"; then
-        error "$MSG_ERROR_TASK: base de données - échec des modifications en bloc"
+    # --- Construction du SQL ---
+    local _sql_user
+    _sql_user=$(
+        cat <<SQL
+USE \`${DB_NAME}\`;
+UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';
+UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
+UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';
+UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';
+UPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';
+UPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';
+UPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';
+SQL
+    )
+    # --- Exécution SQL ---
+    debug "Exécution des commandes SQL..."
+    if ! PAGER=cat MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" 2>/dev/null; then
+        error "${MSG_ERROR_TASK:-Erreur} : échec de la mise à jour des utilisateurs GLPI."
         return 1
     fi
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
