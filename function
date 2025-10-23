@@ -868,28 +868,28 @@ function get_timezone() {
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Détection du fuseau horaire
     info "✅ ${MSG_DETECT_TIMEZONE:-Détection du fuseau horaire...}"
-    if [ -z "${TIMEZONE:-}" ]; then
+    if [ -z "${TIMEZONES:-}" ]; then
         local tzfile=""
         if command -v timedatectl >/dev/null 2>&1; then
-            TIMEZONE=$(timedatectl show -p Timezone --value 2>/dev/null || true)
+            TIMEZONES=$(timedatectl show -p Timezone --value 2>/dev/null || true)
         fi
-        if [ -z "${TIMEZONE:-}" ] && [ -f /etc/timezone ]; then
-            TIMEZONE=$(head -n 1 /etc/timezone 2>/dev/null || true)
+        if [ -z "${TIMEZONES:-}" ] && [ -f /etc/timezone ]; then
+            TIMEZONES=$(head -n 1 /etc/timezone 2>/dev/null || true)
         fi
-        if [ -z "${TIMEZONE:-}" ]; then
+        if [ -z "${TIMEZONES:-}" ]; then
             if [ -L /etc/localtime ] || [ -f /etc/localtime ]; then
                 tzfile=$(readlink -f /etc/localtime 2>/dev/null || true)
                 if [[ "$tzfile" == *"/usr/share/zoneinfo/"* ]]; then
-                    TIMEZONE="${tzfile#*/usr/share/zoneinfo/}"
+                    TIMEZONES="${tzfile#*/usr/share/zoneinfo/}"
                 fi
             fi
         fi
-        if [ -z "${TIMEZONE:-}" ] && [ -f /etc/sysconfig/clock ]; then
-            TIMEZONE=$(awk -F= '/^ZONE/ {gsub(/"/,"",$2); print $2}' /etc/sysconfig/clock 2>/dev/null || true)
+        if [ -z "${TIMEZONES:-}" ] && [ -f /etc/sysconfig/clock ]; then
+            TIMEZONES=$(awk -F= '/^ZONE/ {gsub(/"/,"",$2); print $2}' /etc/sysconfig/clock 2>/dev/null || true)
         fi
-        TIMEZONE="${TIMEZONE:-UTC}"
-        export TIMEZONE
-        echo "✅ Fuseau horaire détecté : ${TIMEZONE}"
+        TIMEZONES="${TIMEZONE:-UTC}"
+        export TIMEZONES
+        echo "✅ Fuseau horaire détecté : ${TIMEZONES}"
     fi
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
@@ -911,22 +911,23 @@ function mariadb_configure() {
     debug "Création de la base de données : ${DB_NAME}" # Pour le débogage
     debug "Création de l'utilisateur de la base de données : ${DB_USER} avec mot de passe ${SQLGLPIPWD}" # Pour le débogage
     debug "Attribution des privilèges à l'utilisateur de la base de données" # Pour le débogage
-    debug "Configuration du fuseau horaire de la base de données : ${TIMEZONE}" # Pour le débogage
+    debug "Configuration du fuseau horaire de la base de données : ${TIMEZONES}" # Pour le débogage
     # --- Construction sécurisée du script SQL ---
     local _sql_root
-    _sql_root=$(cat <<-SQL
+    _sql_root=$(
+    cat <<-SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
 DROP DATABASE IF EXISTS test;
 DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
-CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
+CREATE DATABASE IF NOT EXISTS ${DB_NAME};
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
-GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
 -- Configuration du fuseau horaire
-SET GLOBAL time_zone = '${TIMEZONE:-UTC}';
-SET time_zone = '${TIMEZONE:-UTC}';
+SET GLOBAL time_zone = '${TIMEZONES}';
+SET time_zone = '${TIMEZONES}';
 -- Droits sur les tables timezone
 GRANT SELECT ON mysql.time_zone_transition TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_transition_type TO '${DB_USER}'@'localhost';
