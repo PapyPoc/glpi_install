@@ -112,33 +112,6 @@ function on_error() {
     error "$message" 1>> "${ERRORFILE}"
     exit "$rc"
 }
-# Exécuter une tâche et gérer les erreurs et les logs
-function run_task() {
-    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Début de ${FUNCNAME[1]:-main}"
-    # Définir les variables de tâche
-    local task_key="$1" task_cmd="$2" index="$3" total="$4"
-    # Afficher les informations de la tâche
-    info "Tâche: $index/$total - $task_key"
-    info "$MSG_COMMAND: $task_cmd"
-    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Début de la tâche $task_key - $index/$total - $task_cmd"
-    # --- Exécution de la commande ---
-    local output exit_code
-    output=$(eval "$task_cmd" 2>&1)
-    exit_code=$?
-    # --- Résultat ---
-    if (( exit_code == 0 )); then
-        debug "$output"
-        debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (succès) de la tâche $task_key - $index/$total - $task_cmd"
-    else
-        warn "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: $task_cmd"
-        warn "$output"
-        warn "$MSG_ERROR_TASK: $task_key (exit=$exit_code)"
-        debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (échec) de la tâche $task_key - $index/$total - $task_cmd"
-        return $exit_code
-    fi
-    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}"
-    return 0
-}
 # Vérifie si la version est compatible
 function compatible() {
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}"
@@ -492,12 +465,22 @@ function prompt_install_options(){
             # Si tout est valide
             break
         done
-        export DB_HOST REP_GLPI DB_NAME DB_USER VERSION_SELECT
+        # Assignation des valeurs finales
+        local DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
+        local DB_HOST="${DB_HOST}"
+        local REP_GLPI="${REP_GLPI}"
+        local DB_NAME="${DB_NAME}"
+        local DB_USER="${DB_USER}"
+        local VERSION_SELECT="${VERSION_SELECT}"
+        debug "Répertoire GLPI sélectionné : ${REP_GLPI}" # Pour Debug
+        debug "Hôte de la base de données : ${DB_HOST}" # Pour Debug
+        debug "Nom de la base de données : ${DB_NAME}" # Pour Debug
+        debug "Utilisateur de la base de données : ${DB_USER}" # Pour Debug
+        debug "Version GLPI sélectionnée pour installation : ${VERSION_SELECT}" # Pour Debug
+        debug "URL de téléchargement : ${DOWNLOADLINK}" # Pour Debug
+        # Lancement de l’installation
         run_sequence "install"
     fi
-    # Assignation des valeurs finales
-    DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
-    export DOWNLOADLINK
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Valide le répertoire d’installation de GLPI
