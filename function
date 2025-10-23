@@ -912,7 +912,6 @@ function mariadb_configure() {
     debug "Création de l'utilisateur de la base de données : ${DB_USER} avec mot de passe ${SQLGLPIPWD}" # Pour le débogage
     debug "Attribution des privilèges à l'utilisateur de la base de données" # Pour le débogage
     debug "Configuration du fuseau horaire de la base de données : ${TIMEZONES}" # Pour le débogage
-    # --- Construction sécurisée du script SQL ---
     local _sql_root
     _sql_root=$(
     cat <<-SQL
@@ -925,6 +924,34 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
 CREATE DATABASE IF NOT EXISTS ${DB_NAME};
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
 GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
+SQL
+)
+    # --- Application des commandes SQL ---
+    if PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
+        info "✅ ${MSG_BDD_CONFIG:-Configuration SQL initiale réussie.}"
+    else
+        warn "❌ ${MSG_ERROR_TASK:-Erreur}: configuration SQL initiale échouée."
+        return 1
+    fi
+    # --- Vérification et import des fuseaux horaires (si nécessaire) ---
+    local TIMEZONE_TABLE_COUNT
+    TIMEZONE_TABLE_COUNT=$(
+        PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --silent \
+            -e "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}';" mysql 2>/dev/null
+    )
+    if [ "${TIMEZONE_TABLE_COUNT}" -eq 0 ]; then
+        info "✅ Import des fuseaux horaires dans MariaDB..."
+        if ! mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | PAGER=cat MYSQL_PWD="${SQLROOTPWD}" ${MYSQL_CMD} -u root mysql; then
+            error "❌ Import des fuseaux horaires échoué."
+            return 1
+        fi
+    else
+        debug "Les tables de fuseaux horaires sont déjà remplies."
+    fi
+    # --- Construction sécurisée du script SQL ---
+    local _sql_root
+    _sql_root=$(
+    cat <<-SQL
 -- Configuration du fuseau horaire
 SET GLOBAL time_zone = '${TIMEZONES}';
 SET time_zone = '${TIMEZONES}';
@@ -937,14 +964,17 @@ FLUSH PRIVILEGES;
 SQL
 )
     # --- Application des commandes SQL ---
-    if ! PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
+    if PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
+        info "✅ ${MSG_BDD_CONFIG:-Configuration SQL initiale réussie.}"
+    else
         warn "❌ ${MSG_ERROR_TASK:-Erreur}: configuration SQL initiale échouée."
         return 1
     fi
-
     # --- Import des informations de fuseaux horaires ---
     info "✅ ${MSG_TIMEZONE_CONFIG:-Import des fuseaux horaires dans MySQL...}"
-    if ! mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql; then
+    if mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql; then
+        info "✅ ${MSG_TIMEZONE_CONFIG:-Import des fuseaux horaires réussi.}"
+    else
         warn "❌ ${MSG_ERROR_TASK:-Erreur}: import du timezone échoué."
         return 1
     fi
