@@ -978,7 +978,8 @@ function install_glpi(){
     info "$MSG_DOWNLOAD_INSTALL_GLPI"
     # Téléchargement de GLPI
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
-    if ! wget -q -O "$tmp_file" "${DOWNLOADLINK}"; then
+    debug "Téléchargement de GLPI depuis ${DOWNLOADLINK} vers ${tmp_file}"
+    if ! wget -q -O "$tmp_file" "${DOWNLOADLINK}" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
         warn "$MSG_DOWNLOAD_FAILED" 1>> "${ERRORFILE}"
         rm -f "$tmp_file"
         return 1
