@@ -78,23 +78,6 @@ function ensure_dependencies(){
     export NEED_RESTART
     return 0
 }
-function on_error_install() {
-    local rc=$?
-    local cmd=$BASH_COMMAND
-    local line=${BASH_LINENO[0]}
-
-    echo "Erreur détectée : '${cmd}' (code=$rc) à la ligne $line" | tee -a "$ERRORFILE" >&2
-    echo "Pile d’appels :" >> "$ERRORFILE"
-    for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
-        echo "  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}" >> "$ERRORFILE"
-    done
-    echo "──────────────────────────────" >> "$ERRORFILE"
-
-    dialog --msgbox "Une erreur est survenue.\n\nCommande : ${cmd}\nCode : ${rc}\n\nConsultez $ERRORFILE pour plus d’informations." 40 90 || true
-    exit "$rc"
-}
-# Gestion des erreurs avec trap
-trap 'on_error_install' ERR
 # Détection de la distribution
 if . /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')

@@ -239,264 +239,233 @@ function check_install_user(){
     export WEB_USER REP_GLPI
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
-# Choisir entre une installation ou la mise à jour de GLPI
-function choose_install_or_update(){
-    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    local INSTALL_OR_UPDATE rc
-    exec 3>&1
-    INSTALL_OR_UPDATE=$(dialog \
-        --backtitle "${MSG_TITRE:-Choix pour GLPI}" \
-        --title "${MSG_INSTALL_OR_UPDATE:-Choix entre: Installation ou Mise à jour}" \
-        --radiolist "${MSG_INSTALL_OR_UPDATE_CHOIX:-Veuillez choisir une option}" 15 60 2 \
-        1 "${MSG_INSTALL_NEW:-Nouvelle installation}" ON \
-        2 "${MSG_UPDATE_EXISTING:-Mise à jour}" OFF \
-        3>&1 1>&2 2>&3)
-    rc=$?
-    exec 3>&-
-    if [[ $rc -ne 0 ]]; then
-        echo "❌ Sélection annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-        dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
-        return 1
-    fi
-    echo "${INSTALL_OR_UPDATE}: choix de l'utilisateur pour installation ou mise à jour."
-    export INSTALL_OR_UPDATE
-    if [[ "${INSTALL_OR_UPDATE}" -eq 1 ]]; then
-        dialog --title "Installation" --msgbox "${MSG_INSTALL_NEW_SELECT:-Veuillez confirmer la nouvelle installation}" 7 50
-        echo "✅ ${MSG_INSTALL_NEW:-Nouvelle installation} sélectionné."
-        #choose_installation_options 1
-    else
-        dialog --title "Mise à jour" --msgbox "${MSG_UPDATE_EXISTING_SELECT:-Veuillez confirmer la mise à jour}" 7 50
-        #choose_installation_options 2
-        echo "✅ ${MSG_UPDATE_EXISTING:-Mise à jour en cours} sélectionné."
-    fi
-    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    return 0
-}
 #  Demander à l'utilisateur de choisir le répertoire d'installation,
 # la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Recherche des installations GLPI existantes
-    FIND_REP_GLPI=""
-    glpi_dirs=()
-    # Parcours des répertoires standards à explorer
-    for path in ${PATHS_TO_CHECK}; do
-        # Recherche des dossiers contenant "glpi" jusqu’à 3 niveaux de profondeur
-        FOUND=$(find "${path}" -maxdepth 3 -type d -name "*glpi*" 2>/dev/null)
-        # Si un ou plusieurs répertoires sont trouvés, on les ajoute au tableau
-        if [[ -n "$FOUND" ]]; then
-            # On lit chaque ligne de la sortie de find et on l’ajoute au tableau
-            while IFS= read -r dir; do
-                glpi_dirs+=("$dir")
-            done <<< "$FOUND"
-        fi
-    done
-    # Si au moins un répertoire GLPI trouvé, demander à l'utilisateur de choisir
-    if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
-        # Préparer les arguments pour dialog
-        find_rep=()
-        rep_map=()
-        number=1
-        first="ON"
-        # Correction : boucle while → for (syntaxe correcte)
-        for dir in "${glpi_dirs[@]}"; do
-            find_rep+=("${number}" "${dir}" "${first}")
-            rep_map+=("${dir}")
-            first="OFF"
-            ((number++))
-        done
-        # Vérification utilisateur/distro avant exécution
-        if check_install_user "${REP_GLPI}"; then
-            GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
-        fi
-        # Récupération des versions GLPI disponibles sur GitHub
-        tags=""
-        # Récupère les tags au format X.Y.Z
-        tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | uniq | head -n 16) 
-        # Filtrage : ne garder que les versions avant GLPI_CLI_VERSION (donc plus récentes) ---
-        newer_tags=()
-        for tag in ${tags}; do
-            if [[ "${tag}" == "${GLPI_CLI_VERSION}" ]]; then
-                break  # On s'arrête dès qu'on atteint la version installée
+    if [[ "${INSTALL_OR_UPDATE}" -eq 1 ]]; then
+        FIND_REP_GLPI=""
+        glpi_dirs=()
+        # Parcours des répertoires standards à explorer
+        for path in ${PATHS_TO_CHECK}; do
+            # Recherche des dossiers contenant "glpi" jusqu’à 3 niveaux de profondeur
+            FOUND=$(find "${path}" -maxdepth 3 -type d -name "*glpi*" 2>/dev/null)
+            # Si un ou plusieurs répertoires sont trouvés, on les ajoute au tableau
+            if [[ -n "$FOUND" ]]; then
+                # On lit chaque ligne de la sortie de find et on l’ajoute au tableau
+                while IFS= read -r dir; do
+                    glpi_dirs+=("$dir")
+                done <<< "$FOUND"
             fi
-            newer_tags+=("${tag}")
         done
-        # Préparation du menu de sélection de version GLPI
-        tag=""; find_version=(); version_map=(); number=1; first="ON"
-        for tag in "${newer_tags[@]}"; do
-            find_version+=("${number}" "GLPI ${tag}" "${first}")
-            version_map+=("${tag}")
-            first="OFF"
-            ((number++))
-        done
-        # Menu de sélection d’installation GLPI
-        exec 3>&1
-        FIND_REP_GLPI=$(dialog \
-            --backtitle "$MSG_TITRE" \
-            --title "${MSG_GLPI_SELECT_INSTALLED}" \
-            --radiolist "${MSG_GLPI_SELECT_INSTALLED_CHOIX}" 20 70 8 \
-            "${find_rep[@]}" \
-            3>&1 1>&2 2>&3)
-        rc=$?
-        exec 3>&-
-        # Convertir le numéro choisi en index du tableau (0-based)
-        local index=""
-        index=$((FIND_REP_GLPI - 1))
-        # Récupérer le vrai chemin correspondant
-        REP_GLPI="${rep_map[$index]}"
-        if [[ $rc -ne 0 ]]; then
-            warn "❌ Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-            dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
-            return 1
-        fi
-        # Sélecteur de version GLPI
-        exec 3>&1
-        VERSION_SELECT=$(dialog \
-            --backtitle "$MSG_TITRE" \
-            --title "${MSG_PARAM_VERSION}" \
-            --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 \
-            "${find_version[@]}" \
-            3>&1 1>&2 2>&3)
-        rc=$?
-        exec 3>&-
-        if [[ "${rc}" -ne 0 ]]; then
-            warn "❌ Sélection de la version annulée."
-            return 1
-        fi
-        # Convertir le numéro choisi en index du tableau (0-based)
-        local index=""
-        index=$((VERSION_SELECT - 1))
-        # Récupérer le vrai tag correspondant
-        VERSION_SELECT="${version_map[$index]}"
-        dialog --title "${MSG_INFO}" --msgbox "\n${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${REP_GLPI}\n\n${MSG_UPGRADE1}${GLPI_CLI_VERSION}${MSG_UPGRADE2}${VERSION_SELECT}" 10 100
-        export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
-        export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME GLPI_CLI_VERSION
-        # Lancement de la mise à jour
-        run_sequence "update"
-    else
-        tags=""
-        # Récupère les tags au format X.Y.Z
-        tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | uniq | head -n 16) 
-        local args=() first=ON number=1 version_map=()
-        while IFS= read -r tag; do
-            args+=("${number}" "GLPI ${tag}" "${first}")
-            version_map+=("${tag}")
-            first=OFF
-            number=$((number + 1))
-        done <<< "${tags}"
-        exec 3>&1
-        VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" \
-        --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 "${args[@]}" 3>&1 1>&2 2>&3)
-        local rc=$?
-        exec 3>&-
-        if [ "${rc}" -ne 0 ]; then
-            warn "❌ Sélection de la version annulée."
-            return 1
-        fi
-        # VERSION_SELECT retourne le tag choisi (ici nous utilisons des tags numériques mapping -> version_map)
-        if ! [[ "${VERSION_SELECT}" =~ ^[0-9]+$ ]]; then
-            warn "❌ Valeur de version invalide retournée : ${VERSION_SELECT}"
-            return 1
-        fi
-        # Convertir le numéro choisi en index du tableau (0-based)
-        local index=""
-        index=$((VERSION_SELECT - 1))
-        # Récupérer le vrai tag correspondant
-        VERSION_SELECT="${version_map[$index]}"
-        if [ $index -lt 0 ] || [ $index -ge ${#version_map[@]} ]; then
-            warn "❌ Index de version hors plage : ${index}"
-            return 1
-        fi
-        WIDTH_REP=$(( ${#MSG_PARAM_REP} ))
-        WIDTH_DB_HOST=$(( ${#MSG_PARAM_DB_HOST} ))
-        WIDTH_DB_NAME=$(( ${#MSG_PARAM_DB_NAME} ))
-        WIDTH_DB_USER=$(( ${#MSG_PARAM_DB_USER} ))
-        WIDTH=$(( WIDTH_REP > WIDTH_DB_HOST ? WIDTH_REP : WIDTH_DB_HOST ))
-        WIDTH=$(( WIDTH > WIDTH_DB_NAME ? WIDTH : WIDTH_DB_NAME ))
-        WIDTH=$(( WIDTH > WIDTH_DB_USER ? WIDTH : WIDTH_DB_USER ))
-        WIDTH=$(( WIDTH + 6 ))
-        local _def_rep="" rep_glpi="" _def_db_host="" db_host="" _def_db_name="" db_name="" _def_db_user="" db_user=""
-        if [ -n "${FIND_REP_GLPI}" ]; then
-            _def_rep="${REP_GLPI:-${FIND_REP_GLPI}}"
-        else
-            _def_rep="${REP_GLPI:-/var/www/html/glpi/}"
-        fi
-        local _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
-        while true; do
+        # Si au moins un répertoire GLPI trouvé, demander à l'utilisateur de choisir
+        if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
+            # Préparer les arguments pour dialog
+            find_rep=()
+            rep_map=()
+            number=1
+            first="ON"
+            # Correction : boucle while → for (syntaxe correcte)
+            for dir in "${glpi_dirs[@]}"; do
+                find_rep+=("${number}" "${dir}" "${first}")
+                rep_map+=("${dir}")
+                first="OFF"
+                ((number++))
+            done
+            # Vérification utilisateur/distro avant exécution
+            if check_install_user "${REP_GLPI}"; then
+                GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
+            fi
+            # Récupération des versions GLPI disponibles sur GitHub
+            tags=""
+            # Récupère les tags au format X.Y.Z
+            tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | uniq | head -n 16) 
+            # Filtrage : ne garder que les versions avant GLPI_CLI_VERSION (donc plus récentes) ---
+            newer_tags=()
+            for tag in ${tags}; do
+                if [[ "${tag}" == "${GLPI_CLI_VERSION}" ]]; then
+                    break  # On s'arrête dès qu'on atteint la version installée
+                fi
+                newer_tags+=("${tag}")
+            done
+            # Préparation du menu de sélection de version GLPI
+            tag=""; find_version=(); version_map=(); number=1; first="ON"
+            for tag in "${newer_tags[@]}"; do
+                find_version+=("${number}" "GLPI ${tag}" "${first}")
+                version_map+=("${tag}")
+                first="OFF"
+                ((number++))
+            done
+            # Menu de sélection d’installation GLPI
             exec 3>&1
-            form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" \
-                --form "${MSG_GLPI_SELECT_PARAM_1} ${VERSION_SELECT} ${MSG_GLPI_SELECT_PARAM_2}" 18 68 8 \
-                "📁 ${MSG_PARAM_REP}"     1 2 "${_def_rep}" 1 ${WIDTH} 20 40 \
-                "🗄️ ${MSG_PARAM_DB_HOST}" 3 2 "${_def_db_host}" 3 ${WIDTH} 20 20 \
-                "💾 ${MSG_PARAM_DB_NAME}" 5 2 "${_def_db}" 5 ${WIDTH} 20 20 \
-                "👤 ${MSG_PARAM_DB_USER}" 7 2 "${_def_user}" 7 ${WIDTH} 20 20 \
-                2>&1 1>&3)
+            FIND_REP_GLPI=$(dialog \
+                --backtitle "$MSG_TITRE" \
+                --title "${MSG_GLPI_SELECT_INSTALLED}" \
+                --radiolist "${MSG_GLPI_SELECT_INSTALLED_CHOIX}" 20 70 8 \
+                "${find_rep[@]}" \
+                3>&1 1>&2 2>&3)
             rc=$?
             exec 3>&-
-            # Transformer les lignes du formulaire en variables
-            IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
-            rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
-            db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
-            db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
-            db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
-            rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
-            db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
-            db_name="${db_name//[^A-Za-z0-9_]/_}"
-            db_user="${db_user//[^A-Za-z0-9_]/_}"
-            [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
-            [ -z "$db_host" ] && db_host="$_def_db_host"
-            [ -z "$db_name" ] && db_name="$_def_db"
-            [ -z "$db_user" ] && db_user="$_def_user"
-            if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-                db_name="glpi_${db_name}"
-            fi
-            rep_glpi="${rep_glpi//\\//}"
-            if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
-                rep_glpi="${_def_rep}"
-            fi
-            rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
-            REP_GLPI="${rep_glpi%/}/"
-            DB_HOST="$db_host"
-            DB_NAME="$db_name"
-            DB_USER="$db_user"
-            # Si annulation ou ESC
+            # Convertir le numéro choisi en index du tableau (0-based)
+            local index=""
+            index=$((FIND_REP_GLPI - 1))
+            # Récupérer le vrai chemin correspondant
+            REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
-                warn "❌ Formulaire annulé par l’utilisateur."
-                dialog --title "${MSG_INFO}" --msgbox "Installation annulée par l'utilisateur." 7 60
-                exit 1
+                warn "❌ Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
+                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
+                return 1
             fi
-            # --- VALIDATIONS ---
-            # Répertoire d’installation
-            if ! validate_glpi_path "$REP_GLPI"; then
-                continue
+            # Sélecteur de version GLPI
+            exec 3>&1
+            VERSION_SELECT=$(dialog \
+                --backtitle "$MSG_TITRE" \
+                --title "${MSG_PARAM_VERSION}" \
+                --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 \
+                "${find_version[@]}" \
+                3>&1 1>&2 2>&3)
+            rc=$?
+            exec 3>&-
+            if [[ "${rc}" -ne 0 ]]; then
+                warn "❌ Sélection de la version annulée."
+                return 1
             fi
-            # Hôte de la base de données
-            if ! validate_db_host "$DB_HOST"; then
-                continue
+            # Convertir le numéro choisi en index du tableau (0-based)
+            local index=""
+            index=$((VERSION_SELECT - 1))
+            # Récupérer le vrai tag correspondant
+            VERSION_SELECT="${version_map[$index]}"
+            dialog --title "${MSG_INFO}" --msgbox "\n${MSG_GLPI_INSTALLED}${GLPI_CLI_VERSION}, dans le répertoire : ${REP_GLPI}\n\n${MSG_UPGRADE1}${GLPI_CLI_VERSION}${MSG_UPGRADE2}${VERSION_SELECT}" 10 100
+            export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
+            export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME GLPI_CLI_VERSION
+            # Lancement de la mise à jour
+            run_sequence "update"
+        elif [[ "${INSTALL_OR_UPDATE}" == 2 ]]; then
+            tags=""
+            # Récupère les tags au format X.Y.Z
+            tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | uniq | head -n 16) 
+            local args=() first=ON number=1 version_map=()
+            while IFS= read -r tag; do
+                args+=("${number}" "GLPI ${tag}" "${first}")
+                version_map+=("${tag}")
+                first=OFF
+                number=$((number + 1))
+            done <<< "${tags}"
+            exec 3>&1
+            VERSION_SELECT=$(dialog --backtitle "$MSG_TITRE" --title "${MSG_PARAM_VERSION}" \
+            --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 "${args[@]}" 3>&1 1>&2 2>&3)
+            local rc=$?
+            exec 3>&-
+            if [ "${rc}" -ne 0 ]; then
+                warn "❌ Sélection de la version annulée."
+                return 1
             fi
-            # Nom de la base de données
-            if ! validate_db_name "$DB_NAME"; then
-                continue
+            # VERSION_SELECT retourne le tag choisi (ici nous utilisons des tags numériques mapping -> version_map)
+            if ! [[ "${VERSION_SELECT}" =~ ^[0-9]+$ ]]; then
+                warn "❌ Valeur de version invalide retournée : ${VERSION_SELECT}"
+                return 1
             fi
-            # Utilisateur de la base de données
-            if ! validate_db_user "$DB_USER"; then
-                continue
+            # Convertir le numéro choisi en index du tableau (0-based)
+            local index=""
+            index=$((VERSION_SELECT - 1))
+            # Récupérer le vrai tag correspondant
+            VERSION_SELECT="${version_map[$index]}"
+            if [ $index -lt 0 ] || [ $index -ge ${#version_map[@]} ]; then
+                warn "❌ Index de version hors plage : ${index}"
+                return 1
             fi
-            # Si tout est valide
-            break
-        done
-        # Assignation des valeurs finales
-        local DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
-        local DB_HOST="${DB_HOST}"
-        local REP_GLPI="${REP_GLPI}"
-        local DB_NAME="${DB_NAME}"
-        local DB_USER="${DB_USER}"
-        local INVOKING_HOME="${PWD}"
-        local TIMEZONE="${TIMEZONE:-UTC}"
-        local VERSION_SELECT="${VERSION_SELECT}"
-        export DOWNLOADLINK DB_HOST REP_GLPI DB_NAME DB_USER INVOKING_HOME TIMEZONE
-        # Lancement de l’installation
-        run_sequence "install"
+            WIDTH_REP=$(( ${#MSG_PARAM_REP} ))
+            WIDTH_DB_HOST=$(( ${#MSG_PARAM_DB_HOST} ))
+            WIDTH_DB_NAME=$(( ${#MSG_PARAM_DB_NAME} ))
+            WIDTH_DB_USER=$(( ${#MSG_PARAM_DB_USER} ))
+            WIDTH=$(( WIDTH_REP > WIDTH_DB_HOST ? WIDTH_REP : WIDTH_DB_HOST ))
+            WIDTH=$(( WIDTH > WIDTH_DB_NAME ? WIDTH : WIDTH_DB_NAME ))
+            WIDTH=$(( WIDTH > WIDTH_DB_USER ? WIDTH : WIDTH_DB_USER ))
+            WIDTH=$(( WIDTH + 6 ))
+            local _def_rep="" rep_glpi="" _def_db_host="" db_host="" _def_db_name="" db_name="" _def_db_user="" db_user=""
+            if [ -n "${FIND_REP_GLPI}" ]; then
+                _def_rep="${REP_GLPI:-${FIND_REP_GLPI}}"
+            else
+                _def_rep="${REP_GLPI:-/var/www/html/glpi/}"
+            fi
+            local _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
+            while true; do
+                exec 3>&1
+                form=$(dialog --backtitle "$MSG_TITRE" --title "$MSG_PARAM_TITLE" \
+                    --form "${MSG_GLPI_SELECT_PARAM_1} ${VERSION_SELECT} ${MSG_GLPI_SELECT_PARAM_2}" 18 68 8 \
+                    "📁 ${MSG_PARAM_REP}"     1 2 "${_def_rep}" 1 ${WIDTH} 20 40 \
+                    "🗄️ ${MSG_PARAM_DB_HOST}" 3 2 "${_def_db_host}" 3 ${WIDTH} 20 20 \
+                    "💾 ${MSG_PARAM_DB_NAME}" 5 2 "${_def_db}" 5 ${WIDTH} 20 20 \
+                    "👤 ${MSG_PARAM_DB_USER}" 7 2 "${_def_user}" 7 ${WIDTH} 20 20 \
+                    2>&1 1>&3)
+                rc=$?
+                exec 3>&-
+                # Transformer les lignes du formulaire en variables
+                IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
+                rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
+                db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
+                db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
+                db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
+                rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
+                db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
+                db_name="${db_name//[^A-Za-z0-9_]/_}"
+                db_user="${db_user//[^A-Za-z0-9_]/_}"
+                [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
+                [ -z "$db_host" ] && db_host="$_def_db_host"
+                [ -z "$db_name" ] && db_name="$_def_db"
+                [ -z "$db_user" ] && db_user="$_def_user"
+                if [[ ! "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+                    db_name="glpi_${db_name}"
+                fi
+                rep_glpi="${rep_glpi//\\//}"
+                if [ -z "${rep_glpi}" ] || [[ "${rep_glpi}" != /* ]]; then
+                    rep_glpi="${_def_rep}"
+                fi
+                rep_glpi="$(printf '%s' "${rep_glpi}" | sed -E 's#/{2,}#/#g')"
+                REP_GLPI="${rep_glpi%/}/"
+                DB_HOST="$db_host"
+                DB_NAME="$db_name"
+                DB_USER="$db_user"
+                # Si annulation ou ESC
+                if [[ $rc -ne 0 ]]; then
+                    warn "❌ Formulaire annulé par l’utilisateur."
+                    dialog --title "${MSG_INFO}" --msgbox "Installation annulée par l'utilisateur." 7 60
+                    exit 1
+                fi
+                # --- VALIDATIONS ---
+                # Répertoire d’installation
+                if ! validate_glpi_path "$REP_GLPI"; then
+                    continue
+                fi
+                # Hôte de la base de données
+                if ! validate_db_host "$DB_HOST"; then
+                    continue
+                fi
+                # Nom de la base de données
+                if ! validate_db_name "$DB_NAME"; then
+                    continue
+                fi
+                # Utilisateur de la base de données
+                if ! validate_db_user "$DB_USER"; then
+                    continue
+                fi
+                # Si tout est valide
+                break
+            done
+            # Assignation des valeurs finales
+            local DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
+            local DB_HOST="${DB_HOST}"
+            local REP_GLPI="${REP_GLPI}"
+            local DB_NAME="${DB_NAME}"
+            local DB_USER="${DB_USER}"
+            local INVOKING_HOME="${PWD}"
+            local TIMEZONE="${TIMEZONE:-UTC}"
+            local VERSION_SELECT="${VERSION_SELECT}"
+            export DOWNLOADLINK DB_HOST REP_GLPI DB_NAME DB_USER INVOKING_HOME TIMEZONE
+            # Lancement de l’installation
+            run_sequence "install"
+        fi
     fi
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
