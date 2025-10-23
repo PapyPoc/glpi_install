@@ -26,7 +26,7 @@ function ensure_dependencies(){
         list="$DEPENDENCIES"
     fi
     for cmd in $list; do
-        if ! command -v "$cmd"; then
+        if ! command -v "$cmd" >/dev/null; then
             missing="${missing:+$missing }$cmd"
         fi
     done

@@ -96,16 +96,12 @@ function on_error() {
     local rc=$?
     local cmd=$BASH_COMMAND
     local line=${BASH_LINENO[0]}
-
     local message="Erreur détectée : '${cmd}' (code=$rc) à la ligne $line\n"
     message+="Pile d’appels :\n"
-
     for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
         message+="  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}\n"
     done
-
     message+="──────────────────────────────"
-
     dialog --backtitle "Erreur" \
            --title "Erreur détectée" \
            --msgbox "$message" 60 100 || true
@@ -928,6 +924,11 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
 CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
 GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+SET GLOBAL time_zone = '${TIMEZONE}';
+SET time_zone = '${TIMEZONE}';
+GRANT SELECT ON mysql.time_zone_transition TO '${DB_USER}'@'localhost';
+GRANT SELECT ON mysql.time_zone_transition_type TO '${DB_USER}'@'localhost';
+GRANT SELECT ON mysql.time_zone TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
@@ -979,17 +980,19 @@ function install_glpi(){
 function setup_glpi(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     source_os_release
-    local CMD="${REP_GLPI}/bin/console db:install \
- --db-host localhost \
- --db-port=3306 \
- --db-name=${DB_NAME} \
- --db-user=${DB_USER} \
- --db-password=${SQLGLPIPWD} \
- --default-language=${LANGUAGE} \
- --force \
- --no-telemetry \
- --quiet \
- --no-interaction"
+    local CMD=(
+    php "${REP_GLPI}/bin/console" db:install
+    --db-host localhost
+    --db-port=3306
+    --db-name="${DB_NAME}"
+    --db-user="${DB_USER}"
+    --db-password="${SQLGLPIPWD}"
+    --default-language="${LANGUAGE}"
+    --force
+    --no-telemetry
+    --quiet
+    --no-interaction
+    )
     info "$MSG_CONFIG_GLPI"
     mkdir -p /var/log/glpi 
     mkdir -p /etc/glpi/config 
@@ -1061,7 +1064,7 @@ EOF
             # Installation de GLPI en ligne de commande
             echo "$(date '+%Y-%m-%d %H:%M:%S') - [INFO] Exécution : sudo -u ${WEB_USER} php ${CMD}" || true
             # Exécuter la commande en tant que "${WEB_USER}". Utiliser sudo tee pour écrire vers les fichiers protégés.
-            if eval sudo -u "${WEB_USER}" php "${CMD}"; then
+            if sudo -u "${WEB_USER}" "${CMD[@]}" 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
                 info "Installation GLPI terminée avec succès."
             else
                 warn "Échec de l'installation GLPI via console."
@@ -1121,7 +1124,7 @@ EOF
                 return 1
             fi
             # Installation de GLPI en ligne de commande
-            if eval sudo -u "${WEB_USER}" "${CMD}"; then
+            if sudo -u "${WEB_USER}" "${CMD[@]}" 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
                 info "Installation GLPI terminée avec succès."
             else
                 warn "Échec de l'installation GLPI via console."
@@ -1178,7 +1181,7 @@ function maj_user_glpi(){
     local _sql_user
     _sql_user=$(
         cat <<SQL
-USE \`${DB_NAME}\`;
+USE ${DB_NAME};
 UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';
 UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
 UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';
