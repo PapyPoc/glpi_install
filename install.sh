@@ -36,22 +36,22 @@ function ensure_dependencies(){
     echo "Dépendances manquantes : ${missing}. Tentative d'installation..."
     local pkgmgr install_cmd
     local pkgs="$missing"
-    if command -v apt-get >>"${UPDATEFILE}"; then
+    if command -v apt-get >/dev/null; then
         pkgmgr="apt-get"
         install_cmd="${pkgmgr} update -qq && ${pkgmgr} install -y -qq ${pkgs}"
-    elif command -v dnf >>"${UPDATEFILE}"; then
+    elif command -v dnf >/dev/null; then
         pkgmgr="dnf"
         install_cmd="${pkgmgr} install -y -q ${pkgs}"
-    elif command -v yum >>"${UPDATEFILE}"; then
+    elif command -v yum >/dev/null; then
         pkgmgr="yum"
         install_cmd="${pkgmgr} install -y -q ${pkgs}"
-    elif command -v apk >>"${UPDATEFILE}"; then
+    elif command -v apk >/dev/null; then
         pkgmgr="apk"
         install_cmd="${pkgmgr} add --no-cache ${pkgs}"
-    elif command -v pacman >>"${UPDATEFILE}"; then
+    elif command -v pacman >/dev/null; then
         pkgmgr="pacman"
         install_cmd="${pkgmgr} -Syu --noconfirm ${pkgs}"
-    elif command -v zypper >>"${UPDATEFILE}"; then
+    elif command -v zypper >/dev/null; then
         pkgmgr="zypper"
         install_cmd="${pkgmgr} install -y ${pkgs}"
     else
@@ -59,7 +59,7 @@ function ensure_dependencies(){
         return 1
     fi
     info "Installation via ${pkgmgr} : ${pkgs}"
-    if ! bash -c "$install_cmd"; then
+    if ! bash -c "$install_cmd 1>>${UPDATEFILE} 2>>${ERRORFILE}"; then
         warn "Échec de l'installation des dépendances : ${pkgs}"
         return 1
     fi

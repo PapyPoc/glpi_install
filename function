@@ -311,7 +311,6 @@ function prompt_install_options(){
         fi
         # Récupération des versions GLPI disponibles sur GitHub
         tags=""
-        API_URL="https://api.github.com/repos/glpi-project/glpi/tags"
         # Récupère les tags au format X.Y.Z
         tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | uniq | head -n 16) 
         # Filtrage : ne garder que les versions avant GLPI_CLI_VERSION (donc plus récentes) ---
@@ -382,7 +381,9 @@ function prompt_install_options(){
         # Lancement de la mise à jour
         run_sequence "update"
     else
-        tags=$(printf '%s\n' "${tags}" | sort -Vr | uniq | head -n 16)
+        tags=""
+        # Récupère les tags au format X.Y.Z
+        tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | uniq | head -n 16) 
         local args=() first=ON number=1 version_map=()
         while IFS= read -r tag; do
             args+=("${number}" "GLPI ${tag}" "${first}")
@@ -1431,11 +1432,16 @@ function update_glpi() {
         local CMD="${REP_GLPI}/bin/console db:update --force --no-telemetry --quiet --no-interaction"
         # shellcheck disable=SC2086
         if sudo -u "${WEB_USER}" php ${CMD} 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+            exec 3>&1
             dialog --title "${MSG_TITRE_OK}" --msgbox "Mise à jour de la base GLPI réussie.\n\nProfitez de GLPI ${VERSION_SELECT} !" 7 50
+            exec 3>&-
             info "Mise à jour de la base GLPI réussie."
         else
             warn "Échec de la mise à jour de la base GLPI (voir ${ERRORFILE})."
+            exec 3>&1
             dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "Erreur lors de la mise à jour de la base GLPI."
+            exec 3>&-
+            return 1
         fi
     fi
     # Nettoyage final
