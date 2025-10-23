@@ -728,7 +728,7 @@ function install_packages(){
         fi
         info "$MSG_INSTALL_EXT_PHP"
         if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} \
-            | sudo tee -a "${DEBUGFILE}" \
+            | sudo tee -a "${UPDATEFILE}" \
             2> >(sudo tee -a "${ERRORFILE}" >&2)
         then
             error "$MSG_PHP_EXT_FAILED"
@@ -736,42 +736,16 @@ function install_packages(){
         fi
         info "$MSG_INSTALL_SERVICE"
         if ! sudo apt-get install -y wget composer tar apache2 apache2-bin mariadb-server mariadb-client perl php \
-            | sudo tee -a "${DEBUGFILE}" \
+            | sudo tee -a "${UPDATEFILE}" \
             2> >(sudo tee -a "${ERRORFILE}" >&2)
         then
             error "$MSG_LAMP_FAILED"
             return 1
         fi
         info "$MSG_ACTIVE_START_BDD"
-        if ! systemctl enable mariadb \
-            | sudo tee -a "${DEBUGFILE}" \
-            2> >(sudo tee -a "${ERRORFILE}" >&2)
-        then
-            error "Échec de l'activation de MariaDB."
-            return 1
-        fi
-        if ! systemctl restart mariadb \
-            | sudo tee -a "${DEBUGFILE}" \
-            2> >(sudo tee -a "${ERRORFILE}" >&2)
-        then
-            error "Échec du redémarrage de MariaDB."
-            return 1
-        fi
+        manage_service "mariadb" "MariaDB" || return 1
         info "$MSG_ACTIVE_START_WEB"
-        if ! systemctl enable apache2 \
-            | sudo tee -a "${DEBUGFILE}" \
-            2> >(sudo tee -a "${ERRORFILE}" >&2)
-        then
-            error "Échec de l'activation d'Apache2."
-            return 1
-        fi
-        if ! systemctl restart apache2 \
-            | sudo tee -a "${DEBUGFILE}" \
-            2> >(sudo tee -a "${ERRORFILE}" >&2)
-        then
-            error "Échec du redémarrage d'Apache2."
-            return 1
-        fi
+        manage_service "apache2" "Apache2" || return 1
     elif [[ "${ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
         sleep 1
         dnf makecache --refresh
@@ -879,6 +853,20 @@ EOF
         fi
     fi
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+}
+function manage_service() {
+    local service="$1"
+    local label="$2"
+
+    info "Activation et démarrage du service ${label}..."
+    {
+        systemctl enable "${service}"
+        systemctl restart "${service}"
+    } >>"${DEBUGFILE}" 2>>"${ERRORFILE}" || {
+        error "Échec lors de la gestion du service ${label}."
+        return 1
+    }
+    info "Service ${label} activé et démarré avec succès."
 }
 function get_timezone() {
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
@@ -1084,10 +1072,8 @@ EOF
                 warn "Échec de la modification des droits pour GLPI."
                 return 1
             fi
-            if ! systemctl restart apache2; then
-                warn "Échec du redémarrage d'Apache."
-                return 1
-            fi
+            info "$MSG_ACTIVE_START_BDD"
+            manage_service "apache2" "Apache2" || return 1
         elif [[ "${WEB_USER}" == "nginx" ]]; then
             network_info
             sudo tee /etc/nginx/conf.d/glpi.conf << EOF
@@ -1134,7 +1120,6 @@ EOF
                 warn "Échec du rechargement de Nginx ou PHP-FPM."
                 return 1
             fi
-            sleep 2
             # Installation de GLPI en ligne de commande
             if eval sudo -u "${WEB_USER}" "${CMD}"; then
                 info "Installation GLPI terminée avec succès."
@@ -1142,6 +1127,7 @@ EOF
                 warn "Échec de l'installation GLPI via console."
                 return 1
             fi
+            sleep 2
         fi
         # Configuration de la tâche Cron
         echo "*/2 * * * * ${WEB_USER} /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
@@ -1187,7 +1173,7 @@ function maj_user_glpi(){
     debug "  - tech: ${TECHGLPIPWD}" # Pour le débogage
     debug "  - normal: ${NORMGLPIPWD}" # Pour le débogage
     debug "Mots de passe des utilisateurs GLPI seront mis à jour." # Pour le débogage
-    debug "Fuseau horaire: ${TIMEZONE}, Langue: ${LANGUAGE}, Adresse IP: ${IPADRESS}" # Pour le débogage
+    debug "Fuseau horaire: ${TIMEZONE}, Langue: ${LANGUAGE}" # Pour le débogage
     debug "Construction des commandes SQL..." # Pour le débogage
     # --- Construction du SQL ---
     local _sql_user
