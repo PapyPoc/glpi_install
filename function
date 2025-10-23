@@ -629,32 +629,34 @@ function run_sequence() {
             return 1
             ;;
     esac
-
     local total_tasks=${#task_order[@]}
     local task_index=0
-
+    local progress=0
+    local task_key=""
+    local MSG_OK="✅"
+    local MSG_NONOK="❌"
     (
         for task_key in "${task_order[@]}"; do
             task_index=$((task_index + 1))
             progress=$((task_index * 100 / total_tasks))
             echo "$progress"
             echo "XXX"
-            echo "$task_index/$total_tasks - $task_key"
+            echo "${task_index}/${total_tasks} - ${task_key} en cours..."
             echo "XXX"
-            debug "$(date '+%F %T') [$$][DEBUG: Début de la tâche '${task_key}'] commande '${tasks[$task_key]}'"
-            if run_task "$task_key" "${tasks[$task_key]}" "$task_index" "$total_tasks"; then
+            debug "$(date '+%F %T') [$$][DEBUG: Début de la tâche '${task_key}'] commande '${tasks[${task_key}]}'"
+            if run_task "${task_key}" "${tasks[${task_key}]}" "${task_index}" "${total_tasks}"; then
                 echo "$progress"
                 echo "XXX"
-                echo "$task_index/$total_tasks - $task_key ${MSG_OK}"
+                echo "${task_index}/${total_tasks} - ${task_key} ${MSG_OK}"
                 echo "XXX"
-                debug "$(date '+%F %T') [$$][DEBUG: Tâche '${task_key}' commande '${tasks[$task_key]}' terminée avec succès.]"
+                debug "$(date '+%F %T') [$$][DEBUG: Tâche '${task_key}' commande '${tasks[${task_key}]}' terminée avec succès.]"
                 sleep 1
             else
                 echo "100"
                 echo "XXX"
-                echo "$task_index/$total_tasks - $task_key : ${MSG_NONOK}"
+                echo "${task_index}/${total_tasks} - ${task_key} ${MSG_NONOK}"
                 echo "XXX"
-                debug "$(date '+%F %T') [$$][DEBUG: Tâche '${task_key}' commande '${tasks[$task_key]}' échouée.]"
+                debug "$(date '+%F %T') [$$][DEBUG: Tâche '${task_key}' commande '${tasks[${task_key}]}' échouée.]"
                 sleep 5
                 return 1   # stoppe la boucle sur échec
             fi
@@ -664,13 +666,40 @@ function run_sequence() {
 
     # Vérifie le code retour du sous-shell
     if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-        warn "Une tâche a échoué pendant l'exécution de ${mode}() commande '${tasks[$task_key]}' ${MSG_NONOK}."
+        warn "Une tâche a échoué pendant l'exécution de ${mode}() commande '${tasks[${task_key}]}' ${MSG_NONOK}."
         debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Mode=${mode} (échec)"
         return 1
     fi
 
     info "Toutes les tâches du mode '${mode}' ont été exécutées avec succès."
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Mode=${mode} (succès)"
+}
+# Exécuter une tâche et gérer les erreurs et les logs
+function run_task() {
+    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Début de ${FUNCNAME[1]:-main}"
+    # Définir les variables de tâche
+    local task_key="$1" task_cmd="$2" index="$3" total="$4"
+    # Afficher les informations de la tâche
+    info "Tâche: ${index}/${total} - ${task_key}"
+    info "$MSG_COMMAND: $task_cmd"
+    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Début de la tâche ${task_key} - ${index}/${total} - ${task_cmd}"
+    # --- Exécution de la commande ---
+    local output exit_code
+    output=$(eval "$task_cmd" 2>&1)
+    exit_code=$?
+    # --- Résultat ---
+    if (( exit_code == 0 )); then
+        debug "$output"
+        debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (succès) de la tâche ${task_key} - ${index}/${total} - ${task_cmd}"
+    else
+        warn "$(date '+%Y-%m-%d %H:%M:%S'): ERROR: ${task_cmd}"
+        warn "$output"
+        warn "$MSG_ERROR_TASK: ${task_key} (exit=${exit_code})"
+        debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (échec) de la tâche ${task_key} - ${index}/${total} - ${task_cmd}"
+        return $exit_code
+    fi
+    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}"
+    return 0
 }
 # Mise à jour de la distribution
 function update_distro(){
