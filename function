@@ -9,8 +9,9 @@
 # Ne pas continuer si le script est exécuté directement
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    echo -e "Ce fichier doit être sourcé, pas exécuté.\n">> "${ERRORFILE}"
-    return 1
+    echo -e "Ce fichier doit être sourcé, pas exécuté.\n" >&2
+    echo -e "This file must be sourced, not executed.\n" >&2
+    exit 1
 fi
 # Affichage d'erreur en rouge
 function error(){
@@ -22,7 +23,7 @@ function error(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e "${ROUGE}${expanded}${NC}" # Couleur rouge
+    #echo -e "${ROUGE}${expanded}${NC}" # Couleur rouge # Affichage à l'écran désactivé
     printf '%s\n' "${expanded}" | tee -a "${ERRORFILE}" >/dev/null
 }
 # Affichage d'alerte en orange
@@ -96,16 +97,16 @@ function on_error() {
     local rc=$?
     local cmd=$BASH_COMMAND
     local line=${BASH_LINENO[0]}
-    local message="Erreur détectée : '${cmd}' (code=$rc) à la ligne $line\n"
-    message+="Pile d’appels :\n"
+    local message="${MSG_ERROR_ON_ERROR_1}'${cmd}' (code=$rc)${MSG_ERROR_ON_ERROR_2}$line\n"
+    message+="${MSG_ERROR_ON_ERROR_3}\n"
     for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
-        message+="  ↳ ${FUNCNAME[$i]}() depuis ${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}\n"
+        message+="${MSG_ERROR_ON_ERROR_4}${FUNCNAME[$i]}()${MSG_ERROR_ON_ERROR_5}${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}\n"
     done
     message+="──────────────────────────────"
-    dialog --backtitle "Erreur" \
-           --title "Erreur détectée" \
+    dialog --backtitle "${MSG_ERROR_DIALOG_TITLE}" \
+           --title "${MSG_ERROR_DIALOG_ERROR}" \
            --msgbox "$message" 60 100 || true
-    error "$message" 1>> "${ERRORFILE}"
+    error "$message"
     exit "$rc"
 }
 # Vérifie si la version est compatible
@@ -228,6 +229,32 @@ function load_language() {
     fi
     debug "$(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}"
 }
+# Recherche si GLPI est déjà installé
+function check_glpi_installed(){
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    FIND_REP_GLPI=$?
+    glpi_dirs=()
+    # Parcours des répertoires standards à explorer
+    for path in ${PATHS_TO_CHECK}; do
+        # Recherche des dossiers contenant "glpi" jusqu’à 3 niveaux de profondeur
+        FOUND=$(find "${path}" -maxdepth 3 -type d -name "*glpi*" 2>/dev/null)
+        # Si le répertoire correspond à FIND_REP_GLPI, on enregistre FIND_REP_GLPI et sort de la boucle
+        if [[ "${FOUND}" == "${FIND_REP_GLPI}" ]]; then
+            FIND_REP_GLPI="${FOUND}"
+            break
+        fi
+        # Si un ou plusieurs répertoires sont trouvés, on les ajoute au tableau
+        if [[ -n "$FOUND" ]]; then
+            # On lit chaque ligne de la sortie de find et on l’ajoute au tableau
+            while IFS= read -r dir; do
+                glpi_dirs+=("$dir")
+            done <<< "$FOUND"
+        fi
+    done
+    export glpi_dirs FIND_REP_GLPI
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+} 
+# Vérifie l'utilisateur web pour le répertoire GLPI
 function check_install_user(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     REP_GLPI="${1:-/var/www/html/glpi}"
@@ -239,26 +266,36 @@ function check_install_user(){
     export WEB_USER REP_GLPI
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
+# Choix entre installation ou mise à jour
+function install_update(){
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    # Demander à l'utilisateur s'il souhaite installer ou mettre à jour GLPI
+    exec 3>&1
+    INSTALL_OR_UPDATE=$(dialog \
+        --backtitle "$MSG_TITRE" \
+        --title "${MSG_UPDATE_TITRE}" \
+        --radiolist "${MSG_UPDATE_RADIOLIST}" 10 50 2 \
+        1 "${MSG_INSTALL}" ON \
+        2 "${MSG_UPDATE}" OFF \
+        3>&1 1>&2 2>&3)
+    rc=$?
+    exec 3>&-
+    if [[ $rc -ne 0 ]]; then
+        echo "❌ Sélection annulée par l'utilisateur."
+        dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
+        return 1
+    fi
+    export INSTALL_OR_UPDATE
+    echo "Choix de l'utilisateur : $INSTALL_OR_UPDATE"
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+}
 #  Demander à l'utilisateur de choisir le répertoire d'installation,
 # la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Recherche des installations GLPI existantes
-    if [[ "${INSTALL_OR_UPDATE}" -eq 1 ]]; then
-        FIND_REP_GLPI=""
-        glpi_dirs=()
-        # Parcours des répertoires standards à explorer
-        for path in ${PATHS_TO_CHECK}; do
-            # Recherche des dossiers contenant "glpi" jusqu’à 3 niveaux de profondeur
-            FOUND=$(find "${path}" -maxdepth 3 -type d -name "*glpi*" 2>/dev/null)
-            # Si un ou plusieurs répertoires sont trouvés, on les ajoute au tableau
-            if [[ -n "$FOUND" ]]; then
-                # On lit chaque ligne de la sortie de find et on l’ajoute au tableau
-                while IFS= read -r dir; do
-                    glpi_dirs+=("$dir")
-                done <<< "$FOUND"
-            fi
-        done
+    if [[ "${INSTALL_OR_UPDATE}" == 2 ]]; then
+        check_glpi_installed
         # Si au moins un répertoire GLPI trouvé, demander à l'utilisateur de choisir
         if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
             # Préparer les arguments pour dialog
@@ -300,9 +337,9 @@ function prompt_install_options(){
             # Menu de sélection d’installation GLPI
             exec 3>&1
             FIND_REP_GLPI=$(dialog \
-                --backtitle "$MSG_TITRE" \
-                --title "${MSG_GLPI_SELECT_INSTALLED}" \
-                --radiolist "${MSG_GLPI_SELECT_INSTALLED_CHOIX}" 20 70 8 \
+                --backtitle "$MSG_TITRE_UPDATE" \
+                --title "${MSG_UPDATE_SELECT_INSTALLED}" \
+                --radiolist "${MSG_UPDATE_SELECT_INSTALLED_CHOIX}" 20 70 8 \
                 "${find_rep[@]}" \
                 3>&1 1>&2 2>&3)
             rc=$?
@@ -320,7 +357,7 @@ function prompt_install_options(){
             # Sélecteur de version GLPI
             exec 3>&1
             VERSION_SELECT=$(dialog \
-                --backtitle "$MSG_TITRE" \
+                --backtitle "$MSG_TITRE_INSTALLER" \
                 --title "${MSG_PARAM_VERSION}" \
                 --radiolist "${MSG_PARAM_VERSION_CHOIX}" 23 50 8 \
                 "${find_version[@]}" \
@@ -533,8 +570,13 @@ function validate_db_name() {
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     local name="$1"
     local clean_name
-    clean_name="$(printf '%s' "$name" | tr -d '\r\n' \
-        | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    clean_name="$(printf '%s' "$name" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    # Vérifier si la base de données est déjà utiliser dans les fichiers de sauvegarde
+    if find "${INVOKING_HOME}" -name "${FICHIER_MSG}${clean_name}*" -print -quit | grep -q .; then
+        dialog --msgbox "Nom de base de données invalide : ${clean_name}\n\nUne sauvegarde de base de données avec ce nom existe déjà dans le répertoire des scripts.\nVeuillez choisir un autre nom." 12 70
+        warn "❌ Validation échouée : nom de base déjà utilisé dans une sauvegarde (${clean_name})"
+        return 1
+    fi
     if [[ ! "$clean_name" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
         dialog --msgbox "Nom de base de données invalide : ${clean_name}\n\nDoit commencer par une lettre ou un underscore (_)\n   et contenir uniquement lettres, chiffres ou underscores (max 64 caractères)." 12 70
         warn "❌ Validation échouée : nom de base invalide (${clean_name})"
@@ -564,110 +606,113 @@ function validate_db_user() {
 # Sequence principale d'installation et de mise à jour de GLPI
 function run_sequence() {
     local mode="$1"
-    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    debug "$(date '+%F %T') [$$][DEBUG] Début ${FUNCNAME[0]} (appelé par ${FUNCNAME[1]:-main}) — Mode: ${mode}"
     trap 'on_error' ERR
     declare -A tasks
     local task_order=()
-    case "$mode" in
+    # --- Sélection du mode ---
+    case "${mode}" in
         install)
             tasks=(
-                ["$MSG_T01"]="update_distro"
-                ["$MSG_T02"]="install_packages"
-                ["$MSG_T03"]="network_info"
-                ["$MSG_T04"]="mariadb_configure"
-                ["$MSG_T05"]="install_glpi"
-                ["$MSG_T06"]="setup_glpi"
-                ["$MSG_T07"]="maj_user_glpi"
-                ["$MSG_T08"]="write_credentials"
+                ["${MSG_T01}"]="update_distro"
+                ["${MSG_T02}"]="install_packages"
+                ["${MSG_T03}"]="network_info"
+                ["${MSG_T04}"]="mariadb_configure"
+                ["${MSG_T05_1}${VERSION_SELECT}${MSG_T05_2}"]="install_glpi"
+                ["${MSG_T06}"]="setup_glpi"
+                ["${MSG_T07}"]="maj_user_glpi"
+                ["${MSG_T08}"]="write_credentials"
             )
-            task_order=("$MSG_T01" "$MSG_T02" "$MSG_T03" "$MSG_T04" "$MSG_T05" "$MSG_T06" "$MSG_T07" "$MSG_T08")
+            task_order=(
+                "${MSG_T01}" "${MSG_T02}" "${MSG_T03}" "${MSG_T04}"
+                "${MSG_T05_1}${VERSION_SELECT}${MSG_T05_2}"
+                "${MSG_T06}" "${MSG_T07}" "${MSG_T08}"
+            )
             ;;
         update)
             tasks=(
-                ["$MSG_T20"]="maintenance 1"
-                ["$MSG_T21"]="update_distro"
-                ["$MSG_T22"]="backup_glpi"
-                ["$MSG_T23"]="install_glpi"
-                ["$MSG_T24"]="update_glpi"
-                ["$MSG_T25"]="maintenance 0"
+                ["${MSG_T20}"]="maintenance 1"
+                ["${MSG_T21}"]="update_distro"
+                ["${MSG_T22}"]="backup_glpi"
+                ["${MSG_T23}${VERSION_SELECT}"]="install_glpi"
+                ["${MSG_T24}"]="update_glpi"
+                ["${MSG_T25}"]="maintenance 0"
             )
-            task_order=("$MSG_T20" "$MSG_T21" "$MSG_T22" "$MSG_T23" "$MSG_T24" "$MSG_T25")
+            task_order=(
+                "${MSG_T20}" "${MSG_T21}" "${MSG_T22}"
+                "${MSG_T23}${VERSION_SELECT}" "${MSG_T24}" "${MSG_T25}"
+            )
             ;;
         *)
-            warn "❌ Mode inconnu : ${mode}"
+            warn "❌ Mode inconnu : '${mode}' — modes valides : install | update"
             return 1
             ;;
     esac
+    # --- Initialisation ---
     local total_tasks=${#task_order[@]}
     local task_index=0
-    local progress=0
-    local task_key=""
-    local MSG_OK="✅"
-    local MSG_NONOK="❌"
     (
         for task_key in "${task_order[@]}"; do
-            task_index=$((task_index + 1))
-            progress=$((task_index * 100 / total_tasks))
-            echo "$progress"
+            ((task_index++))
+            local progress=$((task_index * 100 / total_tasks))
+            local task_cmd="${tasks[${task_key}]}"
+            # --- Affichage dans la jauge ---
+            echo "${progress}"
             echo "XXX"
             echo "${task_index}/${total_tasks} - ${task_key} en cours..."
             echo "XXX"
-            debug "$(date '+%F %T') [$$][DEBUG: Début de la tâche '${task_key}'] commande '${tasks[${task_key}]}'"
-            if run_task "${task_key}" "${tasks[${task_key}]}" "${task_index}" "${total_tasks}"; then
-                echo "$progress"
+            debug "$(date '+%F %T') [$$][DEBUG] ${MSG_TASK_START} '${task_key}' → ${task_cmd}"
+            # --- Exécution de la tâche ---
+            if run_task "${task_key}" "${task_cmd}" "${task_index}" "${total_tasks}"; then
+                echo "${progress}"
                 echo "XXX"
                 echo "${task_index}/${total_tasks} - ${task_key} ${MSG_OK}"
                 echo "XXX"
-                debug "$(date '+%F %T') [$$][DEBUG: Tâche '${task_key}' commande '${tasks[${task_key}]}' terminée avec succès.]"
-                sleep 1
+                debug "$(date '+%F %T') [$$][DEBUG] ${MSG_OK} ${MSG_TASK_END_OK} '${task_key}'."
             else
                 echo "100"
                 echo "XXX"
                 echo "${task_index}/${total_tasks} - ${task_key} ${MSG_NONOK}"
                 echo "XXX"
-                debug "$(date '+%F %T') [$$][DEBUG: Tâche '${task_key}' commande '${tasks[${task_key}]}' échouée.]"
-                sleep 5
-                return 1   # stoppe la boucle sur échec
+                debug "$(date '+%F %T') [$$][DEBUG] ${MSG_NONOK} Échec tâche '${task_key}'."
+                sleep 3
+                return 1
             fi
-            sleep 0.5
+            sleep 0.3  # légère pause visuelle
         done
-    ) | dialog --clear --backtitle "$MSG_TITRE" --title "$MSG_TITRE_GAUGE" --gauge "" 8 120
-
-    # Vérifie le code retour du sous-shell
-    if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-        warn "❌ Une tâche a échoué pendant l'exécution de ${mode}() commande '${tasks[${task_key}]}' ${MSG_NONOK}."
-        debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Mode=${mode} (échec)"
+    ) | dialog --clear \
+               --backtitle "$MSG_TITRE" \
+               --title "$MSG_TITRE_GAUGE" \
+               --gauge "" 8 120
+    # --- Vérification du sous-shell ---
+    if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+        warn "❌ Une tâche a échoué pendant l'exécution du mode '${mode}'."
+        debug "$(date '+%F %T') [$$][DEBUG] Fin ${FUNCNAME[0]} (échec)"
         return 1
     fi
-
-    info "✅ Toutes les tâches du mode '${mode}' ont été exécutées avec succès."
-    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    info "✅ Toutes les tâches du mode '${mode}' exécutées avec succès."
+    debug "$(date '+%F %T') [$$][DEBUG] Fin ${FUNCNAME[0]} (succès)"
 }
-# Exécuter une tâche et gérer les erreurs et les logs
+# Exécute une tâche individuelle
 function run_task() {
-    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    # Définir les variables de tâche
     local task_key="$1" task_cmd="$2" index="$3" total="$4"
-    # Afficher les informations de la tâche
-    info "✅ Tâche: ${index}/${total} - ${task_key}"
-    info "✅ $MSG_COMMAND: $task_cmd"
-    debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Début de la tâche ${task_key} - ${index}/${total} - ${task_cmd}"
-    # --- Exécution de la commande ---
+    debug "$(date '+%F %T') [$$][DEBUG] Début ${FUNCNAME[0]} → ${task_key}"
+    info "Tâche ${index}/${total} : ${task_key} — Commande : ${task_cmd}"
+    debug "$(date '+%F %T') [$$][DEBUG] Commande: ${task_cmd}"
+    # Exécution isolée
     local output exit_code
-    output=$(eval "$task_cmd" 2>&1)
+    output=$(eval "${task_cmd}" 2>&1)
     exit_code=$?
-    # --- Résultat ---
     if (( exit_code == 0 )); then
-        debug "$output"
-        debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (succès) de la tâche ${task_key} - ${index}/${total} - ${task_cmd}"
+        debug "${output}"
+        debug "$(date '+%F %T') [$$][DEBUG] ✅ ${task_key} terminée avec succès."
     else
-        warn "❌ $(date '+%Y-%m-%d %H:%M:%S'): ERROR: ${task_cmd}"
-        warn "❌ ${output}"
-        warn "❌ ${MSG_ERROR_TASK}: ${task_key} (exit=${exit_code})"
-        debug "$(date '+%F %T') [PID:$$][DEBUG:${FUNCNAME[0]:-main}] Fin (échec) de la tâche ${task_key} - ${index}/${total} - ${task_cmd}"
-        return $exit_code
+        warn "❌ ${task_key} échouée (exit=${exit_code})"
+        [[ -n "${output}" ]] && warn "↳ ${output}"
+        debug "$(date '+%F %T') [$$][DEBUG] ❌ ${task_key} — échec de '${task_cmd}'"
+        return ${exit_code}
     fi
-    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    debug "$(date '+%F %T') [$$][DEBUG] Fin ${FUNCNAME[0]} → ${task_key}"
     return 0
 }
 # Mise à jour de la distribution
@@ -931,9 +976,9 @@ SQL
 )
     # --- Application des commandes SQL ---
     if PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
-        info "✅ ${MSG_BDD_CONFIG:-Configuration SQL initiale réussie.}"
+        info "✅ ${MSG_INSTALL_SQL_CMD_OK}"
     else
-        warn "❌ ${MSG_ERROR_TASK:-Erreur}: configuration SQL initiale échouée."
+        warn "❌ ${MSG_INSTALL_SQL_CMD_ERROR}"
         return 1
     fi
     # --- Vérification et import des fuseaux horaires (si nécessaire) ---
@@ -968,17 +1013,17 @@ SQL
 )
     # --- Application des commandes SQL ---
     if PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
-        info "✅ ${MSG_BDD_CONFIG:-Configuration SQL initiale réussie.}"
+        info "✅ ${MSG_INSTALL_SQL_CMD_OK}"
     else
-        warn "❌ ${MSG_ERROR_TASK:-Erreur}: configuration SQL initiale échouée."
+        warn "❌ ${MSG_INSTALL_SQL_CMD_ERROR}"
         return 1
     fi
     # --- Import des informations de fuseaux horaires ---
-    info "✅ ${MSG_TIMEZONE_CONFIG:-Import des fuseaux horaires dans MySQL...}"
+    info "✅ ${MSG_INSTALL_CONFIG_TIMEZONE}"
     if mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql; then
-        info "✅ ${MSG_TIMEZONE_CONFIG:-Import des fuseaux horaires réussi.}"
+        info "✅ ${MSG_INSTALL_CONFIG_TIMEZONE_OK}"
     else
-        warn "❌ ${MSG_ERROR_TASK:-Erreur}: import du timezone échoué."
+        warn "❌ ${MSG_INSTALL_CONFIG_TIMEZONE_ERROR}"
         return 1
     fi
     # --- Redémarrage du service ---
@@ -1015,6 +1060,7 @@ function install_glpi(){
 # Mise en place des réglage pour GLPI
 function setup_glpi(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    info "✅ $MSG_CONFIG_GLPI"
     source_os_release
     local CMD=(
     php "${REP_GLPI}/bin/console" db:install
@@ -1029,28 +1075,46 @@ function setup_glpi(){
     --quiet
     --no-interaction
     )
-    info "✅ $MSG_CONFIG_GLPI"
-    mkdir -p /var/log/glpi 
-    mkdir -p /etc/glpi/config 
-    mkdir -p /var/lib/glpi/files 
-    mv -f "${REP_GLPI}"/files /var/lib/glpi ||
+    mkdir -p /var/log/"${DB_NAME}" || 
+    {
+        warn "❌ Impossible de créer le répertoire /var/log/${DB_NAME}."
+        return 1
+    }
+    mkdir -p /etc/"${DB_NAME}"/config || 
+    {
+        warn "❌ Impossible de créer le répertoire /etc/${DB_NAME}/config."
+        return 1
+    }
+    mkdir -p "/var/lib/${DB_NAME}/files" || 
+    {
+        warn "❌ Impossible de créer le répertoire /var/lib/${DB_NAME}/files."
+        return 1
+    }
+    mv -f "${REP_GLPI}"/files /var/lib/"${DB_NAME}"/files ||
     {
         warn "❌ Échec du déplacement du répertoire files de GLPI."
         return 1
     }
-    sudo tee /etc/glpi/config/local_define.php  <<'EOF'
+    if ! sudo tee /etc/"${DB_NAME}"/config/local_define.php >/dev/null <<EOF
 <?php
-    define('GLPI_VAR_DIR', '/var/lib/glpi/files');
-    define('GLPI_LOG_DIR', '/var/log/glpi');
+    define('GLPI_VAR_DIR', '/var/lib/${DB_NAME}/files');
+    define('GLPI_LOG_DIR', '/var/log/${DB_NAME}');
 EOF
-    sleep 1
-    sudo tee "${REP_GLPI}"/inc/downstream.php  <<EOF
+    then
+        warn "❌ Échec de la création du fichier local_define.php."
+        return 1
+    fi
+    if ! sudo tee "${REP_GLPI}"/inc/downstream.php >/dev/null <<EOF
 <?php
-    define('GLPI_CONFIG_DIR', '/etc/glpi/config');
+    define('GLPI_CONFIG_DIR', '/etc/${DB_NAME}/config');
     if (file_exists(GLPI_CONFIG_DIR . '/local_define.php')) {
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
 EOF
+    then
+        warn "❌ Échec de la création du fichier downstream.php."
+        return 1
+    fi
     if ! rights_glpi "${REP_GLPI}"; then
         warn "❌ Échec de la modification des droits pour GLPI."
         return 1
@@ -1304,27 +1368,10 @@ function rights_glpi(){
     fi
     debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
-# Afficher le résultat final
-function display_result() {
-    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    MESSAGE=""
-	if [[ -f "${FICHIER_MSG}" ]]; then
-        while IFS= read -r ligne; do
-            MESSAGE+="${ligne}\n"
-        done < "${FICHIER_MSG}"
-        dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_OK}" --msgbox "${MESSAGE}" 0 0
-    else
-        while IFS= read -r ligne; do
-            MESSAGE+="${ligne}\n"
-        done < "${ERRORFILE}"
-        dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_NONOK}" --msgbox "${MSG_NONOK}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
-        exit 1
-    fi
-    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-}
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
 function write_credentials(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    FICHIER_MSG+="${DB_NAME}.txt"
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "$FICHIER_MSG" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
@@ -1384,15 +1431,33 @@ EOF
 	fi
         debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
+# Afficher le résultat final
+function display_result() {
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    MESSAGE=""
+	if [[ -f "${FICHIER_MSG}" ]]; then
+        while IFS= read -r ligne; do
+            MESSAGE+="${ligne}\n"
+        done < "${FICHIER_MSG}"
+        dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_OK}" --msgbox "${MESSAGE}" 0 0
+    else
+        while IFS= read -r ligne; do
+            MESSAGE+="${ligne}\n"
+        done < "${ERRORFILE}"
+        dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_NONOK}" --msgbox "${MSG_NONOK}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
+        exit 1
+    fi
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+}
 # Activé ou déactivé le mode maintenance (1 ou 0)
 function maintenance(){ 
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     check_install_user "${REP_GLPI}"
     if [ "$1" == "1" ]; then
-        info "✅  ${MSG_ACTIVE_SERVICE}"
+        info "✅  ${MSG_UPDATE_MAINTENANCE_ON}"
         sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:enable
     elif [ "$1" == "0" ]; then
-        info "✅  ${MSG_DEACTIVE_SERVICE}"
+        info "✅  ${MSG_UPDATE_MAINTENANCE_OFF}"
         sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:disable 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)   
     fi
 	sleep 2;
@@ -1401,13 +1466,15 @@ function maintenance(){
 # Sauvegarde de la base de donnée et des fichiers de GLPI
 function backup_glpi() {
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    info "✅  === Démarrage de la sauvegarde GLPI ==="
+    info "✅ ${MSG_UPDATE_BACKUP_CREATE}"
+    # Récupération du nom de la base de données dans le fichier config de GLPI suivant le répertoire de GLPI
+    REP_GLPI=$(find /etc -maxdepth 1 -type f -name "glpi.conf" 2>/dev/null | head -n 1)
     # Lecture des informations MySQL
     local DB_NAME PASSWORD
     DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     if [ -z "${DB_NAME}" ] || [ -z "${PASSWORD}" ]; then
-    warn "Impossible de lire le nom de base ou le mot de passe depuis sauve_mdp.txt"
+    warn "Impossible de lire le nom de base ou le mot de passe depuis ${INVOKING_HOME}/sauve_mdp.txt"
         return 1
     fi
     # Détermination de l’outil de dump
