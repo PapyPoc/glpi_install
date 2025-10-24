@@ -129,36 +129,36 @@ function check_distro(){
         else
             WEB_USER="nginx"
         fi
-        if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
-            info "✅ $MSG_DISTRO_OK"
+        if compatible "${VERSION_ID}" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
+            info "✅ ${MSG_CHECK_DISTRO_OK}"
             return 0
         else
-            warn "❌ $MSG_DISTRO_NONOK"
-            warn "❌ $MSG_FORCE_DISTRO"
+            warn "❌ ${MSG_CHECK_DISTRO_NONOK}"
+            warn "❌ ${MSG_CHECK_DISTRO_FORCE}"
             if [ -t 0 ]; then
-                info "✅ $MSG_FORCE_DISTRO_QUESTION"
+                info "✅ ${MSG_CHECK_DISTRO_FORCE_QUESTION}"
                 read -r RESPONSE
                 case $RESPONSE in
                     O|o|Y|y)
-                        info "✅ $MSG_CONTINUING"
+                        info "✅ ${MSG_CHECK_DISTRO_CONTINUING}"
                         ;;
                     N|n)
-                        info "✅ $MSG_EXITING"
+                        info "✅ ${MSG_CHECK_DISTRO_EXITING}"
                         return 1
                         ;;
                     *)
-                        warn "❌ $MSG_INVALID_ANSWER"
+                        warn "❌ ${MSG_CHECK_DISTRO_INVALID_ANSWER}"
                         return 1
                         ;;
                 esac
             else
-                warn "❌ $MSG_SCRIPT_NON_INTERACTIVE_DISTRO"
+                warn "❌ ${MSG_SCRIPT_NON_INTERACTIVE_DISTRO}"
                 return 1
             fi
         fi
-        export VERSION_ID ID
+        export VERSION_ID ID WEB_USER
     else
-        warn "❌ $MSG_DISTRO_INVALID"
+        warn "❌ ${MSG_CHECK_DISTRO_INVALID}"
         return 1
     fi
     export VERSION_ID ID WEB_USER
