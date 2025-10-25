@@ -660,8 +660,8 @@ function run_sequence() {
             fi
         done
     ) | dialog --clear \
-               --backtitle "$MSG_TITRE" \
-               --title "$MSG_TITRE_GAUGE" \
+               --backtitle "$MSG_RUN_SEQUENCE_BACKTITLE" \
+               --title "$MSG_RUN_SEQUENCE_GAUGE_TITLE" \
                --gauge "" 8 120
     # --- Vérification du sous-shell ---
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
