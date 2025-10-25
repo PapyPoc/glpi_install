@@ -109,7 +109,7 @@ LANGUE="${LANG%%_*}"
 if [ "$LANGUE" == "fr" ]; then
     # Messages pour la détection de la distribution et les privilèges
     MSG_DETECT_DISTRO="Distribution détectée : "
-    MSG_DETECT_DISTRO_NONOK="Distribution non détectée ou non prise en charge."
+    #MSG_DETECT_DISTRO_NONOK="Distribution non détectée ou non prise en charge."
     MSG_CHECK_GROUP="Groupe non reconnu. Utilisation de '${ADMIN_GROUP}' par défaut."
     MSG_USER_GROUP="L'utilisateur '${ORIG_USER}' appartient au groupe '${ADMIN_GROUP}'."
     MSG_RESTART_SESSION="Relancez votre session."
@@ -136,7 +136,7 @@ if [ "$LANGUE" == "fr" ]; then
 elif [ "$LANGUE" == "en" ]; then
     # Messages for distribution detection and privileges
     MSG_DETECT_DISTRO="Distribution detected: "
-    MSG_DETECT_DISTRO_NONOK="Distribution not detected or unsupported."
+    #MSG_DETECT_DISTRO_NONOK="Distribution not detected or unsupported."
     MSG_CHECK_GROUP="Group not recognized. Using '${ADMIN_GROUP}' by default."
     MSG_USER_GROUP="The user '${ORIG_USER}' belongs to the group '${ADMIN_GROUP}'."
     MSG_RESTART_SESSION="Please restart your session."
