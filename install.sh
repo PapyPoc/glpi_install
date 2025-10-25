@@ -87,9 +87,7 @@ DEBUGFILE="${REP_SCRIPT}/debug.log"
 # Détection de la distribution
 if . /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
-    info "${MSG_DETECT_DISTRO}${DISTRO_ID^} ${VERSION_ID:-}"
 else
-    warn "${MSG_DETECT_DISTRO_NONOK}"
     exit 1
 fi
 # Définir le groupe administrateur en fonction de la distribution
@@ -163,6 +161,7 @@ elif [ "$LANGUE" == "en" ]; then
     MSG_GITHUB_SCRIPT_EXECUTED="Successful execution of ${REP_SCRIPT}/glpi_install/glpi-install"
     MSG_GITHUB_SCRIPT_EXECUTION_FAILED="Failed to execute ${REP_SCRIPT}/glpi_install/glpi-install"    
 fi
+info "${MSG_DETECT_DISTRO}${DISTRO_ID^} ${VERSION_ID:-}"
 # Vérification des privilèges administrateur
 if [ "$EUID" -ne 0 ]; then
     # Vérification si l'utilisateur fait partie du groupe administrateur
