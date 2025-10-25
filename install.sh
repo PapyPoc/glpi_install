@@ -8,6 +8,76 @@
 #
 # set -Eeuo pipefail
 clear
+# Langue du systeme
+LANGUE="${LANG%%_*}"
+# Traduction des messages
+if [ "$LANGUE" == "fr" ]; then
+    # Messages pour la détection de la distribution et les privilèges
+    MSG_DETECT_DISTRO="Distribution détectée : "
+    MSG_DETECT_DISTRO_NONOK="Distribution non détectée ou non prise en charge."
+    MSG_CHECK_GROUP="Groupe non reconnu. Utilisation de '${ADMIN_GROUP}' par défaut."
+    MSG_USER_GROUP="L'utilisateur '${ORIG_USER}' appartient au groupe '${ADMIN_GROUP}'."
+    MSG_RESTART_SESSION="Relancez votre session."
+    MSG_RESTART_SCRIPT_SUDO="Relance du script avec privilèges administrateur via sudo..."
+    MSG_RESTART_SCRIPT_SU="Relance du script avec privilèges administrateur via su..."
+    MSG_RESTART_ERROR="Aucune commande disponible pour élever les privilèges (sudo/su)."
+    # Messages pour la gestion des dépendances
+    MSG_DEPENDENCIES_MISSING="Dépendances manquantes : ${missing}. Tentative d'installation..."
+    MSG_DEPENDENCIES_SATISFIED="Toutes les dépendances sont satisfaites."
+    MSG_DEPENDENCIES_FAILED="Échec de la vérification ou installation des dépendances."
+    MSG_PACKAGE_MANAGER_NOT_FOUND="Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
+    MSG_DEPENDENCIES_INSTALL_FAILED="Échec de l'installation des dépendances : ${pkgs}"
+    MSG_DEPENDENCIES_MISSING_AFTER_INSTALL="Commandes toujours manquantes après l'installation : ${still_missing}"
+    MSG_DEPENDENCIES_INSTALLED="Dépendances installées. Redémarrage du script..."
+    # Messages pour Github
+    MSG_GITHUB_CLONE="Clonage du dépôt git ${GIT} (branche: ${BRANCHE})"
+    MSG_GITHUB_UPDATE="Mise à jour du dépôt git ${GIT} (branche: ${BRANCHE})"
+    MSG_GITHUB_CLONE_FAILED="Échec du clonage du dépôt git ${GIT}."
+    # Messages dépôt git
+    MSG_GITHUB_SCRIPT_NOT_FOUND="Le script '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable."
+    # Messages execution script
+    MSG_GITHUB_SCRIPT_EXECUTED="Exécution réussie de ${REP_SCRIPT}/glpi_install/glpi-install"
+    MSG_GITHUB_SCRIPT_EXECUTION_FAILED="Échec de l'exécution de ${REP_SCRIPT}/glpi_install/glpi-install"
+elif [ "$LANGUE" == "en" ]; then
+    # Messages for distribution detection and privileges
+    MSG_DETECT_DISTRO="Distribution detected: "
+    MSG_DETECT_DISTRO_NONOK="Distribution not detected or unsupported."
+    MSG_CHECK_GROUP="Group not recognized. Using '${ADMIN_GROUP}' by default."
+    MSG_USER_GROUP="The user '${ORIG_USER}' belongs to the group '${ADMIN_GROUP}'."
+    MSG_RESTART_SESSION="Please restart your session."
+    MSG_RESTART_SCRIPT_SUDO="Restarting script with administrator privileges via sudo..."
+    MSG_RESTART_SCRIPT_SU="Restarting script with administrator privileges via su..."
+    MSG_RESTART_ERROR="No command available to elevate privileges (sudo/su)."
+    # Messages for dependency management
+    MSG_DEPENDENCIES_MISSING="Missing dependencies: ${missing}. Attempting installation..."
+    MSG_DEPENDENCIES_SATISFIED="All dependencies are satisfied."
+    MSG_DEPENDENCIES_FAILED="Failed to verify or install dependencies."
+    MSG_PACKAGE_MANAGER_NOT_FOUND="No supported package manager found to install: ${pkgs}"
+    MSG_DEPENDENCIES_INSTALL_FAILED="Failed to install dependencies: ${pkgs}"
+    MSG_DEPENDENCIES_MISSING_AFTER_INSTALL="Commands still missing after installation: ${still_missing}"
+    MSG_DEPENDENCIES_INSTALLED="Dependencies installed. Restarting script..."
+    # Messages for Github
+    MSG_GITHUB_CLONE="Cloning git repository ${GIT} (branch: ${BRANCHE})"
+    MSG_GITHUB_UPDATE="Updating git repository ${GIT} (branch: ${BRANCHE})"
+    MSG_GITHUB_CLONE_FAILED="Failed to clone git repository ${GIT}."
+    # Git repository messages
+    MSG_GITHUB_SCRIPT_NOT_FOUND="The script '${REP_SCRIPT}/glpi_install/glpi-install' is not found."
+    # Script execution messages
+    MSG_GITHUB_SCRIPT_EXECUTED="Successful execution of ${REP_SCRIPT}/glpi_install/glpi-install"
+    MSG_GITHUB_SCRIPT_EXECUTION_FAILED="Failed to execute ${REP_SCRIPT}/glpi_install/glpi-install"    
+fi
+REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
+DEPENDENCIES="curl jq openssl sudo dialog git"
+GIT="https://github.com/PapyPoc/glpi_install.git"
+BRANCHE="dev"
+UPDATEFILE="${REP_SCRIPT}/update.log"
+ERRORFILE="${REP_SCRIPT}/error.log"
+DEBUGFILE="${REP_SCRIPT}/debug.log"
+: > "${ERRORFILE}"
+: > "${DEBUGFILE}"
+: > "${UPDATEFILE}"
+export ORIG_USER REP_SCRIPT GIT BRANCHE
 function warn(){ 
     echo -e "\033[0;31m[ERREUR]\033[0m $1";
 }
@@ -31,7 +101,7 @@ function ensure_dependencies(){
     if [ -z "$missing" ]; then
         return 0
     fi
-    info "${MSG_DEPENDENCIES_MISSING_1}${missing}${MSG_DEPENDENCIES_MISSING_2}"
+    info "${MSG_DEPENDENCIES_MISSING}"
     local pkgmgr install_cmd
     local pkgs="$missing"
     if command -v apt-get >/dev/null; then
@@ -76,18 +146,12 @@ function ensure_dependencies(){
     export NEED_RESTART
     return 0
 }
-REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
-DEPENDENCIES="curl jq openssl sudo dialog git"
-GIT="https://github.com/PapyPoc/glpi_install.git"
-BRANCHE="dev"
-UPDATEFILE="${REP_SCRIPT}/update.log"
-ERRORFILE="${REP_SCRIPT}/error.log"
-DEBUGFILE="${REP_SCRIPT}/debug.log"
 # Détection de la distribution
 if . /etc/os-release 2>/dev/null; then
-    DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]') 
+    DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
+    info "${MSG_DETECT_DISTRO}${DISTRO_ID^} ${VERSION_ID:-}"
 else
+    warn "${MSG_DETECT_DISTRO_NONOK}"
     exit 1
 fi
 # Définir le groupe administrateur en fonction de la distribution
@@ -103,67 +167,6 @@ case "${DISTRO_ID}" in
         info "${MSG_CHECK_GROUP}"
         ;;
 esac
-# Langue du systeme
-LANGUE="${LANG%%_*}"
-# Traduction des messages
-if [ "$LANGUE" == "fr" ]; then
-    # Messages pour la détection de la distribution et les privilèges
-    MSG_DETECT_DISTRO="Distribution détectée : "
-    #MSG_DETECT_DISTRO_NONOK="Distribution non détectée ou non prise en charge."
-    MSG_CHECK_GROUP="Groupe non reconnu. Utilisation de '${ADMIN_GROUP}' par défaut."
-    MSG_USER_GROUP="L'utilisateur '${ORIG_USER}' appartient au groupe '${ADMIN_GROUP}'."
-    MSG_RESTART_SESSION="Relancez votre session."
-    MSG_RESTART_SCRIPT_SUDO="Relance du script avec privilèges administrateur via sudo..."
-    MSG_RESTART_SCRIPT_SU="Relance du script avec privilèges administrateur via su..."
-    MSG_RESTART_ERROR="Aucune commande disponible pour élever les privilèges (sudo/su)."
-    # Messages pour la gestion des dépendances
-    MSG_DEPENDENCIES_MISSING_1="Dépendances manquantes :"
-    MSG_DEPENDENCIES_MISSING_2=". Tentative d'installation..."
-    MSG_DEPENDENCIES_SATISFIED="Toutes les dépendances sont satisfaites."
-    MSG_DEPENDENCIES_FAILED="Échec de la vérification ou installation des dépendances."
-    MSG_PACKAGE_MANAGER_NOT_FOUND="Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
-    MSG_DEPENDENCIES_INSTALL_FAILED="Échec de l'installation des dépendances : ${pkgs}"
-    MSG_DEPENDENCIES_MISSING_AFTER_INSTALL="Commandes toujours manquantes après l'installation : ${still_missing}"
-    MSG_DEPENDENCIES_INSTALLED="Dépendances installées. Redémarrage du script..."
-    # Messages pour Github
-    MSG_GITHUB_CLONE="Clonage du dépôt git ${GIT} (branche: ${BRANCHE})"
-    MSG_GITHUB_UPDATE="Mise à jour du dépôt git ${GIT} (branche: ${BRANCHE})"
-    MSG_GITHUB_CLONE_FAILED="Échec du clonage du dépôt git ${GIT}."
-    # Messages dépôt git
-    MSG_GITHUB_SCRIPT_NOT_FOUND="Le script '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable."
-    # Messages execution script
-    MSG_GITHUB_SCRIPT_EXECUTED="Exécution réussie de ${REP_SCRIPT}/glpi_install/glpi-install"
-    MSG_GITHUB_SCRIPT_EXECUTION_FAILED="Échec de l'exécution de ${REP_SCRIPT}/glpi_install/glpi-install"
-elif [ "$LANGUE" == "en" ]; then
-    # Messages for distribution detection and privileges
-    MSG_DETECT_DISTRO="Distribution detected: "
-    #MSG_DETECT_DISTRO_NONOK="Distribution not detected or unsupported."
-    MSG_CHECK_GROUP="Group not recognized. Using '${ADMIN_GROUP}' by default."
-    MSG_USER_GROUP="The user '${ORIG_USER}' belongs to the group '${ADMIN_GROUP}'."
-    MSG_RESTART_SESSION="Please restart your session."
-    MSG_RESTART_SCRIPT_SUDO="Restarting script with administrator privileges via sudo..."
-    MSG_RESTART_SCRIPT_SU="Restarting script with administrator privileges via su..."
-    MSG_RESTART_ERROR="No command available to elevate privileges (sudo/su)."
-    # Messages for dependency management
-    MSG_DEPENDENCIES_MISSING_1="Missing dependencies:"
-    MSG_DEPENDENCIES_MISSING_2=". Attempting installation..."
-    MSG_DEPENDENCIES_SATISFIED="All dependencies are satisfied."
-    MSG_DEPENDENCIES_FAILED="Failed to verify or install dependencies."
-    MSG_PACKAGE_MANAGER_NOT_FOUND="No supported package manager found to install: ${pkgs}"
-    MSG_DEPENDENCIES_INSTALL_FAILED="Failed to install dependencies: ${pkgs}"
-    MSG_DEPENDENCIES_MISSING_AFTER_INSTALL="Commands still missing after installation: ${still_missing}"
-    MSG_DEPENDENCIES_INSTALLED="Dependencies installed. Restarting script..."
-    # Messages for Github
-    MSG_GITHUB_CLONE="Cloning git repository ${GIT} (branch: ${BRANCHE})"
-    MSG_GITHUB_UPDATE="Updating git repository ${GIT} (branch: ${BRANCHE})"
-    MSG_GITHUB_CLONE_FAILED="Failed to clone git repository ${GIT}."
-    # Git repository messages
-    MSG_GITHUB_SCRIPT_NOT_FOUND="The script '${REP_SCRIPT}/glpi_install/glpi-install' is not found."
-    # Script execution messages
-    MSG_GITHUB_SCRIPT_EXECUTED="Successful execution of ${REP_SCRIPT}/glpi_install/glpi-install"
-    MSG_GITHUB_SCRIPT_EXECUTION_FAILED="Failed to execute ${REP_SCRIPT}/glpi_install/glpi-install"    
-fi
-info "${MSG_DETECT_DISTRO}${DISTRO_ID^} ${VERSION_ID:-}"
 # Vérification des privilèges administrateur
 if [ "$EUID" -ne 0 ]; then
     # Vérification si l'utilisateur fait partie du groupe administrateur
@@ -182,11 +185,6 @@ if [ "$EUID" -ne 0 ]; then
         exit 1
     fi
 fi
-export ORIG_USER ADMIN_GROUPREP_SCRIPT GIT BRANCHE UPDATEFILE ERRORFILE DEBUGFILE
-# Initialisation des fichiers de log
-: > "${ERRORFILE}"
-: > "${DEBUGFILE}"
-: > "${UPDATEFILE}"
 # Vérification et installation des dépendances
 if ensure_dependencies "${DEPENDENCIES}"; then
     info "${MSG_DEPENDENCIES_SATISFIED}"
