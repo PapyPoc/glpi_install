@@ -131,6 +131,7 @@ function check_distro(){
         fi
         if compatible "${VERSION_ID}" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
             info "${ICON_INFO}  ${MSG_CHECK_DISTRO_OK}"
+            install_update
             return 0
         else
             warn "${ICON_WARN} ${MSG_CHECK_DISTRO_NONOK}"
@@ -290,6 +291,7 @@ function install_update(){
     fi
     export INSTALL_OR_UPDATE
     info "Choix de l'utilisateur : $INSTALL_OR_UPDATE"
+    prompt_install_options
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
 #  Demander à l'utilisateur de choisir le répertoire d'installation,
@@ -595,11 +597,11 @@ function validate_db_user() {
     clean_user="$(printf '%s' "$user" | tr -d '\r\n' \
         | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     if [[ "$clean_user" == "root" || ! "$clean_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-    dialog --msgbox "${ICON_WARN} ${MSG_VALIDATE_DB_USER_DIALOG_FAILED}" 12 70
-    warn "${ICON_WARN} ${MSG_VALIDATE_DB_USER_FAILED} (${clean_user})"
-    debug "${ICON_DEBUG} ${MSG_NONOK} ${MSG_DEBUG_END}"
-    return 1
-fi
+        dialog --msgbox "${ICON_WARN} ${MSG_VALIDATE_DB_USER_DIALOG_FAILED}" 12 70
+        warn "${ICON_WARN} ${MSG_VALIDATE_DB_USER_FAILED} (${clean_user})"
+        debug "${ICON_DEBUG} ${MSG_NONOK} ${MSG_DEBUG_END}"
+        return 1
+    fi
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
 # Sequence principale d'installation et de mise à jour de GLPI
