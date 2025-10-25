@@ -228,11 +228,11 @@ else
     exit 1
 fi
 # Exécution sécurisée
-if bash "${REP_SCRIPT}/glpi_install/glpi-install"; then
+if bash "${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${DEBUGFILE}"; then
     info "${MSG_INSTALL_SH_GITHUB_SCRIPT_EXECUTED}" | tee -a "${DEBUGFILE}"
 else
     warn "${MSG_INSTALL_SH_GITHUB_SCRIPT_EXECUTION_FAILED}" | tee -a "${ERRORFILE}"
-    dialog --title "❌" \
+    dialog --title "${MSG_INSTALL_SH_GITHUB_SCRIPT_EXECUTION_FAILED}" \
            --msgbox "Erreur : l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' a échoué. Consultez le log." 8 70
     exit 1
 fi
