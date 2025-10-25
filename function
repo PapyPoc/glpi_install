@@ -300,7 +300,7 @@ function install_update(){
     fi
     export INSTALL_OR_UPDATE
     info "Choix de l'utilisateur : $INSTALL_OR_UPDATE"
-    sleep 
+    sleep 10
     prompt_install_options
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
