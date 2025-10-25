@@ -955,8 +955,7 @@ function mariadb_configure() {
     debug "${ICON_DEBUG} Attribution des privilèges à l'utilisateur de la base de données" # Pour le débogage
     debug "${ICON_DEBUG} Configuration du fuseau horaire de la base de données : ${TIMEZONES}" # Pour le débogage
     local _sql_root
-    _sql_root=$(
-    cat <<-SQL
+_sql_root=$(cat <<SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
@@ -966,11 +965,12 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
 CREATE DATABASE IF NOT EXISTS ${DB_NAME};
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
 GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
+FLUSH PRIVILEGES;
 SQL
 )
     # --- Application des commandes SQL ---
-    if PAGER=cat MYSQL_PWD="" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
-        info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
+    if echo "${_sql_root}" | sudo "${MYSQL_CMD}" -u root --batch --silent; then
+        info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
     else
         warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
         return 1
@@ -978,44 +978,54 @@ SQL
     # --- Vérification et import des fuseaux horaires (si nécessaire) ---
     local TIMEZONE_TABLE_COUNT
     TIMEZONE_TABLE_COUNT=$(
-        MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --silent \
-            -e "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}';" mysql 2>/dev/null
+        sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent \
+            -e "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}' LIMIT 1;" 2>>"${ERRORFILE}" || echo "0"
     )
-    if [ "${TIMEZONE_TABLE_COUNT}" -eq 0 ]; then
+    if [[ -z "${TIMEZONE_TABLE_COUNT}" || "${TIMEZONE_TABLE_COUNT}" -eq 0 ]]; then
         info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
+        # --- Importation des fuseaux horaires depuis /usr/share/zoneinfo ---
+            # shellcheck disable=SC2024
+        if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo \
+            | sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+            info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORTED}"
+        else
+            warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_FAILED}"
+            return 1
+        fi
         # --- Construction sécurisée du script SQL ---
         local _sql_root
-        _sql_root=$(
-        cat <<-SQL
--- Configuration du fuseau horaire
+        _sql_root=$(cat <<SQL
+-- Configuration du fuseau horaire global
 SET GLOBAL time_zone = '${TIMEZONES}';
 SET time_zone = '${TIMEZONES}';
--- Droits sur les tables timezone
+-- Droits d’accès pour l’utilisateur GLPI sur les tables de fuseaux horaires
 GRANT SELECT ON mysql.time_zone_transition TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_transition_type TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
-)
+    )
         # --- Application des commandes SQL ---
-        if PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
-            info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
+        if echo "${_sql_root}" | sudo "${MYSQL_CMD}" -u root --batch --silent mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+            info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
         else
             warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
             return 1
         fi
     else
-        info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_ALREADY_LOADED}"
+        info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_ALREADY_LOADED}"
     fi
     # --- Import des informations de fuseaux horaires ---
-    #info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
-    #if mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root mysql; then
-    #    info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_OK}"
-    #else
-    #    warn "${ICON_WARN} ${MSG_INSTALL_CONFIG_TIMEZONE_ERROR}"
-    #    return 1
-    #fi
+    info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
+    # --- Importation sécurisée des fuseaux horaires depuis /usr/share/zoneinfo ---
+    if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo \
+        | sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+        info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_OK}"
+    else
+        warn "${ICON_WARN} ${MSG_INSTALL_CONFIG_TIMEZONE_ERROR}"
+        return 1
+    fi
     # --- Redémarrage du service ---
     if systemctl is-active --quiet mariadb; then
         info "${ICON_RUN} ${MSG_MARIADB_CONFIGURE_SERVICE_RESTART}"
