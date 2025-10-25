@@ -299,7 +299,6 @@ function install_update(){
     fi
     export INSTALL_OR_UPDATE
     info "Choix de l'utilisateur : $INSTALL_OR_UPDATE"
-    sleep 10
     prompt_install_options
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
@@ -307,6 +306,7 @@ function install_update(){
 # la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
     debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    info "Choix de l'utilisateur : $INSTALL_OR_UPDATE"
     # Recherche des installations GLPI existantes
     if [[ "${INSTALL_OR_UPDATE}" == 2 ]]; then
         check_glpi_installed
