@@ -439,7 +439,7 @@ function prompt_install_options(){
         local _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
         while true; do
             exec 3>&1
-            form=$(dialog --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "$MSG_PARAM_TITLE" \
+            form=$(dialog --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "$MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_INSTALL" \
                 --form "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_PARAM_1} ${VERSION_SELECT} ${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_PARAM_2}" 18 68 8 \
                 "📁 ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_REP}"     1 2 "${_def_rep}"     1 ${WIDTH} 20 40 \
                 "🖥️ ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_HOST}" 3 2 "${_def_db_host}" 3 ${WIDTH} 20 20 \
