@@ -654,7 +654,7 @@ function run_sequence() {
             else
                 echo "100"
                 echo "XXX"
-                echo "${task_index}/${total_tasks} - ${task_key} ${ICON_KO}"
+                echo "${task_index}/${total_tasks} - ${task_key} ❌"
                 echo "XXX"
                 debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_KO} ${MSG_RUN_SEQUENCE_END} ${mode} - '${task_key}'."
                 sleep 5
