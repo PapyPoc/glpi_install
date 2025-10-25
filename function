@@ -71,7 +71,7 @@ function export_display_env() {
     # pouvant être référencées comme espaces réservés dans les fichiers de langue.
     # Les valeurs par défaut sont vides si elles ne sont pas définies.
     local vars_maj=(
-        ORIG_USER ADMIN_GROUP ID VERSION_ID ID NAME PRETTY_NAME MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
+        ORIG_USER ADMIN_GROUP ID VERSION_ID ID NAME PRETTY_NAME ICON_KO NEW_VERSION REP_GLPI FICHIER_MSG
         ERRORFILE LOGFILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS INTERFACE DOWNLOADLINK MODE
         DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD GLPI_CLI_VERSION
         REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT PHPVERSION DISTRO_ID VERSION_ID
@@ -84,7 +84,7 @@ function export_display_env() {
         INTERFACE INVOKING_HOME REP_BACKUP_COMPRESS API_URL PATHS_TO_CHECK MSG_SCRIPT_NON_INTERACTIVE_DISTRO
     )
     local vars_min=(
-        orig_user admin_group id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
+        orig_user admin_group id version_id id name pretty_name ICON_KO new_version rep_glpi fichier_msg
         errorfile logfile task_index task_key language timezone ipadress interface downloadlink mode
         db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd glpi_cli_version
         rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output phpversion distro_id version_id
@@ -608,7 +608,7 @@ function validate_db_user() {
     if [[ "$clean_user" == "root" || ! "$clean_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
         dialog --msgbox "${ICON_WARN} ${MSG_VALIDATE_DB_USER_DIALOG_FAILED}" 12 70
         warn "${ICON_WARN} ${MSG_VALIDATE_DB_USER_FAILED} (${clean_user})"
-        debug "${ICON_DEBUG} ${MSG_NONOK} ${MSG_DEBUG_END}"
+        debug "${ICON_DEBUG} ${ICON_KO} ${MSG_DEBUG_END}"
         return 1
     fi
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
@@ -668,7 +668,7 @@ function run_sequence() {
             echo "XXX"
             echo "${task_index}/${total_tasks} - ${task_key} ${ICON_INPROGRESS}"
             echo "XXX"
-            debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${MSG_OK} ${MSG_RUN_SEQUENCE_START} '${task_key}' → ${task_cmd}"
+            debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_OK} ${MSG_RUN_SEQUENCE_START} '${task_key}' → ${task_cmd}"
             # --- Exécution de la tâche ---
             if run_task "${task_key}" "${task_cmd}" "${task_index}" "${total_tasks}"; then
                 echo "${progress}"
@@ -680,9 +680,9 @@ function run_sequence() {
             else
                 echo "100"
                 echo "XXX"
-                echo "${task_index}/${total_tasks} - ${task_key} ${MSG_NONOK}"
+                echo "${task_index}/${total_tasks} - ${task_key} ${ICON_KO}"
                 echo "XXX"
-                debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${MSG_NONOK} ${MSG_RUN_SEQUENCE_END} '${task_key}'."
+                debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_KO} ${MSG_RUN_SEQUENCE_END} '${task_key}'."
                 sleep 5
                 return 1
             fi
@@ -694,7 +694,7 @@ function run_sequence() {
     # --- Vérification du sous-shell ---
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         warn "${ICON_WARN} ${MSG_RUN_SEQUENCE_FAILED_MODE}"
-        debug "${ICON_DEBUG} ${MSG_DEBUG_END} (${MSG_NONOK})"
+        debug "${ICON_DEBUG} ${MSG_DEBUG_END} (${ICON_KO})"
         return 1
     fi
     info "${ICON_INFO} ${MSG_RUN_SEQUENCE_END}"
@@ -967,7 +967,7 @@ function get_timezone() {
         fi
         TIMEZONES="${TIMEZONE:-UTC}"
         export TIMEZONES
-        info "${MSG_OK} ${MSG_GET_TIMEZONE_DETECTED} ${TIMEZONES}"
+        info "${ICON_OK} ${MSG_GET_TIMEZONE_DETECTED} ${TIMEZONES}"
     fi
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
@@ -1206,7 +1206,7 @@ EOF
 </VirtualHost>
 EOF
             then
-                echo "${MSG_OK} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_VIRTUAL_HOST_OK}"
+                echo "${ICON_OK} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_VIRTUAL_HOST_OK}"
             else
                 erreur "${MSG_ERROR} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_VIRTUAL_HOST_FAILED}"
                 return 1
@@ -1512,7 +1512,7 @@ function display_result() {
         done < "${FICHIER_MSG}"
         dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_OK}" --msgbox "${MESSAGE}" 0 0
     else
-        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_NONOK}" --msgbox "${MSG_NONOK}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
+        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_NONOK}" --msgbox "${ICON_KO}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
     fi
     info "${ICON_INFO}  ${MSG_DISPLAY_RESULT_END}"
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
@@ -1670,12 +1670,12 @@ function update_glpi() {
         if sudo -u "${WEB_USER}" php ${CMD} 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "${ICON_INFO} ${MSG_UPDATE_GLPI_UPDATE_DATABASE_OK}"
             exec 3>&1
-            dialog --title "${MSG_OK} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_OK}" 7 50
+            dialog --title "${ICON_OK} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_OK}" 7 50
             exec 3>&-
         else
             warn "${ICON_WARN} ${MSG_UPDATE_GLPI_UPDATE_DATABASE_FAILED} (voir ${ERRORFILE})."
             exec 3>&1
-            dialog --title "${MSG_NONOK} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_FAILED}" 7 50
+            dialog --title "${ICON_KO} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_FAILED}" 7 50
             exec 3>&-
             return 1
         fi

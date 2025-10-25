@@ -15,42 +15,42 @@ trap 'on_error' ERR
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
-info "${MSG_LOAD_LANGUAGE}"
+info "${ICON_INFO} ${MSG_LOAD_LANGUAGE}"
 # Regarde si la distribution est conforme
-info "${MSG_GLPI_INSTALL_START_SCRIPT}"
+info "${ICON_INFO} ${MSG_GLPI_INSTALL_START_SCRIPT}"
 # Vérifie la distribution
-info "${MSG_GLPI_INSTALL_CHECK_DISTRIBUTION}"
+info "${ICON_INFO} ${MSG_GLPI_INSTALL_CHECK_DISTRIBUTION}"
 if ! check_distro; then # Vérification de la distribution
-    dialog --title "${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_CHECK_DISTRO_FAILED}" 6 50
-    error "${MSG_GLPI_INSTALL_CHECK_DISTRO_FAILED}"
+    dialog --title "${ICON_ERROR} ${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_CHECK_DISTRO_FAILED}" 6 50
+    error "${ICON_ERROR} ${MSG_GLPI_INSTALL_CHECK_DISTRO_FAILED}"
     exit 1
 fi
 # Demande les options d'installation ou de mise à jour
-info "${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS}"
+info "${ICON_INFO} ${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS}"
 if ! install_update; then # Demande les options d'installation
-    info "${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS_ABORT}"
+    info "${ICON_WARN} ${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS_ABORT}"
     exit 1
 fi
 # Droit sur le fichier de sauvegarde des mots de passe
 if [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
-    info "${MSG_GLPI_INSTALL_BACKUP_CREATED}"
+    info "${ICON_INFO} ${MSG_GLPI_INSTALL_BACKUP_CREATED}"
     chmod 600 "${FICHIER_MSG}"
     chown root:root "${FICHIER_MSG}"
-    dialog --title "${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_CREATED_1}${FICHIER_MSG}${MSG_GLPI_INSTALL_BACKUP_CREATED_2}" 6 60
+    dialog --title "${ICON_INFO} ${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_CREATED_1}${FICHIER_MSG}${MSG_GLPI_INSTALL_BACKUP_CREATED_2}" 6 60
 else
-    dialog --title "${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${FICHIER_MSG}" 6 60
-    error "${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${FICHIER_MSG}"
+    dialog --title "${ICON_ERROR} ${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${FICHIER_MSG}" 6 60
+    error "${ICON_ERROR} ${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${FICHIER_MSG}"
     exit 1
 fi
 # Afficher le fichier de sauvegarde des mots de passe
 if [ -f "${FICHIER_MSG}" ] || [ -s "${FICHIER_MSG}" ]; then
-    info "${MSG_GLPI_INSTALL_DISPLAY_RESULT_START}"
+    info "${ICON_WARN} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_START}"
     display_result
 fi
 # Affichage des fichiers de logs s'ils existent
 LOGFILES="${ERRORFILE} ${DEBUGFILE} ${UPDATEFILE}"
 if [ -s "${LOGFILES}" ]; then
-    info "${MSG_GLPI_INSTALL_DISPLAY_RESULT_LOGS}"
+    info "${ICON_INFO} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_LOGS}"
     LOGFILEP=""
     for LOGFILE in ${LOGFILES}; do
         if [ -s "${LOGFILE}" ]; then
@@ -59,12 +59,12 @@ if [ -s "${LOGFILES}" ]; then
             rm -rf "${LOGFILE}"
         fi
     done
-    warn "${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP}"
+    warn "${ICON_WARN} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP}"
     dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP}" 8 70
 fi
 # Affichage du fichier d'information s'il existe
 if [ -s "${INFOFILE}" ]; then
-    info "${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}"
+    info "${ICON_INFO} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}"
     dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}" 8 70
 fi
-info "${MSG_GLPI_INSTALL_END_SCRIPT}"
+info "${ICON_INFO} ${MSG_GLPI_INSTALL_END_SCRIPT}"
