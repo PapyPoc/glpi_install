@@ -28,6 +28,7 @@ if [ "$LANGUE" == "fr" ]; then
     MSG_INSTALL_SH_CHECK_GROUP_2="' par défaut."
     MSG_INSTALL_SH_USER_GROUP_1="L'utilisateur '${ORIG_USER}' appartient au groupe '"
     MSG_INSTALL_SH_USER_GROUP_2="'."
+    MSG_INSTALL_SH_USER_GROUP_3="L'utilisateur '${ORIG_USER}' n'appartient pas au groupe '"
     MSG_INSTALL_SH_RESTART_SESSION="Relancez votre session."
     MSG_INSTALL_SH_RESTART_SCRIPT_SUDO="Relance du script avec privilèges administrateur via sudo..."
     MSG_INSTALL_SH_RESTART_SCRIPT_SU="Relance du script avec privilèges administrateur via su..."
@@ -177,6 +178,9 @@ if [ "$EUID" -ne 0 ]; then
     # Vérification si l'utilisateur fait partie du groupe administrateur
     if id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
         info "${MSG_INSTALL_SH_USER_GROUP_1}${ADMIN_GROUP}${MSG_INSTALL_SH_USER_GROUP_2}"
+    else
+        warn "${MSG_INSTALL_SH_USER_GROUP_3}${ADMIN_GROUP}'.\n${MSG_INSTALL_SH_RESTART_SESSION}"
+        exit 0 
     fi
     if command -v sudo >/dev/null 2>&1; then
         info "${MSG_INSTALL_SH_RESTART_SCRIPT_SUDO}"
