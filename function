@@ -140,19 +140,19 @@ function check_distro(){
             WEB_USER="nginx"
         fi
         if compatible "${VERSION_ID}" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
-            info "${ICON_INFO}  ${MSG_CHECK_DISTRO_OK}"
+            info "${ICON_INFO} ${MSG_CHECK_DISTRO_OK}"
         else
             warn "${ICON_WARN} ${MSG_CHECK_DISTRO_NONOK}"
             warn "${ICON_WARN} ${MSG_CHECK_DISTRO_FORCE}"
             if [ -t 0 ]; then
-                info "${ICON_INFO}  ${MSG_CHECK_DISTRO_FORCE_QUESTION}"
+                info "${ICON_INFO} ${MSG_CHECK_DISTRO_FORCE_QUESTION}"
                 read -r RESPONSE
                 case $RESPONSE in
                     O|o|Y|y)
-                        info "${ICON_INFO}  ${MSG_CHECK_DISTRO_CONTINUING}"
+                        info "${ICON_INFO} ${MSG_CHECK_DISTRO_CONTINUING}"
                         ;;
                     N|n)
-                        info "${ICON_INFO}  ${MSG_CHECK_DISTRO_EXITING}"
+                        info "${ICON_INFO} ${MSG_CHECK_DISTRO_EXITING}"
                         return 1
                         ;;
                     *)
@@ -1405,7 +1405,7 @@ function source_os_release(){
         return 1
     fi
     export ID VERSION_ID
-    info "${ICON_INFO} ${MSG_SOURCE_OS_RELEASE_INFO}"
+    info "${ICON_INFO} ${MSG_SOURCE_OS_RELEASE_INFO} ${ID} ${VERSION_ID}"
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
 function rights_glpi(){
