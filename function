@@ -511,16 +511,17 @@ function validate_glpi_path() {
 function validate_db_host() {
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     host=$1
-    # 1️⃣ Nettoyage de base
+    # Nettoyage de base
     clean_host=$(printf '%s' "$host" \
         | tr -d '\r' \
         | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-    # 2️⃣ Cas simples
+    # Cas simples
     case "$clean_host" in
         localhost|::1|\[::1\])
+            debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
             return 0 ;;
     esac
-    # 3️⃣ Vérif IPv4 (structure correcte)
+    # Vérif IPv4 (structure correcte)
     if printf '%s\n' "$clean_host" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
         IFS=.
         set -- $clean_host
@@ -532,13 +533,15 @@ function validate_db_host() {
                 dbhost_err "$clean_host"; return 1;
             }
         done
+        debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
         return 0
     fi
-    # 4️⃣ Vérif nom de domaine (FQDN simple)
+    # Vérif nom de domaine (FQDN simple)
     if printf '%s\n' "$clean_host" | grep -Eq '^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$'; then
+        debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
         return 0
     fi
-    # 5️⃣ Sinon invalide
+    # Sinon invalide
     dbhost_err "$clean_host"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
@@ -637,23 +640,23 @@ function run_sequence() {
             # --- Affichage dans la jauge ---
             echo "${progress}"
             echo "XXX"
-            echo "${task_index}/${total_tasks} - ${task_key} ${ICON_INPROGRESS}"
+            echo "${task_index}/${total_tasks} - ${task_key} ⏳"
             echo "XXX"
-            debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_OK} ${MSG_RUN_SEQUENCE_START} '${task_key}' → ${task_cmd}"
+            debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_OK} ${MSG_RUN_SEQUENCE_START} ${mode} ${MSG_OK} - '${task_key}' → ${task_cmd}"
             # --- Exécution de la tâche ---
             if run_task "${task_key}" "${task_cmd}" "${task_index}" "${total_tasks}"; then
                 echo "${progress}"
                 echo "XXX"
-                echo "${task_index}/${total_tasks} - ${task_key} ${ICON_VALIDATE}"
+                echo "${task_index}/${total_tasks} - ${task_key} ✔️"
                 echo "XXX"
-                debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_VALIDATE} ${MSG_RUN_SEQUENCE_END} '${task_key}'."
+                debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_VALIDATE} ${MSG_RUN_SEQUENCE_END} ${mode} - '${task_key}'."
                 sleep 0.5  # légère pause visuelle
             else
                 echo "100"
                 echo "XXX"
                 echo "${task_index}/${total_tasks} - ${task_key} ${ICON_KO}"
                 echo "XXX"
-                debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_KO} ${MSG_RUN_SEQUENCE_END} '${task_key}'."
+                debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_KO} ${MSG_RUN_SEQUENCE_END} ${mode} - '${task_key}'."
                 sleep 5
                 return 1
             fi
