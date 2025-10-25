@@ -1243,6 +1243,9 @@ EOF
         fi
     elif [[ "${WEB_USER}" == "nginx" ]]; then
         network_info
+        info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_NGINX} ${WEB_USER}"
+        # Configuration de Nginx pour GLPI
+        info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_NGINX_VIRTUAL_HOST}"
         sudo tee /etc/nginx/conf.d/glpi.conf << EOF
 server {
 listen 80;
@@ -1260,6 +1263,8 @@ location ~ ^/index\.php$ {
 }
 }
 EOF
+        info "${ICON_INFO} ${MSG_SETUP_GLPI_CREATE_LOGROTATE}"
+        # Configuration de logrotate pour GLPI
         sudo tee /etc/logrotate.d/glpi << EOF
 # Rotate GLPI logs daily, only if not empty
 # Save 14 days old logs under compressed mode
@@ -1277,29 +1282,36 @@ EOF
         chown root:root /etc/logrotate.d/glpi
         chcon system_u:object_r:etc_t:s0 /etc/logrotate.d/glpi
         sed -i 's/^\(;\?\)\(session.cookie_httponly\).*/\2 = on/' /etc/php.ini
+        info "${ICON_INFO} ${MSG_SETUP_GLPI_CREATE_LOGROTATE_OK}"
         # Change permissions
-        if ! rights_glpi "${REP_GLPI}"; then
-            warn "${ICON_WARN} Échec de la modification des droits pour GLPI."
+        if rights_glpi "${REP_GLPI}"; then
+            info "${ICON_INFO} ${MSG_SETUP_GLPI_RIGHTS_MODIFY}"
+        else
+            warn "${ICON_WARN} ${MSG_SETUP_GLPI_RIGHTS_MODIFY_FAILED}"
             return 1
         fi
         # Recharger la configuration de Nginx
         if ! systemctl reload nginx php-fpm; then
-            warn "${ICON_WARN} Échec du rechargement de Nginx ou PHP-FPM."
+            warn "${ICON_WARN} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_NGINX_RELOAD_FAILED}"
             return 1
         fi
         # Installation de GLPI en ligne de commande
         if sudo -u "${WEB_USER}" "${CMD[@]}" 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
-            info "${ICON_INFO}  Installation GLPI terminée avec succès."
+            info "${ICON_INFO} ${MSG_SETUP_GLPI_COMPLETED}"
         else
-            warn "${ICON_WARN} Échec de l'installation GLPI via console."
+            warn "${ICON_WARN} ${MSG_SETUP_GLPI_INSTALLATION_FAILED}"
             return 1
         fi
         # Configuration de la tâche Cron
+        info "${ICON_INFO} ${MSG_SETUP_GLPI_CRON_CONFIG}"
         echo "*/2 * * * * ${WEB_USER} /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
     sleep 5
-    if ! rm -Rf "${REP_GLPI}install/install.php"; then
-        warn "${ICON_WARN} Échec de la suppression du script d'installation de GLPI."
+    info "${ICON_INFO} ${MSG_SETUP_GLPI_REMOVE_INSTALL_FILE}"
+    if rm -Rf "${REP_GLPI}install/install.php"; then
+        info "${ICON_INFO} ${MSG_SETUP_GLPI_REMOVE_INSTALL_FILE_OK}"
+    else
+        warn "${ICON_WARN} ${MSG_SETUP_GLPI_REMOVE_INSTALL_FILE_FAILED}"
         return 1
     fi
     sleep 2
@@ -1309,7 +1321,7 @@ EOF
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){
     debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
-    info "${ICON_INFO}  ${MSG_CHANGE_MDP_GLPI}"
+    info "${ICON_INFO}  ${MSG_MAJ_USER_GLPI_START}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
     network_info
     get_timezone
@@ -1317,17 +1329,16 @@ function maj_user_glpi(){
     MYSQL_CMD=$(command -v mysql  || command -v mariadb || echo mysql)
     # Verify mysql client exists
     if ! command -v "${MYSQL_CMD}"; then
-        warn "Client MySQL introuvable : ${MYSQL_CMD}"
+        warn "${MSG_MARIADB_CONFIGURE_COMMAND_NOT_FOUND} ${MYSQL_CMD}"
         return 1
     fi
     # --- Vérification des variables critiques ---
     if [ -z "${DB_NAME:-}" ] || [ -z "${DB_USER:-}" ] || [ -z "${SQLGLPIPWD:-}" ] || [ -z "${IPADRESS:-}" ]; then
-        error "${ICON_ERROR} Variables manquantes : DB_NAME, DB_USER, SQLGLPIPWD, IPADRESS"
+        error "${ICON_ERROR} ${MSG_MAJ_USER_GLPI_MISSING_VARS}"
         return 1
     fi
-
     if [ -z "${ADMINGLPIPWD:-}" ] || [ -z "${POSTGLPIPWD:-}" ] || [ -z "${TECHGLPIPWD:-}" ] || [ -z "${NORMGLPIPWD:-}" ]; then
-        error "${ICON_ERROR} Un ou plusieurs mots de passe GLPI ne sont pas définis"
+        error "${ICON_ERROR} ${MSG_MAJ_USER_GLPI_MISSING_PASSWORDS}"
         return 1
     fi
     # Construire la requête SQL et exécuter via -e
@@ -1354,14 +1365,12 @@ UPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 
 UPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';
 SQL
     )
-    debug "${ICON_DEBUG} Commande SQL:\n${_sql_user}" # Pour le débogage
     # --- Exécution SQL ---
-    debug "${ICON_DEBUG} Exécution des commandes SQL..."
     if ! PAGER=cat MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --batch --silent -e "${_sql_user}" 2>/dev/null; then
         error "${ICON_ERROR} ${MSG_ERROR_TASK:-Erreur} : échec de la mise à jour des utilisateurs GLPI."
         return 1
     fi
-    info "${ICON_INFO}  Comptes GLPI mis à jour avec succès dans ${DB_NAME}."
+    info "${ICON_INFO}  ${MSG_MAJ_USER_GLPI_OK}"
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
 function source_os_release(){
@@ -1381,18 +1390,18 @@ function source_os_release(){
         VERSION_ID=$(uname -r)
     fi
     if [ -z "${ID:-}" ] || [ -z "${VERSION_ID:-}" ]; then
-        warn "Variables ID ou VERSION_ID non définies après sourcing de /etc/os-release"
+        warn "${ICON_WARN} ${MSG_SOURCE_OS_RELEASE_MISSING_VARS}"
         return 1
     fi
     export ID VERSION_ID
-    info "${ICON_INFO} $(date '+%F %T'): INFO: OS détecté : ${ID} ${VERSION_ID}"
+    info "${ICON_INFO} ${MSG_SOURCE_OS_RELEASE_INFO}"
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
 function rights_glpi(){
     debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
     REP_GLPI="${1:-/var/www/html/glpi}"
     # Changer les droits des répertoires et fichiers
-    info "${ICON_INFO}  $MSG_RIGHTS_GLPI"
+    info "${ICON_INFO}  ${MSG_SETUP_GLPI_RIGHTS_MODIFY}"
     find "${REP_GLPI}" -type d -exec chmod 755 {} \; 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     find "${REP_GLPI}" -type f -exec chmod 644 {} \; 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Changer le propriétaire des répertoires
@@ -1413,11 +1422,13 @@ function rights_glpi(){
             error "${ICON_ERROR} $(date '+%F %T'): WARN: semanage non disponible — SELinux non configuré"
         fi
     fi
+    info "${ICON_INFO}  ${MSG_SETUP_GLPI_RIGHTS_MODIFY_OK}"
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
 function write_credentials(){
     debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    info "${ICON_INFO}  ${MSG_WRITE_CREDENTIALS_START}"
     FICHIER_MSG+="${DB_NAME}.txt"
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "$FICHIER_MSG" << EOF
@@ -1476,24 +1487,23 @@ EOF
  If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
-        debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    info "${ICON_INFO}  ${MSG_WRITE_CREDENTIALS_END}"
+    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
 }
 # Afficher le résultat final
 function display_result() {
     debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    info "${ICON_INFO}  ${MSG_DISPLAY_RESULT_START}"
     MESSAGE=""
 	if [[ -f "${FICHIER_MSG}" ]]; then
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
         done < "${FICHIER_MSG}"
-        dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_OK}" --msgbox "${MESSAGE}" 0 0
+        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_OK}" --msgbox "${MESSAGE}" 0 0
     else
-        while IFS= read -r ligne; do
-            MESSAGE+="${ligne}\n"
-        done < "${ERRORFILE}"
-        dialog --backtitle "${MSG_TITRE}" --title "${MSG_TITRE_NONOK}" --msgbox "${MSG_NONOK}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
-        exit 1
+        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_NONOK}" --msgbox "${MSG_NONOK}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
     fi
+    info "${ICON_INFO}  ${MSG_DISPLAY_RESULT_END}"
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
 # Activé ou déactivé le mode maintenance (1 ou 0)
@@ -1501,11 +1511,11 @@ function maintenance(){
     debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
     check_install_user "${REP_GLPI}"
     if [ "$1" == "1" ]; then
-        info "${ICON_INFO}  ${MSG_UPDATE_MAINTENANCE_ON}"
-        sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:enable
+        info "${ICON_INFO}  ${MSG_MAINTENANCE_ON}"
+        sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:enable 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     elif [ "$1" == "0" ]; then
-        info "${ICON_INFO}  ${MSG_UPDATE_MAINTENANCE_OFF}"
-        sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:disable 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)   
+        info "${ICON_INFO}  ${MSG_MAINTENANCE_OFF}"
+        sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:disable 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     fi
 	sleep 2;
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
@@ -1513,7 +1523,7 @@ function maintenance(){
 # Sauvegarde de la base de donnée et des fichiers de GLPI
 function backup_glpi() {
     debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
-    info "${ICON_INFO} ${MSG_UPDATE_BACKUP_CREATE}"
+    info "${ICON_INFO} ${MSG_BACKUP_GLPI_START}"
     # Récupération du nom de la base de données dans le fichier config de GLPI suivant le répertoire de GLPI
     REP_GLPI=$(find /etc -maxdepth 1 -type f -name "glpi.conf" 2>/dev/null | head -n 1)
     # Lecture des informations MySQL
@@ -1521,7 +1531,7 @@ function backup_glpi() {
     DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     if [ -z "${DB_NAME}" ] || [ -z "${PASSWORD}" ]; then
-    warn "Impossible de lire le nom de base ou le mot de passe depuis ${INVOKING_HOME}/sauve_mdp.txt"
+    warn "${MSG_BACKUP_GLPI_READ_SAUVE_FAILED}"
         return 1
     fi
     # Détermination de l’outil de dump
@@ -1531,52 +1541,61 @@ function backup_glpi() {
     REP_BACKUP="${INVOKING_HOME}/backup_glpi_$(date +"%Y-%m-%d")"
     BDD_BACKUP="bdd_glpi_$(date +"%Y-%m-%d_%H-%M-%S").sql"
     if ! mkdir -p "${REP_BACKUP}"; then
-        warn "${ICON_WARN} Échec de la création du répertoire de sauvegarde : ${REP_BACKUP}"
+        warn "${ICON_WARN} ${MSG_BACKUP_GLPI_DIR_FAILED}"
         return 1
     fi
-    # --- Sauvegarde BDD ---
-    info "${ICON_INFO} ${MSG_MYSQL_DUMP}"
-    if eval "${MYSQLDUMP_CMD} -u root -p\"${PASSWORD}\" --databases \"${DB_NAME}\" > \"${REP_BACKUP}/${BDD_BACKUP}\""; then
-        info "${ICON_INFO} ${MSG_DUMP_SUCCESS}"
+    # --- Export de la BDD ---
+    info "${ICON_INFO} ${MSG_BACKUP_GLPI_DUMP_DB}"
+    # shellcheck disable=SC2261
+    if ${MYSQLDUMP_CMD} -u root -p"${PASSWORD}" --databases "${DB_NAME}" \
+            > "${REP_BACKUP}/${BDD_BACKUP}" \
+            >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+        if [[ -s "${REP_BACKUP}/${BDD_BACKUP}" ]]; then
+            info "${ICON_OK} ${MSG_BACKUP_GLPI_DUMP_DB_OK}"
+        else
+            warn "${ICON_WARN} Fichier de sauvegarde vide : ${REP_BACKUP}/${BDD_BACKUP}"
+            return 1
+        fi
     else
-    warn "${ICON_WARN} Échec de la sauvegarde de la base ${DB_NAME}"
+        error "${ICON_ERR} ${MSG_BACKUP_GLPI_DUMP_DB_FAILED}"
         return 1
     fi
     # --- Sauvegarde des fichiers ---
-    info "${ICON_INFO} ${MSG_SITE_COPY}"
+    info "${ICON_INFO} ${MSG_BACKUP_GLPI_SITE_COPY}"
     for SRC in "/etc/glpi/config" "/var/lib/glpi/files" "${REP_GLPI}/plugins" "${REP_GLPI}/marketplace" "${REP_GLPI}/inc/downstream.php"; do
         if [ -e "${SRC}" ]; then
+            info "${ICON_INFO} ${MSG_BACKUP_GLPI_SITE_COPY_REP}"
             cp -Rf "${SRC}" "${REP_BACKUP}/"
         else
-            warn "${ICON_WARN} Source manquante : ${SRC}"
+            warn "${ICON_WARN} ${MSG_BACKUP_GLPI_SITE_SOURCE_MISSING} ${SRC}"
         fi
     done
-    info "${ICON_INFO} ${MSG_SITE_COPY_OK}"
+    info "${ICON_INFO} ${MSG_BACKUP_GLPI_SITE_COPY_OK}"
     # --- Compression ---
-    info "${ICON_INFO} ${MSG_COMPRESS_BACKUP}"
+    info "${ICON_INFO} ${MSG_BACKUP_GLPI_COMPRESS_BACKUP}"
     mkdir -p "${REP_BACKUP_COMPRESS}"
     local BACKUP_FILE
     BACKUP_FILE="${REP_BACKUP_COMPRESS}/glpi_$(date +"%Y-%m-%d")_${GLPI_CLI_VERSION}->${VERSION_SELECT}.tar.gz"
     if tar -czf "${BACKUP_FILE}" -C "${REP_BACKUP}" . 2>> "${ERRORFILE}"; then
-        info "${ICON_INFO} ${MSG_COMPRESS_BACKUP_OK} (${BACKUP_FILE})"
+        info "${ICON_INFO} ${MSG_BACKUP_GLPI_COMPRESS_BACKUP_OK} (${BACKUP_FILE})"
         # Vérifier que le fichier compressé n'est pas vide
         if [ ! -s "${BACKUP_FILE}" ]; then
-            warn "${ICON_WARN} Fichier de sauvegarde vide, suppression annulée."
+            warn "${ICON_WARN} ${MSG_BACKUP_GLPI_EMPTY_COMPRESS_BACKUP}"
             return 1
         fi
         # Suppression sécurisée de l’ancien GLPI
-        info "${ICON_INFO} ${MSG_REMOVE_OLD_GLPI_DIR}"
+        info "${ICON_INFO} ${MSG_BACKUP_GLPI_REMOVE_OLD_GLPI_DIR}"
         if [ -n "${REP_GLPI}" ] && [ -d "${REP_GLPI}" ]; then
             rm -rf "${REP_GLPI:?}/" >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
             info "${ICON_INFO} Répertoire ${REP_GLPI} supprimé."
         else
-            warn "${ICON_WARN} Répertoire GLPI introuvable : ${REP_GLPI}"
+            warn "${ICON_WARN} ${MSG_BACKUP_GLPI_REMOVE_OLD_GLPI_DIR_NOTFOUND} ${REP_GLPI}"
         fi
     else
-    warn "${ICON_WARN} ${MSG_COMPRESS_BACKUP_FAILED}"
+    warn "${ICON_WARN} ${MSG_BACKUP_GLPI_COMPRESS_BACKUP_FAILED}"
         return 1
     fi
-    info "${ICON_INFO} === Sauvegarde GLPI terminée avec succès ==="
+    info "${ICON_INFO} ${MSG_BACKUP_GLPI_OK}"
     sleep 2
     export REP_BACKUP REP_GLPI
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
@@ -1584,9 +1603,9 @@ function backup_glpi() {
 # Mise à jour de GLPI
 function update_glpi() {
     debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
-    info "${ICON_INFO} === Début de la mise à jour GLPI ==="
+    info "${ICON_INFO} ${MSG_UPDATE_GLPI_START}"
     # Restauration des fichiers de configuration et des plugins
-    info "${ICON_INFO} ${MSG_RESTORE_FILES}"
+    info "${ICON_INFO} ${MSG_UPDATE_GLPI_RESTORE_FILES}"
     for DIR in config files plugins marketplace; do
         SRC="${REP_BACKUP}/${DIR}"
         if [ -d "${SRC}" ]; then
@@ -1599,67 +1618,65 @@ function update_glpi() {
             mkdir -p "${DEST}"
             if compgen -G "${SRC}/*" > /dev/null; then
                 if cp -Rf "${SRC}/"* "${DEST}/"; then
-                    info "${ICON_INFO} Restauration de ${DIR} vers ${DEST} terminée."
+                    info "${ICON_INFO} ${MSG_UPDATE_GLPI_RESTORE_FILES_OK}"
                 else
-                    warn "${ICON_WARN} ${ICON_WARN} Erreur lors de la copie de ${DIR}."
+                    warn "${ICON_WARN} ${ICON_WARN} ${MSG_UPDATE_GLPI_RESTORE_FILES_ERROR} ${DIR}."
                 fi
             else
-                warn "${ICON_WARN} Répertoire ${SRC} vide, rien à copier."
+                warn "${ICON_WARN} ${MSG_UPDATE_GLPI_RESTORE_FILES_EMPTY}"
             fi
         fi
     done
     # Restauration du fichier downstream.php
     REP_BACKUP=$(find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*")
-    info "${ICON_INFO} Restauration du fichier ${REP_BACKUP}/downstream.php si présent."
-    info "${ICON_INFO} Vérification de l'existence de ${REP_BACKUP}/downstream.php"
+    info "${ICON_INFO} ${MSG_UPDATE_GLPI_RESTORE_FILES_DOWNSTREAM}"
     if [ -f "${REP_BACKUP}/downstream.php" ]; then
         mkdir -p "${REP_GLPI}/inc" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"
         if cp -Rf "${REP_BACKUP}/downstream.php" "${REP_GLPI}/inc/" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
-            info "${ICON_INFO} Fichier downstream.php restauré."
+            info "${ICON_INFO} ${MSG_UPDATE_GLPI_RESTORE_FILES_DOWNSTREAM_OK}"
         else
-            warn "${ICON_WARN} Erreur lors de la restauration de downstream.php."
+            warn "${ICON_WARN} ${MSG_UPDATE_GLPI_RESTORE_FILES_DOWNSTREAM_ERROR}"
         fi
     fi
     # Suppression de la sauvegarde
-    info "${ICON_INFO} ${MSG_REMOVE_OLD_FILES}"
+    info "${ICON_INFO} ${MSG_UPDATE_GLPI_REMOVE_OLD_FILES}"
     if [ -d "${INVOKING_HOME}" ]; then
         if find "${INVOKING_HOME}" -maxdepth 1 -type d -name "backup_glpi_*" -exec rm -rf {} + >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
-            info "${ICON_INFO} Répertoire ${REP_BACKUP} supprimé avec succès."
+            info "${ICON_INFO} ${MSG_UPDATE_GLPI_REMOVE_OLD_FILES_OK}"
         else
-            warn "${ICON_WARN} Répertoire ${REP_BACKUP} introuvable."
+            warn "${ICON_WARN} ${MSG_UPDATE_GLPI_REMOVE_OLD_FILES_FAILED}"
         fi
     fi
     # Mise à jour de la base GLPI
-    info "${ICON_INFO} ${MSG_UPDATE_GLPI_DATABASE}"
-    debug "${ICON_DEBUG} Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
-    rights_glpi "${REP_GLPI}"
+    info "${ICON_INFO} ${MSG_UPDATE_GLPI_UPDATE_DATABASE}"
     if check_install_user "${REP_GLPI}"; then
+        rights_glpi "${REP_GLPI}"
         debug "${ICON_DEBUG} Repertoire GLPI pour la mise à jour de la base : ${REP_GLPI}"
         debug "${ICON_DEBUG} Utilisateur web pour la mise à jour de la base : ${WEB_USER}"
         local CMD
         CMD="${REP_GLPI}/bin/console db:update --force --no-telemetry --quiet --no-interaction"
         # shellcheck disable=SC2086
         if sudo -u "${WEB_USER}" php ${CMD} 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+            info "${ICON_INFO} ${MSG_UPDATE_GLPI_UPDATE_DATABASE_OK}"
             exec 3>&1
-            dialog --title "${MSG_TITRE_OK}" --msgbox "Mise à jour de la base GLPI réussie.\n\nProfitez de GLPI ${VERSION_SELECT} !" 7 50
+            dialog --title "${MSG_OK} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_OK}" 7 50
             exec 3>&-
-            info "${ICON_INFO} Mise à jour de la base GLPI réussie."
         else
-            warn "${ICON_WARN} Échec de la mise à jour de la base GLPI (voir ${ERRORFILE})."
+            warn "${ICON_WARN} ${MSG_UPDATE_GLPI_UPDATE_DATABASE_FAILED} (voir ${ERRORFILE})."
             exec 3>&1
-            dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "Erreur lors de la mise à jour de la base GLPI."
+            dialog --title "${MSG_NONOK} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_FAILED}" 7 50
             exec 3>&-
             return 1
         fi
     fi
     # Nettoyage final
-    info "${ICON_INFO} ${MSG_UPDATE_CLEAN}"
+    info "${ICON_INFO} ${MSG_UPDATE_GLPI_CLEAN}"
     if find "${REP_GLPI}/install/" -maxdepth 1 -type f -name "install.php" -exec sudo rm -f {} +  ; then
-        info "${ICON_INFO} Fichier ${REP_GLPI}/install/install.php supprimé avec succès."
+        info "${ICON_INFO} ${MSG_UPDATE_GLPI_CLEAN_OK}"
     else
-        warn "${ICON_WARN} Impossible de supprimer install.php dans ${REP_GLPI}/install/"
+        warn "${ICON_WARN} ${MSG_UPDATE_GLPI_CLEAN_FAILED}"
+        exit 1
     fi
-    info "${ICON_INFO} === Fin de la mise à jour GLPI ==="
-    sleep 2
+    info "${ICON_INFO} ${MSG_UPDATE_GLPI_OK}"
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
