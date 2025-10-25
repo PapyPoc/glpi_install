@@ -8,6 +8,15 @@
 #
 set -Eeuo pipefail
 clear
+REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
+DEPENDENCIES="curl jq openssl sudo dialog git"
+GIT="https://github.com/PapyPoc/glpi_install.git"
+BRANCHE="dev"
+UPDATEFILE="${REP_SCRIPT}/update.log"
+ERRORFILE="${REP_SCRIPT}/error.log"
+DEBUGFILE="${REP_SCRIPT}/debug.log"
+export ORIG_USER ADMIN_GROUPREP_SCRIPT GIT BRANCHE UPDATEFILE ERRORFILE DEBUGFILE
 # Langue du systeme
 LANGUE="${LANG%%_*}"
 # Traduction des messages
@@ -66,18 +75,6 @@ elif [ "$LANGUE" == "en" ]; then
     MSG_GITHUB_SCRIPT_EXECUTED="Successful execution of ${REP_SCRIPT}/glpi_install/glpi-install"
     MSG_GITHUB_SCRIPT_EXECUTION_FAILED="Failed to execute ${REP_SCRIPT}/glpi_install/glpi-install"    
 fi
-REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
-DEPENDENCIES="curl jq openssl sudo dialog git"
-GIT="https://github.com/PapyPoc/glpi_install.git"
-BRANCHE="dev"
-UPDATEFILE="${REP_SCRIPT}/update.log"
-ERRORFILE="${REP_SCRIPT}/error.log"
-DEBUGFILE="${REP_SCRIPT}/debug.log"
-: > "${ERRORFILE}"
-: > "${DEBUGFILE}"
-: > "${UPDATEFILE}"
-export ORIG_USER REP_SCRIPT GIT BRANCHE
 function warn(){ 
     echo -e "\033[0;31m[ERREUR]\033[0m $1";
 }
@@ -146,6 +143,9 @@ function ensure_dependencies(){
     export NEED_RESTART
     return 0
 }
+: > "${ERRORFILE}"
+: > "${DEBUGFILE}"
+: > "${UPDATEFILE}"
 # Détection de la distribution
 if . /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
