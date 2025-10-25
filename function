@@ -642,7 +642,7 @@ function run_sequence() {
             echo "XXX"
             echo "${task_index}/${total_tasks} - ${task_key} ⏳"
             echo "XXX"
-            debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ✅ ${MSG_RUN_SEQUENCE_START} ${mode} ${MSG_OK} - '${task_key}' → ${task_cmd}"
+            debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ✅ ${MSG_RUN_SEQUENCE_START} ${mode} - '${task_key}' → ${task_cmd}"
             # --- Exécution de la tâche ---
             if run_task "${task_key}" "${task_cmd}" "${task_index}" "${total_tasks}"; then
                 echo "${progress}"
