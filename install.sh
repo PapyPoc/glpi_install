@@ -6,7 +6,7 @@
 # Install file
 # Langage pris en compte français et anglais
 #
-set -euo pipefail
+# set -Eeuo pipefail
 clear
 function warn(){ 
     echo -e "\033[0;31m[ERREUR]\033[0m $1";
