@@ -748,27 +748,27 @@ function install_packages(){
         export DEBIAN_FRONTEND=noninteractive
         # update cache first
         debug "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get update"
-        if command -v apt-get update >> "${UPDATEFILE}" 2>/dev/null; then
+        if command -v sudo apt-get update >> "${UPDATEFILE}" 2>/dev/null; then
             debug "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get upgrade -y"
-            if ! apt-get upgrade -y >> "${UPDATEFILE}" 2>/dev/null; then
+            if ! sudo apt-get upgrade -y >> "${UPDATEFILE}" 2>/dev/null; then
                 warn "${ICON_WARN} ${MSG_INSTALL_PACKAGES_UPGRADE_FAILED}"
             fi
         fi
-        info "${ICON_INFO} ${MSG_INSTALL_PHP_EXTENSIONS_START}"
         if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} \
-            | 1>(sudo tee -a "${UPDATEFILE}") 2> >(sudo tee -a "${ERRORFILE}" >&2)
-            info "${ICON_INFO} ${MSG_INSTALL_PHP_EXTENSIONS_COMPLETED}"
-        then
+            | sudo tee -a "${UPDATEFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2); then
             error "${ICON_ERROR} ${MSG_INSTALL_PHP_EXTENSIONS_FAILED}"
             return 1
+        else
+            info "${ICON_INFO} ${MSG_INSTALL_PHP_EXTENSIONS_COMPLETED}"
         fi
-        info "${ICON_INFO} ${MSG_INSTALL_SERVICES_START}"
         if ! sudo apt-get install -y wget tar apache2 apache2-bin mariadb-server mariadb-client perl php \
-            | 1>(sudo tee -a "${UPDATEFILE}") 2> >(sudo tee -a "${ERRORFILE}" >&2)
-            info "${ICON_INFO} ${MSG_INSTALL_SERVICES_COMPLETED}"
-        then
+            | sudo tee -a "${UPDATEFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2); then
             error "${ICON_ERROR} ${MSG_INSTALL_SERVICES_FAILED}"
             return 1
+        else
+            info "${ICON_INFO} ${MSG_INSTALL_SERVICES_COMPLETED}"
         fi
         manage_service "mariadb" "MariaDB" || return 1
         manage_service "apache2" "Apache2" || return 1
