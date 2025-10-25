@@ -106,7 +106,7 @@ function ensure_dependencies(){
     if [ -z "$missing" ]; then
         return 0
     fi
-    info "${MSG_DEPENDENCIES_MISSING}"
+    info "${MSG_INSTALL_SH_DEPENDENCIES_MISSING_01}${missing}${MSG_INSTALL_SH_DEPENDENCIES_MISSING_02}"
     local pkgmgr install_cmd
     local pkgs="$missing"
     if command -v apt-get >/dev/null; then
@@ -128,12 +128,12 @@ function ensure_dependencies(){
         pkgmgr="zypper"
         install_cmd="${pkgmgr} install -y ${pkgs}"
     else
-        warn "${MSG_PACKAGE_MANAGER_NOT_FOUND}"
+        warn "${MSG_INSTALL_SH_PACKAGE_MANAGER_NOT_FOUND}"
         return 1
     fi
     info "Installation via ${pkgmgr} : ${pkgs}"
     if ! bash -c "$install_cmd 1>>${UPDATEFILE} 2>>${ERRORFILE}"; then
-        warn "${MSG_DEPENDENCIES_INSTALL_FAILED}"
+        warn "${MSG_INSTALL_SH_DEPENDENCIES_INSTALL_FAILED} ${pkgs}"
         return 1
     fi
     local still_missing=""
@@ -143,7 +143,7 @@ function ensure_dependencies(){
         fi
     done
     if [ -n "$still_missing" ]; then
-        warn "${MSG_DEPENDENCIES_MISSING_AFTER_INSTALL}"
+        warn "${MSG_INSTALL_SH_DEPENDENCIES_MISSING_AFTER_INSTALL} ${still_missing}"
         sleep 3
         return 1
     fi
@@ -179,10 +179,12 @@ if [ "$EUID" -ne 0 ]; then
         info "${MSG_INSTALL_SH_USER_GROUP_1}${ADMIN_GROUP}${MSG_INSTALL_SH_USER_GROUP_2}"
         warn "${MSG_INSTALL_SH_RESTART_SESSION}"
         exit 0
-    elif command -v sudo >/dev/null 2>&1; then
+    fi
+    if command -v sudo >/dev/null 2>&1; then
         info "${MSG_INSTALL_SH_RESTART_SCRIPT_SUDO}"
         exec sudo -E bash "$0" "$@"
-    elif command -v su >/dev/null 2>&1; then
+    fi
+    if command -v su >/dev/null 2>&1; then
         info "${MSG_INSTALL_SH_RESTART_SCRIPT_SU}"
         exec su -c "bash '$0' $*"
     else
