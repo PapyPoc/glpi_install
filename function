@@ -131,7 +131,6 @@ function check_distro(){
         fi
         if compatible "${VERSION_ID}" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
             info "${ICON_INFO}  ${MSG_CHECK_DISTRO_OK}"
-            install_update
             return 0
         else
             warn "${ICON_WARN} ${MSG_CHECK_DISTRO_NONOK}"
