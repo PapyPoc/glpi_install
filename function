@@ -104,20 +104,26 @@ function export_display_env() {
 }
 # Gestion des erreurs avec trap
 function on_error() {
-    local rc=$?
-    local cmd=$BASH_COMMAND
-    local line=${BASH_LINENO[0]}
-    local message="${MSG_ERROR_ON_ERROR_1}'${cmd}' (code=$rc)${MSG_ERROR_ON_ERROR_2}$line\n"
+    local rc=$?                               # Code de retour de la dernière commande
+    local cmd="${BASH_COMMAND}"               # Commande qui a échoué
+    local line="${BASH_LINENO[0]}"            # Ligne d’erreur
+    local message=""
+    message+="${MSG_ERROR_ON_ERROR_1}'${cmd}' (code=${rc})${MSG_ERROR_ON_ERROR_2}${line}\n"
     message+="${MSG_ERROR_ON_ERROR_3}\n"
-    for ((i=${#FUNCNAME[@]}-1; i>=0; i--)); do
+    # Boucle sur la pile d’appels (stack trace)
+    for (( i=${#FUNCNAME[@]}-1; i>=1; i-- )); do
+        # i=0 correspond à on_error elle-même → on la saute
         message+="${MSG_ERROR_ON_ERROR_4}${FUNCNAME[$i]}()${MSG_ERROR_ON_ERROR_5}${BASH_SOURCE[$i]}:${BASH_LINENO[$((i-1))]}\n"
     done
     message+="──────────────────────────────"
+    # Affichage dans dialog (protéger les retours ligne)
     dialog --backtitle "${MSG_ERROR_DIALOG_TITLE}" \
            --title "${MSG_ERROR_DIALOG_ERROR}" \
-           --msgbox "$message" 60 100 || true
-    error "${ICON_ERROR} $message"
-    exit "$rc"
+           --msgbox "$(echo -e "$message")" 20 100 || true
+
+    # Log du message complet dans les fichiers d’erreur
+    error "${ICON_ERROR} $(echo -e "$message")"
+    exit "${rc}"
 }
 # Vérifie si la version est compatible
 function compatible() {
@@ -747,9 +753,9 @@ function install_packages(){
     if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
         export DEBIAN_FRONTEND=noninteractive
         # update cache first
-        debug "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get update"
+        debug "${ICON_DEBUG}: apt-get update"
         if command -v sudo apt-get update | sudo tee -a "${UPDATEFILE}" 2> >(sudo tee -a "${ERRORFILE}" >&2); then
-            debug "$(date '+%Y-%m-%d %H:%M:%S'): DEBUG: apt-get upgrade -y"
+            debug "${ICON_DEBUG}: apt-get upgrade -y"
             if ! sudo apt-get upgrade -y | sudo tee -a "${UPDATEFILE}" 2> >(sudo tee -a "${ERRORFILE}" >&2); then
                 warn "${ICON_WARN} ${MSG_INSTALL_PACKAGES_UPGRADE_FAILED}"
             fi
@@ -768,28 +774,29 @@ function install_packages(){
         fi
         manage_service "mariadb" "MariaDB" || return 1
         manage_service "apache2" "Apache2" || return 1
-    elif [[ "${ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
-        dnf makecache --refresh
+    fi
+    if [[ "${ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
+        sudo dnf makecache --refresh
         if ! command -v dnf >/dev/null 2>&1; then
             error "${ICON_ERROR} ${MSG_INSTALL_PACKAGES_DNF_NOT_FOUND}" | tee -a "${ERRORFILE}"
             return 1
         fi
-        if dnf makecache --refresh \
+        if sudo dnf makecache --refresh \
             | sudo tee -a "${DEBUGFILE}" \
             2> >(sudo tee -a "${ERRORFILE}" >&2); then
             info "${ICON_INFO} ${MSG_INSTALL_PACKAGES_DNF_CACHE_REFRESHED}"
         else
             error "${ICON_ERROR} ${MSG_INSTALL_PACKAGES_DNF_CACHE_REFRESHED_FAILED}"
         fi
-        if dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
-        | sudo tee -a "${DEBUGFILE}" \
-        2> >(sudo tee -a "${ERRORFILE}" >&2); then
+        if sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+            | sudo tee -a "${DEBUGFILE}" \
+            2> >(sudo tee -a "${ERRORFILE}" >&2); then
             info "${ICON_OK} ${MSG_INSTALL_PACKAGES_EPEL}"
         else
             error "${ICON_ERR} ${MSG_INSTALL_PACKAGES_EPEL_FAILED}"
             return 1
         fi
-        if dnf module reset -y php nginx mariadb composer \
+        if sudo dnf module reset -y php nginx mariadb composer \
             | sudo tee -a "${DEBUGFILE}" \
             2> >(sudo tee -a "${ERRORFILE}" >&2); then
             info "${ICON_OK} ${MSG_INSTALL_PACKAGES_MODULES_RESET}"
@@ -797,7 +804,7 @@ function install_packages(){
             error "${ICON_ERROR} ${MSG_INSTALL_PACKAGES_MODULES_RESET_FAILED}"
             return 1
         fi
-        if dnf module install -y php:8.2 \
+        if sudo dnf module install -y php:8.2 \
             | sudo tee -a "${DEBUGFILE}" \
             2> >(sudo tee -a "${ERRORFILE}" >&2); then
             info "${ICON_OK} ${MSG_INSTALL_PACKAGES_PHP}"
@@ -805,7 +812,7 @@ function install_packages(){
             error "${ICON_ERROR} ${MSG_INSTALL_PACKAGES_PHP_FAILED}"
             return 1
         fi
-        if dnf module install -y nginx:1.24 \
+        if sudo dnf module install -y nginx:1.24 \
             | sudo tee -a "${DEBUGFILE}" \
             2> >(sudo tee -a "${ERRORFILE}" >&2); then
             info "${ICON_OK} ${MSG_INSTALL_PACKAGES_NGINX}"
@@ -813,41 +820,32 @@ function install_packages(){
             error "${ICON_ERROR} ${MSG_INSTALL_PACKAGES_NGINX_FAILED}"
             return 1
         fi
-        if dnf module install -y mariadb:10.11 \
-            | sudo tee -a "${DEBUGFILE}" \
-            2> >(sudo tee -a "${ERRORFILE}" >&2); then
+        if sudo dnf module install -y mariadb:10.11 \
+                | sudo tee -a "${DEBUGFILE}" \
+                2> >(sudo tee -a "${ERRORFILE}" >&2); then
             info "${ICON_OK} ${MSG_INSTALL_PACKAGES_MARIADB}"
         else
             error "${ICON_ERROR} ${MSG_INSTALL_PACKAGES_MARIADB_FAILED}"
             return 1
         fi
-        if dnf install dnf-automatic -y \
-            | sudo tee -a "${DEBUGFILE}" \
-            2> >(sudo tee -a "${ERRORFILE}" >&2); then
+        if sudo dnf install -y dnf-automatic \
+                | sudo tee -a "${DEBUGFILE}" \
+                2> >(sudo tee -a "${ERRORFILE}" >&2); then
             info "${ICON_OK} ${MSG_INSTALL_PACKAGES_AUTO_UPDATES}"
         else
             error "${ICON_ERROR} ${MSG_INSTALL_PACKAGES_AUTO_UPDATES_FAILED}"
             return 1
         fi
-        if {
-            sed -i 's/^\s*;\?\s*\(apply_updates\s*=\s*\).*/\1yes/' /etc/dnf/automatic.conf
-            sed -i 's/^\s*;\?\s*\(reboot\s*=\s*\).*/\1when-needed/' /etc/dnf/automatic.conf
-            sed -i 's/^\s*;\?\s*\(upgrade_type\s*=\s*\).*/\1security/' /etc/dnf/automatic.conf
-        } >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
-            info "${ICON_OK} ${MSG_INSTALL_PACKAGES_DNF_AUTO_CONFIG}"
-        else
-            error "${ICON_ERR} ${MSG_INSTALL_PACKAGES_DNF_AUTO_CONFIG_FAILED}"
-            return 1
-        fi
-        if mkdir /etc/systemd/system/dnf-automatic.timer.d \
-            | sudo tee -a "${DEBUGFILE}" \
-            2> >(sudo tee -a "${ERRORFILE}" >&2); then
+        sed -i 's/^\s*;\?\s*\(apply_updates\s*=\s*\).*/\1yes/' /etc/dnf/automatic.conf
+        sed -i 's/^\s*;\?\s*\(reboot\s*=\s*\).*/\1when-needed/' /etc/dnf/automatic.conf
+        sed -i 's/^\s*;\?\s*\(upgrade_type\s*=\s*\).*/\1security/' /etc/dnf/automatic.conf
+        if sudo mkdir -p /etc/systemd/system/dnf-automatic.timer.d >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "${ICON_OK} ${MSG_INSTALL_PACKAGES_DNF_AUTO_DIR}"
         else
             warn "${ICON_WARN} ${MSG_INSTALL_PACKAGES_DNF_AUTO_DIR_FAILED}"
             return 1
         fi
-        content="
+        sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf > "${DEBUGFILE}" 2>> "${ERRORFILE}" <<'EOF'
 [Unit]
     Description=dnf-automatic timer
     ConditionPathExists=!/run/ostree-booted
@@ -856,14 +854,9 @@ function install_packages(){
 [Timer]
     OnCalendar=*-*-* 6:00
     RandomizedDelaySec=60m
-    Persistent=true"
-echo "$content" | 
-        if sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
-            info "${ICON_OK} ${MSG_INSTALL_PACKAGES_DNF_AUTO_OVERRIDE}"
-        else
-            echo "${ICON_WARN} ${MSG_INSTALL_PACKAGES_DNF_AUTO_OVERRIDE_FAILED}"
-            return 1
-        fi
+    Persistent=true
+EOF
+        info "${ICON_OK} ${MSG_INSTALL_PACKAGES_DNF_AUTO_OVERRIDE}"
         if systemctl enable --now dnf-automatic.timer; then
             info "${ICON_INFO} ${MSG_INSTALL_PACKAGES_DNF_AUTO_ACTIVATED}"
         else
@@ -943,6 +936,8 @@ function get_timezone() {
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    trap 'on_error' ERR
+    set -E -o pipefail
     # Détecter la commande MySQL/MariaDB
     info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_BDD_CONFIG}"
     MYSQL_CMD=$(command -v mysql || command -v mariadb || echo mysql)
