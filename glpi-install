@@ -38,7 +38,7 @@ if [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
     chown root:root "${FICHIER_MSG}"
     dialog --title "${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_CREATED_1}${FICHIER_MSG}${MSG_GLPI_INSTALL_BACKUP_CREATED_2}" 6 60
 else
-    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${FICHIER_MSG}" 6 60
+    dialog --title "${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${FICHIER_MSG}" 6 60
     error "${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${FICHIER_MSG}"
     exit 1
 fi
