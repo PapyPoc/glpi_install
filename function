@@ -232,7 +232,7 @@ function load_language() {
                 printf -v "$key" '%s' "$expanded_value"
             fi
         done < "$LANG_FILE"
-        info "${ICON_INFO} (${MSG_LANG_FILE})"
+        info "${ICON_INFO} ${MSG_LANG_FILE} (${LANGUAGE})"
     else
         warn "${ICON_WARN} ($MSG_LANG_NOT_FOUND)"
     fi
