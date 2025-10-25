@@ -240,7 +240,7 @@ function load_language() {
 }
 # Recherche si GLPI est déjà installé
 function check_glpi_installed(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     FIND_REP_GLPI=$?
     glpi_dirs=()
     # Parcours des répertoires standards à explorer
@@ -261,11 +261,11 @@ function check_glpi_installed(){
         fi
     done
     export glpi_dirs FIND_REP_GLPI
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 } 
 # Vérifie l'utilisateur web pour le répertoire GLPI
 function check_install_user(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${MSG_CHECK_WEB_USER}"
     REP_GLPI="${1:-/var/www/html/glpi}"
     if ! WEB_USER=$(stat -c '%U' "${REP_GLPI}") >/dev/null 2>&1; then
@@ -274,11 +274,11 @@ function check_install_user(){
     fi
     debug "${ICON_DEBUG} ${MSG_WEB_USER_FOUND} ${WEB_USER}"
     export WEB_USER REP_GLPI
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Choix entre installation ou mise à jour
 function install_update(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Demander à l'utilisateur s'il souhaite installer ou mettre à jour GLPI
     exec 3>&1
     INSTALL_OR_UPDATE=$(dialog \
@@ -299,12 +299,12 @@ function install_update(){
     fi
     export INSTALL_OR_UPDATE
     prompt_install_options
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 #  Demander à l'utilisateur de choisir le répertoire d'installation,
 # la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Recherche des installations GLPI existantes
     if [[ "${INSTALL_OR_UPDATE}" == 2 ]]; then
         check_glpi_installed
@@ -403,7 +403,6 @@ function prompt_install_options(){
             warn "${ICON_WARN} ${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}"
             return 1
         fi
-        info "Version choisie : ${VERSION_SELECT}"
         # Formulaire des options d'installation
         local form="" WIDTH=0
         WIDTH_REP=$(( ${#MSG_PROMPT_INSTALL_OPTIONS_PARAM_REP} ))
@@ -490,11 +489,11 @@ function prompt_install_options(){
         # Lancement de l’installation
         run_sequence "install"
     fi
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Valide le répertoire d’installation de GLPI
 function validate_glpi_path() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     local path="$1"
     local clean_path
     # Nettoyage
@@ -506,11 +505,11 @@ function validate_glpi_path() {
         warn "${ICON_WARN} ${MSG_VALIDATE_GLPI_PATH_FAILED} (${clean_path})"
         return 1
     fi
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Valide le répertoire d’installation de GLPI
 function validate_db_host() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     host=$1
     # 1️⃣ Nettoyage de base
     clean_host=$(printf '%s' "$host" \
@@ -541,19 +540,19 @@ function validate_db_host() {
     fi
     # 5️⃣ Sinon invalide
     dbhost_err "$clean_host"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Helper message d'erreur + log
 function dbhost_err() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     v=$1
     dialog --title "${MSG_VALIDATE_DB_HOST_DIALOG_TITLE}" --msgbox "${MSG_VALIDATE_DB_HOST_DIALOG_FAILED_1} ${v}${MSG_VALIDATE_DB_HOST_DIALOG_FAILED_2}" 10 70
     warn "${ICON_WARN} ${MSG_VALIDATE_DB_HOST_FAILED} (${v})"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Valide le nom de la base de données
 function validate_db_name() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     local name="$1"
     local clean_name
     clean_name="$(printf '%s' "$name" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
@@ -568,11 +567,11 @@ function validate_db_name() {
         warn "${ICON_WARN} ${MSG_VALIDATE_DB_NAME_FAILED_2} (${clean_name})"
         return 1
     fi
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Valide le nom d’utilisateur de la base de données
 function validate_db_user() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     local user="$1"
     local clean_user
     clean_user="$(printf '%s' "$user" | tr -d '\r\n' \
@@ -580,15 +579,15 @@ function validate_db_user() {
     if [[ "$clean_user" == "root" || ! "$clean_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
         dialog --msgbox "${ICON_WARN} ${MSG_VALIDATE_DB_USER_DIALOG_FAILED}" 12 70
         warn "${ICON_WARN} ${MSG_VALIDATE_DB_USER_FAILED} (${clean_user})"
-        debug "${ICON_DEBUG} ${ICON_KO} ${MSG_DEBUG_END}"
+        debug "${ICON_DEBUG} ${ICON_KO} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
         return 1
     fi
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Sequence principale d'installation et de mise à jour de GLPI
 function run_sequence() {
     local mode="$1"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     trap 'on_error' ERR
     declare -A tasks
     local task_order=()
@@ -665,17 +664,17 @@ function run_sequence() {
                --gauge "" 8 120
     # --- Vérification du sous-shell ---
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-        warn "${ICON_WARN} ${MSG_RUN_SEQUENCE_FAILED_MODE}"
-        debug "${ICON_DEBUG} ${MSG_DEBUG_END} (${ICON_KO})"
+        warn "${ICON_WARN} ${MSG_RUN_SEQUENCE_FAILED_MODE} (${mode})"
+        debug "${ICON_DEBUG} (${ICON_KO}) $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
         return 1
     fi
     info "${ICON_INFO} ${MSG_RUN_SEQUENCE_END}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Exécute une tâche individuelle
 function run_task() {
     local task_key="$1" task_cmd="$2" index="$3" total="$4"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_RUN_TASK_TASK} ${index}/${total} : ${task_key} — ${MSG_RUN_TASK_COMMAND} : ${task_cmd}"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${MSG_RUN_TASK_COMMAND} ${task_cmd}"
     # Exécution isolée
@@ -692,12 +691,12 @@ function run_task() {
         return ${exit_code}
     fi
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${MSG_TASK_END} ${FUNCNAME[0]} → ${task_key}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     return 0
 }
 # Mise à jour de la distribution
 function update_distro(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
            info "${ICON_INFO} ${MSG_UPDATE_DISTRO_START}"
            timedatectl set-ntp true # Synchronise l'heure
@@ -712,11 +711,11 @@ function update_distro(){
         warn "${ICON_WARN} ${MSG_UPDATE_DISTRO_NOT_SUPPORTED}"
         exit 1
     fi
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Adresse IP de la machine
 function network_info() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Détection de l’interface principale (hors loopback et interfaces virtuelles)
     INTERFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '/dev/ {print $5; exit}')
     if [[ -z "${INTERFACE}" ]]; then
@@ -735,11 +734,11 @@ function network_info() {
         IPADRESS="127.0.0.1"
         export IPADRESS
     fi
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Installation des éléments nécessaire
 function install_packages(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_INSTALL_PACKAGES_START}"
     source_os_release
     if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
@@ -754,7 +753,7 @@ function install_packages(){
         fi
         info "${ICON_INFO} ${MSG_INSTALL_PHP_EXTENSIONS_START}"
         if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} \
-            | sudo tee -a "${UPDATEFILE}" 2> >(sudo tee -a "${ERRORFILE}" >&2)
+            | 1>(sudo tee -a "${UPDATEFILE}") 2> >(sudo tee -a "${ERRORFILE}" >&2)
             info "${ICON_INFO} ${MSG_INSTALL_PHP_EXTENSIONS_COMPLETED}"
         then
             error "${ICON_ERROR} ${MSG_INSTALL_PHP_EXTENSIONS_FAILED}"
@@ -762,8 +761,7 @@ function install_packages(){
         fi
         info "${ICON_INFO} ${MSG_INSTALL_SERVICES_START}"
         if ! sudo apt-get install -y wget tar apache2 apache2-bin mariadb-server mariadb-client perl php \
-            | sudo tee -a "${UPDATEFILE}" \
-            2> >(sudo tee -a "${ERRORFILE}" >&2)
+            | 1>(sudo tee -a "${UPDATEFILE}") 2> >(sudo tee -a "${ERRORFILE}" >&2)
             info "${ICON_INFO} ${MSG_INSTALL_SERVICES_COMPLETED}"
         then
             error "${ICON_ERROR} ${MSG_INSTALL_SERVICES_FAILED}"
@@ -899,7 +897,7 @@ echo "$content" |
         fi
     fi
     info "${ICON_INFO} ${MSG_INSTALL_PACKAGES_END}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 function manage_service() {
     local service="$1"
@@ -915,7 +913,7 @@ function manage_service() {
     info "${ICON_INFO} ${MSG_MANAGE_SERVICE_INFO} ${label}."
 }
 function get_timezone() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Détection du fuseau horaire
     info "${ICON_INFO} ${MSG_DETECT_TIMEZONE:-Détection du fuseau horaire...}"
     if [ -z "${TIMEZONES:-}" ]; then
@@ -941,11 +939,11 @@ function get_timezone() {
         export TIMEZONES
         info "${ICON_OK} ${MSG_GET_TIMEZONE_DETECTED} ${TIMEZONES}"
     fi
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Détecter la commande MySQL/MariaDB
     info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_BDD_CONFIG}"
     MYSQL_CMD=$(command -v mysql || command -v mariadb || echo mysql)
@@ -1041,11 +1039,11 @@ SQL
             return 1
         fi
     fi
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Téléchargement et décompression de GLPI
 function download_untar_glpi(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_START}"
     # Téléchargement de GLPI
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
@@ -1076,11 +1074,11 @@ function download_untar_glpi(){
     fi
     rm -f "$tmp_file"
     sleep 5 # Pause pour s'assurer que les fichiers sont bien écrits
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Mise en place des réglage pour GLPI
 function setup_glpi(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_SETUP_GLPI_START}"
     source_os_release
     local CMD=(
@@ -1299,11 +1297,11 @@ EOF
     fi
     sleep 2
     info "${ICON_INFO} ${MSG_SETUP_GLPI_COMPLETED}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO}  ${MSG_MAJ_USER_GLPI_START}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
     network_info
@@ -1354,10 +1352,10 @@ SQL
         return 1
     fi
     info "${ICON_INFO}  ${MSG_MAJ_USER_GLPI_OK}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 function source_os_release(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     if [[ -f /etc/os-release ]]; then
         # shellcheck disable=SC1091
         . /etc/os-release
@@ -1378,10 +1376,10 @@ function source_os_release(){
     fi
     export ID VERSION_ID
     info "${ICON_INFO} ${MSG_SOURCE_OS_RELEASE_INFO} ${ID} ${VERSION_ID}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 function rights_glpi(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     REP_GLPI="${1:-/var/www/html/glpi}"
     # Changer les droits des répertoires et fichiers
     info "${ICON_INFO}  ${MSG_SETUP_GLPI_RIGHTS_MODIFY}"
@@ -1406,11 +1404,11 @@ function rights_glpi(){
         fi
     fi
     info "${ICON_INFO}  ${MSG_SETUP_GLPI_RIGHTS_MODIFY_OK}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Ecriture du fichier pour sauvegarder les mot de passe du serveur GLPI
 function write_credentials(){
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO}  ${MSG_WRITE_CREDENTIALS_START}"
     FICHIER_MSG+="${DB_NAME}.txt"
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
@@ -1471,11 +1469,11 @@ EOF
 EOF
 	fi
     info "${ICON_INFO}  ${MSG_WRITE_CREDENTIALS_END}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Afficher le résultat final
 function display_result() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO}  ${MSG_DISPLAY_RESULT_START}"
     MESSAGE=""
 	if [[ -f "${FICHIER_MSG}" ]]; then
@@ -1487,11 +1485,11 @@ function display_result() {
         dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_NONOK}" --msgbox "${ICON_KO}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
     fi
     info "${ICON_INFO}  ${MSG_DISPLAY_RESULT_END}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Activé ou déactivé le mode maintenance (1 ou 0)
 function maintenance(){ 
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     check_install_user "${REP_GLPI}"
     if [ "$1" == "1" ]; then
         info "${ICON_INFO}  ${MSG_MAINTENANCE_ON}"
@@ -1501,11 +1499,11 @@ function maintenance(){
         sudo -u "${WEB_USER}" php "${REP_GLPI}"bin/console glpi:maintenance:disable 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     fi
 	sleep 2;
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Sauvegarde de la base de donnée et des fichiers de GLPI
 function backup_glpi() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_BACKUP_GLPI_START}"
     # Récupération du nom de la base de données dans le fichier config de GLPI suivant le répertoire de GLPI
     REP_GLPI=$(find /etc -maxdepth 1 -type f -name "glpi.conf" 2>/dev/null | head -n 1)
@@ -1581,11 +1579,11 @@ function backup_glpi() {
     info "${ICON_INFO} ${MSG_BACKUP_GLPI_OK}"
     sleep 2
     export REP_BACKUP REP_GLPI
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Mise à jour de GLPI
 function update_glpi() {
-    debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_UPDATE_GLPI_START}"
     # Restauration des fichiers de configuration et des plugins
     info "${ICON_INFO} ${MSG_UPDATE_GLPI_RESTORE_FILES}"
@@ -1661,5 +1659,5 @@ function update_glpi() {
         exit 1
     fi
     info "${ICON_INFO} ${MSG_UPDATE_GLPI_OK}"
-    debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
