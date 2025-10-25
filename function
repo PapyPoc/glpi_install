@@ -399,10 +399,8 @@ function prompt_install_options(){
         tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | uniq | head -n 16) 
         local args=() first=ON number=1 version_map=()
         while IFS= read -r tag; do
-            args+=("" "GLPI ${tag}" "${first}")
-            version_map+=("${tag}")
+            args+=("${tag}" "" "${first}")
             first=OFF
-            number=$((number + 1))
         done <<< "${tags}"
         exec 3>&1
         VERSION_SELECT=$(dialog --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_INSTALL}" \
@@ -413,20 +411,9 @@ function prompt_install_options(){
             warn "${ICON_WARN} ${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}"
             return 1
         fi
-        # VERSION_SELECT retourne le tag choisi (ici nous utilisons des tags numériques mapping -> version_map)
-        if ! [[ "${VERSION_SELECT}" =~ ^[0-9]+$ ]]; then
-            warn "${ICON_WARN} ${MSG_PROMPT_INSTALL_OPTIONS_VERSION_INVALID} ${VERSION_SELECT}"
-            return 1
-        fi
-        # Convertir le numéro choisi en index du tableau (0-based)
-        local index=""
-        index=$((VERSION_SELECT - 1))
-        # Récupérer le vrai tag correspondant
-        VERSION_SELECT="${version_map[$index]}"
-        if [ $index -lt 0 ] || [ $index -ge ${#version_map[@]} ]; then
-            warn "${ICON_WARN} ${MSG_PROMPT_INSTALL_OPTIONS_VERSION_OUT_OF_RANGE} ${index}"
-            return 1
-        fi
+        info "Version choisie : ${VERSION_SELECT}"
+        # Formulaire des options d'installation
+        local form="" WIDTH=0
         WIDTH_REP=$(( ${#MSG_PROMPT_INSTALL_OPTIONS_PARAM_REP} ))
         WIDTH_DB_HOST=$(( ${#MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_HOST} ))
         WIDTH_DB_NAME=$(( ${#MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_NAME} ))
