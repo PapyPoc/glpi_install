@@ -969,7 +969,7 @@ GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
 SQL
 )
     # --- Application des commandes SQL ---
-    if PAGER=cat MYSQL_PWD="${SQLROOTPWD}" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
+    if PAGER=cat MYSQL_PWD="" "${MYSQL_CMD}" -u root --batch --silent -e "${_sql_root}" mysql; then
         info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
     else
         warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
