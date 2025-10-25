@@ -31,7 +31,7 @@ function ensure_dependencies(){
     if [ -z "$missing" ]; then
         return 0
     fi
-    info "${MSG_DEPENDENCIES_MISSING}"
+    info "${MSG_DEPENDENCIES_MISSING_1}${missing}${MSG_DEPENDENCIES_MISSING_2}"
     local pkgmgr install_cmd
     local pkgs="$missing"
     if command -v apt-get >/dev/null; then
@@ -117,7 +117,8 @@ if [ "$LANGUE" == "fr" ]; then
     MSG_RESTART_SCRIPT_SU="Relance du script avec privilèges administrateur via su..."
     MSG_RESTART_ERROR="Aucune commande disponible pour élever les privilèges (sudo/su)."
     # Messages pour la gestion des dépendances
-    MSG_DEPENDENCIES_MISSING="Dépendances manquantes : ${missing}. Tentative d'installation..."
+    MSG_DEPENDENCIES_MISSING_1="Dépendances manquantes :"
+    MSG_DEPENDENCIES_MISSING_2=". Tentative d'installation..."
     MSG_DEPENDENCIES_SATISFIED="Toutes les dépendances sont satisfaites."
     MSG_DEPENDENCIES_FAILED="Échec de la vérification ou installation des dépendances."
     MSG_PACKAGE_MANAGER_NOT_FOUND="Aucun gestionnaire de paquets pris en charge trouvé pour installer : ${pkgs}"
@@ -144,7 +145,8 @@ elif [ "$LANGUE" == "en" ]; then
     MSG_RESTART_SCRIPT_SU="Restarting script with administrator privileges via su..."
     MSG_RESTART_ERROR="No command available to elevate privileges (sudo/su)."
     # Messages for dependency management
-    MSG_DEPENDENCIES_MISSING="Missing dependencies: ${missing}. Attempting installation..."
+    MSG_DEPENDENCIES_MISSING_1="Missing dependencies:"
+    MSG_DEPENDENCIES_MISSING_2=". Attempting installation..."
     MSG_DEPENDENCIES_SATISFIED="All dependencies are satisfied."
     MSG_DEPENDENCIES_FAILED="Failed to verify or install dependencies."
     MSG_PACKAGE_MANAGER_NOT_FOUND="No supported package manager found to install: ${pkgs}"
