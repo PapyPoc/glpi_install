@@ -298,7 +298,6 @@ function install_update(){
         return 1
     fi
     export INSTALL_OR_UPDATE
-    info "Choix de l'utilisateur : $INSTALL_OR_UPDATE"
     prompt_install_options
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
@@ -306,7 +305,6 @@ function install_update(){
 # la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
     debug "${ICON_DEBUG} ${MSG_DEBUG_START}"
-    info "Choix de l'utilisateur : $INSTALL_OR_UPDATE"
     # Recherche des installations GLPI existantes
     if [[ "${INSTALL_OR_UPDATE}" == 2 ]]; then
         check_glpi_installed
@@ -423,7 +421,7 @@ function prompt_install_options(){
         WIDTH=$(( WIDTH > WIDTH_DB_USER ? WIDTH : WIDTH_DB_USER ))
         WIDTH=$(( WIDTH + 6 ))
         local _def_rep="" rep_glpi="" _def_db_host="" db_host="" _def_db_name="" db_name="" _def_db_user="" db_user=""
-        local _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
+        local _def_rep="${REP_GLPI:-/var/www/glpi}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
         while true; do
             exec 3>&1
             form=$(dialog --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "$MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_INSTALL" \
