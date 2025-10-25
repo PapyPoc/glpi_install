@@ -14,8 +14,8 @@ source "${REP_SCRIPT}/function" # Fichier de fonctions
 trap 'on_error' ERR
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
-info "${MSG_LOAD_LANGUAGE}"
 load_language # Fichier de langue
+info "${MSG_LOAD_LANGUAGE}"
 # Regarde si la distribution est conforme
 info "${MSG_GLPI_INSTALL_START_SCRIPT}"
 # Vérifie la distribution
