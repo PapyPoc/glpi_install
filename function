@@ -839,13 +839,13 @@ function install_packages(){
         sed -i 's/^\s*;\?\s*\(apply_updates\s*=\s*\).*/\1yes/' /etc/dnf/automatic.conf
         sed -i 's/^\s*;\?\s*\(reboot\s*=\s*\).*/\1when-needed/' /etc/dnf/automatic.conf
         sed -i 's/^\s*;\?\s*\(upgrade_type\s*=\s*\).*/\1security/' /etc/dnf/automatic.conf
-        if sudo mkdir -p /etc/systemd/system/dnf-automatic.timer.d >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+        if sudo mkdir -p /etc/systemd/system/dnf-automatic.timer.d | sudo tee -a "${DEBUGFILE}" 2>>"${ERRORFILE}"; then
             info "${ICON_OK} ${MSG_INSTALL_PACKAGES_DNF_AUTO_DIR}"
         else
             warn "${ICON_WARN} ${MSG_INSTALL_PACKAGES_DNF_AUTO_DIR_FAILED}"
             return 1
         fi
-        sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf > "${DEBUGFILE}" 2>> "${ERRORFILE}" <<'EOF'
+        sudo tee /etc/systemd/system/dnf-automatic.timer.d/override.conf <<'EOF'
 [Unit]
     Description=dnf-automatic timer
     ConditionPathExists=!/run/ostree-booted
