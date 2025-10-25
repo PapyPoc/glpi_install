@@ -76,7 +76,7 @@ function export_display_env() {
         DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD GLPI_CLI_VERSION
         REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT PHPVERSION DISTRO_ID VERSION_ID
         DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
-        NEW_VERSION TAGS VERSION_SELECT TASK_CMD DISTRO_ID VERSION_ID WEB_USER LANG_FILE FUNCNAME[0] FUNCNAME[1]
+        NEW_VERSION TAGS VERSION_SELECT TASK_CMD DISTRO_ID VERSION_ID WEB_USER LANG_FILE
         ICON_WARN ICON_INFO ICON_ERROR ICON_DEBUG MSG_ERROR_ON_ERROR_1 MSG_ERROR_ON_ERROR_2 MSG_ERROR_ON_ERROR_3
         MSG_ERROR_ON_ERROR_4 MSG_ERROR_ON_ERROR_5 MSG_ERROR_DIALOG_TITLE MSG_ERROR_DIALOG_ERROR MSG_CHECK_DISTRO_OK
         MSG_CHECK_DISTRO_NONOK MSG_CHECK_DISTRO_FORCE MSG_CHECK_DISTRO_FORCE_QUESTION MSG_CHECK_DISTRO_CONTINUING
@@ -89,7 +89,7 @@ function export_display_env() {
         db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd glpi_cli_version
         rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output phpversion distro_id version_id
         debian_versions ubuntu_versions alma_versions centos_versions rocky_versions redhat_versions msg_upgrade_distro
-        new_version tags version_select task_cmd distro_id version_id web_user lang_file funcname[0] funcname[1]
+        new_version tags version_select task_cmd distro_id version_id web_user lang_file
         icon_warn icon_info icon_error icon_debug msg_error_on_error_1 msg_error_on_error_2 msg_error_on_error_3
         msg_error_on_error_4 msg_error_on_error_5 msg_error_dialog_title msg_error_dialog_error msg_check_distro_ok
         msg_check_distro_nonok msg_check_distro_force msg_check_distro_force_question msg_check_distro_continuing
