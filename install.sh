@@ -86,7 +86,7 @@ ERRORFILE="${REP_SCRIPT}/error.log"
 DEBUGFILE="${REP_SCRIPT}/debug.log"
 # Détection de la distribution
 if . /etc/os-release 2>/dev/null; then
-    DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
+    DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]') 
 else
     exit 1
 fi
