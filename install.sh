@@ -6,7 +6,7 @@
 # Install file
 # Langage pris en compte français et anglais
 #
-# set -Eeuo pipefail
+set -Eeuo pipefail
 clear
 # Langue du systeme
 LANGUE="${LANG%%_*}"
