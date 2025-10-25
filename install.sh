@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+#
+# GLPI install script
+# Author: PapyPoc
+# Version: 1.9.0
+# Install file
+# Langage pris en compte français et anglais
+#
 set -Eeuo pipefail
 clear
 # Langue du systeme
