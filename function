@@ -72,19 +72,29 @@ function export_display_env() {
     # Les valeurs par défaut sont vides si elles ne sont pas définies.
     local vars_maj=(
         ORIG_USER ADMIN_GROUP ID VERSION_ID ID NAME PRETTY_NAME MSG_NONOK NEW_VERSION REP_GLPI FICHIER_MSG
-        ERRORFILE LOGFILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS INTERFACE DOWNLOADLINK
-        DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD
-        REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT PHPVERSION
+        ERRORFILE LOGFILE TASK_INDEX TASK_KEY LANGUAGE TIMEZONE IPADRESS INTERFACE DOWNLOADLINK MODE
+        DB_USER DB_NAME SQLROOTPWD SQLGLPIPWD ADMINGLPIPWD POSTGLPIPWD TECHGLPIPWD NORMGLPIPWD GLPI_CLI_VERSION
+        REP_BACKUP BDD_BACKUP REP_SCRIPT MYSQL_CMD MYSQLDUMP_CMD OUTPUT PHPVERSION DISTRO_ID VERSION_ID
         DEBIAN_VERSIONS UBUNTU_VERSIONS ALMA_VERSIONS CENTOS_VERSIONS ROCKY_VERSIONS REDHAT_VERSIONS MSG_UPGRADE_DISTRO
-        NEW_VERSION TAGS VERSION_SELECT TASK_CMD DISTRO_ID VERSION_ID WEB_USER 
+        NEW_VERSION TAGS VERSION_SELECT TASK_CMD DISTRO_ID VERSION_ID WEB_USER LANG_FILE FUNCNAME[0] FUNCNAME[1]
+        ICON_WARN ICON_INFO ICON_ERROR ICON_DEBUG MSG_ERROR_ON_ERROR_1 MSG_ERROR_ON_ERROR_2 MSG_ERROR_ON_ERROR_3
+        MSG_ERROR_ON_ERROR_4 MSG_ERROR_ON_ERROR_5 MSG_ERROR_DIALOG_TITLE MSG_ERROR_DIALOG_ERROR MSG_CHECK_DISTRO_OK
+        MSG_CHECK_DISTRO_NONOK MSG_CHECK_DISTRO_FORCE MSG_CHECK_DISTRO_FORCE_QUESTION MSG_CHECK_DISTRO_CONTINUING
+        MSG_CHECK_DISTRO_EXITING MSG_CHECK_DISTRO_INVALID MSG_LANG_FILE MSG_LANG_NOT_FOUND MSG_DEBUG_START MSG_DEBUG_END
+        INTERFACE INVOKING_HOME REP_BACKUP_COMPRESS API_URL PATHS_TO_CHECK MSG_SCRIPT_NON_INTERACTIVE_DISTRO
     )
     local vars_min=(
         orig_user admin_group id version_id id name pretty_name msg_nonok new_version rep_glpi fichier_msg
-        errorfile logfile task_index task_key language timezone ipadress interface downloadlink
-        db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd
-        rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output phpversion
+        errorfile logfile task_index task_key language timezone ipadress interface downloadlink mode
+        db_user db_name sqlrootpwd sqlglpipwd adminglpipwd postglpipwd techglpipwd normglpipwd glpi_cli_version
+        rep_backup bdd_backup rep_script mysql_cmd mysqldump_cmd output phpversion distro_id version_id
         debian_versions ubuntu_versions alma_versions centos_versions rocky_versions redhat_versions msg_upgrade_distro
-        new_version tags version_select task_cmd distro_id version_id web_user 
+        new_version tags version_select task_cmd distro_id version_id web_user lang_file funcname[0] funcname[1]
+        icon_warn icon_info icon_error icon_debug msg_error_on_error_1 msg_error_on_error_2 msg_error_on_error_3
+        msg_error_on_error_4 msg_error_on_error_5 msg_error_dialog_title msg_error_dialog_error msg_check_distro_ok
+        msg_check_distro_nonok msg_check_distro_force msg_check_distro_force_question msg_check_distro_continuing
+        msg_check_distro_exiting msg_check_distro_invalid msg_lang_file msg_lang_not_found msg_debug_start msg_debug_end
+        interface invoking_home rep_backup_compress api_url paths_to_check msg_script_non_interactive_distro
     )
     local v _val
     for v in "${vars_maj[@]}" "${vars_min[@]}"; do
@@ -282,7 +292,7 @@ function install_update(){
     rc=$?
     exec 3>&-
     if [[ $rc -ne 0 ]]; then
-        error "${ICON_ERROR} ${ICON_ERROR} ${MSG_INSTALL_UPGRADE_CANCELLED}"
+        error "${ICON_ERROR} ${MSG_INSTALL_UPGRADE_CANCELLED}"
         exec 3>&1
         dialog --title "${MSG_DIALOG_TITLE_CANCEL}" --msgbox "${MSG_INSTALL_UPGRADE_CANCELLED}" 7 50
         exec 3>&-
@@ -290,6 +300,7 @@ function install_update(){
     fi
     export INSTALL_OR_UPDATE
     info "Choix de l'utilisateur : $INSTALL_OR_UPDATE"
+    sleep 
     prompt_install_options
     debug "${ICON_DEBUG} ${MSG_DEBUG_END}"
 }
