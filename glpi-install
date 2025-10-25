@@ -6,7 +6,7 @@
 # Main file
 # Langage pris en compte français et anglais
 #
-set -Eeuo pipefail
+# set -Eeuo pipefail
 clear # Nettoyer le terminal
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
 # shellcheck disable=SC1091
