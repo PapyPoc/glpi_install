@@ -177,8 +177,6 @@ if [ "$EUID" -ne 0 ]; then
     # Vérification si l'utilisateur fait partie du groupe administrateur
     if id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
         info "${MSG_INSTALL_SH_USER_GROUP_1}${ADMIN_GROUP}${MSG_INSTALL_SH_USER_GROUP_2}"
-        warn "${MSG_INSTALL_SH_RESTART_SESSION}"
-        exit 0
     fi
     if command -v sudo >/dev/null 2>&1; then
         info "${MSG_INSTALL_SH_RESTART_SCRIPT_SUDO}"
