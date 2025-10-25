@@ -14,36 +14,37 @@ REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répert
 trap 'on_error' ERR
 # shellcheck disable=SC1091
 . "${REP_SCRIPT}/config" # Fichier de variable
+info "${MSG_LOAD_LANGUAGE}"
 load_language # Fichier de langue
 # Regarde si la distribution est conforme
-info "${MSG_START_SCRIPT:-Starting installation script}"
+info "${MSG_START_SCRIPT}"
 # Vérifie la distribution
-info "${MSG_CHECK_DISTRIBUTION:-Checking distribution}"
+info "${MSG_CHECK_DISTRIBUTION}"
 if ! check_distro; then # Vérification de la distribution
     dialog --title "${MSG_DIALOG_TITLE_ERROR:-Error}" --msgbox "${MSG_CHECK_DISTRO_FAILED:-Failed to check distribution}" 6 50
     error "${MSG_CHECK_DISTRO_FAILED:-Failed to check distribution}"
     exit 1
 fi
 # Demande les options d'installation ou de mise à jour
-info "${MSG_PROMPT_INSTALL_OPTIONS:-Prompting installation options}"
+info "${MSG_PROMPT_INSTALL_OPTIONS}"
 if ! prompt_install_options; then # Demande les options d'installation
     info "${MSG_PROMPT_INSTALL_OPTIONS_ABORT:-Prompt installation options aborted by user}"
     exit 1
 fi
 # Droit sur le fichier de sauvegarde des mots de passe
 if [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
-    info "${MSG_BACKUP_CREATED:-Backup file created}"
+    info "${MSG_BACKUP_CREATED}"
     chmod 600 "${FICHIER_MSG}"
     chown root:root "${FICHIER_MSG}"
-    dialog --title "${MSG_DIALOG_TITLE_INFO:-Information}" --msgbox "${MSG_BACKUP_CREATED_1:-Backup file created: }${FICHIER_MSG}${MSG_BACKUP_CREATED_2:- has been created successfully.}" 6 60
+    dialog --title "${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_BACKUP_CREATED_1}${FICHIER_MSG}${MSG_BACKUP_CREATED_2}" 6 60
 else
-    dialog --title "${MSG_DIALOG_ERROR_TITLE:-Error}" --msgbox "${MSG_BACKUP_NOT_FOUND:-Backup file not found}" 6 60
-    error "$MSG_ERROR_FICHIER_MSG:-Backup file not found"
+    dialog --title "${MSG_DIALOG_ERROR_TITLE}" --msgbox "${MSG_BACKUP_NOT_FOUND}" 6 60
+    error "$MSG_ERROR_FICHIER_MSG"
     exit 1
 fi
 # Afficher le fichier de sauvegarde des mots de passe
 if [ -f "${FICHIER_MSG}" ] || [ -s "${FICHIER_MSG}" ]; then
-    info "${MSG_DISPLAY_RESULT:-Displaying result}"
+    info "${MSG_DISPLAY_RESULT}"
     display_result
 fi
 # Affichage des fichiers de logs s'ils existent
