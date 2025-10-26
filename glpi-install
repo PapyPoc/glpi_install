@@ -50,19 +50,22 @@ if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
     display_result
 fi
 # Affichage des fichiers de logs s'ils existent
-LOGFILES="${ERRORFILE} ${DEBUGFILE} ${UPDATEFILE}"
-if [ -s "${LOGFILES}" ]; then
+LOGFILES=("${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}")
+LOGFILEP=()
+# Parcourt chaque fichier pour vérifier sa taille
+for LOGFILE in "${LOGFILES[@]}"; do
+    if [[ -s "${LOGFILE}" ]]; then
+        LOGFILEP+=("${LOGFILE}")
+    else
+        [[ -f "${LOGFILE}" ]] && rm -f "${LOGFILE}"
+    fi
+done
+# S’il reste des logs non vides, on les affiche
+if (( ${#LOGFILEP[@]} > 0 )); then
     info "${ICON_INFO} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_LOGS}"
-    LOGFILEP=""
-    for LOGFILE in ${LOGFILES}; do
-        if [ -s "${LOGFILE}" ]; then
-            LOGFILEP+="${LOGFILE} "
-        else
-            rm -rf "${LOGFILE}"
-        fi
-    done
-    warn "${ICON_WARN} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP}"
-    dialog --title "${ICON_WARN} ${MSG_DIALOG_TITLE_WARNING}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP}" 8 70
+    info "${ICON_WARN} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP[*]}"
+    dialog --title "${ICON_WARN} ${MSG_DIALOG_TITLE_WARNING}" \
+           --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP[*]}" 8 70
 fi
 # Affichage du fichier d'information s'il existe
 if [ -s "${INFOFILE}" ]; then
