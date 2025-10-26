@@ -299,9 +299,6 @@ function check_install_user(){
 function selection_menu(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Demander à l'utilisateur s'il souhaite installer ou mettre à jour GLPI
-    exec 3>&1
-    # Redirection propre
-    exec > >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     SELECTED_MENU=$(dialog \
         --backtitle "$MSG_INSTALL_UPDATE_BACK_TITLE" \
         --title "${MSG_INSTALL_UPDATE_TITRE}" \
@@ -312,13 +309,12 @@ function selection_menu(){
         4 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
         5 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
         "" "-----------------------------" OFF \
-        7 "Sortir" OFF \
-        2>&1 1>&3)
+        7 "Sortir" OFF )
     rc=$?
     export SELECTED_MENU
     if [[ $rc -ne 0 ]]; then
         error "${ICON_ERROR} ${MSG_INSTALL_UPGRADE_CANCELLED}"
-        dialog --title "${MSG_DIALOG_TITLE_CANCEL}" --msgbox "${MSG_INSTALL_UPGRADE_CANCELLED}" 7 50 2>&1 1>&3
+        dialog --title "${MSG_DIALOG_TITLE_CANCEL}" --msgbox "${MSG_INSTALL_UPGRADE_CANCELLED}" 7 50
         return 1
     fi
     if [[ $rc == 7 ]]; then
@@ -332,10 +328,6 @@ function selection_menu(){
 # la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    # Recherche des installations GLPI existantes
-    exec 3>&1
-    # Redirection propre
-    exec > >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     if [[ "${SELECTED_MENU}" == 1 ]]; then
         tags=""
         # Récupère les tags au format X.Y.Z
@@ -346,7 +338,7 @@ function prompt_install_options(){
             first=OFF
         done <<< "${tags}"
         VERSION_SELECT=$(dialog --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_INSTALL}" \
-        --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_RADIOLIST_INSTALL}" 23 50 8 "${args[@]}" 2>&1 1>&3)
+        --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_RADIOLIST_INSTALL}" 23 50 8 "${args[@]}")
         local rc=$?
         if [ "${rc}" -ne 0 ]; then
             warn "${ICON_WARN} ${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}"
@@ -370,8 +362,7 @@ function prompt_install_options(){
                 "📁 ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_REP}"     1 2 "${_def_rep}"     1 ${WIDTH} 20 40 \
                 "🖥️ ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_HOST}" 3 2 "${_def_db_host}" 3 ${WIDTH} 20 20 \
                 "🗄️ ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_NAME}" 5 2 "${_def_db}"      5 ${WIDTH} 20 20 \
-                "👤 ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_USER}" 7 2 "${_def_user}"    7 ${WIDTH} 20 20 \
-                2>&1 1>&3)
+                "👤 ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_USER}" 7 2 "${_def_user}"    7 ${WIDTH} 20 20)
             rc=$?
             # Transformer les lignes du formulaire en variables
             IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
@@ -402,7 +393,7 @@ function prompt_install_options(){
             # Si annulation ou ESC
             if [[ $rc -ne 0 ]]; then
                 warn "${ICON_WARN} ${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}"
-                dialog --title "${MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}" 7 60 2>&1 1>&3
+                dialog --title "${MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}" 7 60
                 exit 1
             fi
             # --- VALIDATIONS ---
@@ -475,8 +466,7 @@ function prompt_install_options(){
                 --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_UPDATE" \
                 --title "${MSG_PROMPT_INSTALL_OPTIONS_DIR_TITLE_UPDATE}" \
                 --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_DIR_RADIOLIST_UPDATE}" 20 70 8 \
-                "${find_rep[@]}" \
-                2>&1 1>&3)
+                "${find_rep[@]}" )
             rc=$?
             # Convertir le numéro choisi en index du tableau (0-based)
             local index=""
@@ -485,7 +475,7 @@ function prompt_install_options(){
             REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
                 warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50 2>&1 1>&3
+                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
                 return 1
             fi
             # Sélecteur de version GLPI
@@ -493,8 +483,7 @@ function prompt_install_options(){
                 --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_UPDATE" \
                 --title "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_UPDATE}" \
                 --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_RADIOLIST_UPDATE}" 23 50 8 \
-                "${find_version[@]}" \
-                2>&1 1>&3)
+                "${find_version[@]}")
             rc=$?
             if [[ "${rc}" -ne 0 ]]; then
                 warn "${ICON_WARN} Sélection de la version annulée."
@@ -505,7 +494,7 @@ function prompt_install_options(){
             index=$((VERSION_SELECT - 1))
             # Récupérer le vrai tag correspondant
             VERSION_SELECT="${version_map[$index]}"
-            dialog --title "${MSG_INFO}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_MSG_UPDATE}" 10 100  2>&1 1>&3
+            dialog --title "${MSG_INFO}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_MSG_UPDATE}" 10 100
             export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
             export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME GLPI_CLI_VERSION
             # Lancement de la mise à jour
@@ -531,8 +520,7 @@ function prompt_install_options(){
                 --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKUP_BACKTITLE" \
                 --title "${MSG_PROMPT_INSTALL_OPTIONS_BACKUP_TITLE}" \
                 --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_BACKUP_RADIOLIST}" 20 70 8 \
-                "${find_rep[@]}" \
-                 2>&1 1>&3)
+                "${find_rep[@]}")
             rc=$?
             # Convertir le numéro choisi en index du tableau (0-based)
             local index=""
@@ -541,7 +529,7 @@ function prompt_install_options(){
             REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
                 warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-                dialog --title "Annulation" --msgbox "Sauvegarde annulée par l'utilisateur." 7 50  2>&1 1>&3
+                dialog --title "Annulation" --msgbox "Sauvegarde annulée par l'utilisateur." 7 50
                 return 1
             fi
             export REP_GLPI INVOKING_HOME REP_BACKUP_COMPRESS
@@ -575,8 +563,7 @@ function prompt_install_options(){
                 --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_RESTORE_BACKTITLE" \
                 --title "${MSG_PROMPT_INSTALL_OPTIONS_RESTORE_TITLE}" \
                 --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_RESTORE_RADIOLIST}" 20 70 8 \
-                "${find_bck[@]}" \
-                 2>&1 1>&3)
+                "${find_bck[@]}")
             rc=$?
             # Convertir le numéro choisi en index du tableau (0-based)
             local index=""
@@ -585,12 +572,12 @@ function prompt_install_options(){
             REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
                 warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-                dialog --title "Annulation" --msgbox "Restauration annulée par l'utilisateur." 7 50 2>&1 1>&3
+                dialog --title "Annulation" --msgbox "Restauration annulée par l'utilisateur." 7 50
                 return 1
             fi
             export REP_GLPI INVOKING_HOME REP_BACKUP_COMPRESS
             # Lancement de la restauration
-            run_sequence "restore" >&3
+            run_sequence "restore"      
         fi
     else
         warn "${ICON_WARN} Option d'installation/mise à jour invalide."
