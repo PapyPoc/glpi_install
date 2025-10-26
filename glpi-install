@@ -62,11 +62,11 @@ if [ -s "${LOGFILES}" ]; then
         fi
     done
     warn "${ICON_WARN} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP}"
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP}" 8 70
+    dialog --title "${ICON_WARN} ${MSG_DIALOG_TITLE_WARNING}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP}" 8 70
 fi
 # Affichage du fichier d'information s'il existe
 if [ -s "${INFOFILE}" ]; then
     info "${ICON_INFO} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}"
-    dialog --title "${MSG_DIALOG_WARNING_TITLE}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}" 8 70
+    dialog --title "${ICON_INFO} ${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}" 8 70
 fi
 info "${ICON_INFO} ${MSG_GLPI_INSTALL_END_SCRIPT}"
