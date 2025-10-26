@@ -1457,6 +1457,7 @@ EOF
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){
     trap 'on_error' ERR
+    set -Euo pipefail
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO}  ${MSG_MAJ_USER_GLPI_START}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
