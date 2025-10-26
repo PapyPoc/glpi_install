@@ -14,19 +14,13 @@ source "${REP_SCRIPT}/function" # Fichier de fonctions
 trap 'on_error' ERR
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
-exec 3>&1
-exec > >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-load_language # Fichier de langue
-#exec 3>&1                   # sauvegarde du terminal (pour dialog)
-#exec >"${DEBUGFILE}"        # redirige stdout vers debug.log
-#exec 2>"${ERRORFILE}"       # redirige stderr vers error.log
 info "${ICON_INFO} ${MSG_LOAD_LANGUAGE}"
 # Regarde si la distribution est conforme
 info "${ICON_INFO} ${MSG_GLPI_INSTALL_START_SCRIPT}"
 # Vérifie la distribution
 info "${ICON_INFO} ${MSG_GLPI_INSTALL_CHECK_DISTRIBUTION}"
 if ! check_distro; then # Vérification de la distribution
-    dialog --title "${ICON_ERROR} ${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_CHECK_DISTRO_FAILED}" 6 50
+    dialog --title "${ICON_ERROR} ${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_CHECK_DISTRO_FAILED}" 6 50 >/dev/tty 2>&1
     error "${ICON_ERROR} ${MSG_GLPI_INSTALL_CHECK_DISTRO_FAILED}"
     exit 1
 fi
@@ -48,10 +42,10 @@ if file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIE
     info "${ICON_INFO} ${MSG_GLPI_INSTALL_BACKUP_CREATED}"
     chmod -Rf 500 "${INVOKING_HOME}/saved_credentials"
     chown root:root "${file_save}"
-    dialog --title "${ICON_INFO} ${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_CREATED_1}${file_save}${MSG_GLPI_INSTALL_BACKUP_CREATED_2}" 6 60
+    dialog --title "${ICON_INFO} ${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_CREATED_1}${file_save}${MSG_GLPI_INSTALL_BACKUP_CREATED_2}" 6 60 >/dev/tty 2>&1
     export file_save
 else
-    dialog --title "${ICON_ERROR} ${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${file_save}.txt" 6 60
+    dialog --title "${ICON_ERROR} ${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${file_save}.txt" 6 60 >/dev/tty 2>&1
     error "${ICON_ERROR} ${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND} ${file_save}.txt"
     exit 1
 fi
@@ -76,12 +70,12 @@ if (( ${#LOGFILEP[@]} > 0 )); then
     info "${ICON_INFO} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_LOGS}"
     info "${ICON_WARN} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP[*]}"
     dialog --title "${ICON_WARN} ${MSG_DIALOG_TITLE_WARNING}" \
-           --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP[*]}" 8 70
+           --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP[*]}" 8 70 >/dev/tty 2>&1
 fi
 # Affichage du fichier d'information s'il existe
 if [ -s "${INFOFILE}" ]; then
     info "${ICON_INFO} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}"
-    dialog --title "${ICON_INFO} ${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}" 8 70
+    dialog --title "${ICON_INFO} ${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}" 8 70 >/dev/tty 2>&1
 fi
 clear
-info "${ICON_INFO} ${MSG_GLPI_INSTALL_END_SCRIPT}" #>&3
+info "${ICON_INFO} ${MSG_GLPI_INSTALL_END_SCRIPT}"
