@@ -46,7 +46,7 @@ else
 fi
 # Afficher le fichier de sauvegarde des mots de passe
 if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
-    info "${ICON_WARN} ${MSG_GLPI_INSTALL_DISPLAY_RESULT_START}"
+    info "${ICON_WARN} ${MSG_GLPI_INSTALL_DISPLAY_RESULT}"
     display_result
 fi
 # Affichage des fichiers de logs s'ils existent
