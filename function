@@ -1637,9 +1637,9 @@ function display_result() {
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
         done < "${file_save}"
-        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_OK}" --msgbox "${MESSAGE}" 0 0
+        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_OK}" --msgbox "${MESSAGE}" 0 0 >/dev/tty 2>&1
     else
-        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_NONOK}" --msgbox "${ICON_KO}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
+        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_NONOK}" --msgbox "${ICON_KO}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0 >/dev/tty 2>&1
     fi
     info "${ICON_INFO}  ${MSG_DISPLAY_RESULT_END}"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
