@@ -697,6 +697,10 @@ function run_sequence() {
     local mode="$1"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     trap 'on_error' ERR
+    # Sauvegarde du terminal
+    exec 3>&1
+    # Redirection propre
+    exec > >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     declare -A tasks
     local task_order=()
     # --- Sélection du mode ---
@@ -778,7 +782,7 @@ function run_sequence() {
     ) | dialog --clear \
                --backtitle "$MSG_RUN_SEQUENCE_BACKTITLE" \
                --title "$MSG_RUN_SEQUENCE_GAUGE_TITLE" \
-               --gauge "" 8 120
+               --gauge "" 8 120 2>&1 1>&3
     # --- Vérification du sous-shell ---
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         warn "${ICON_WARN} ${MSG_RUN_SEQUENCE_FAILED_MODE} (${mode})"
@@ -786,7 +790,7 @@ function run_sequence() {
         return 1
     fi
     info "${ICON_INFO} ${MSG_RUN_SEQUENCE_END}"
-    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}" >&3
 }
 # Exécute une tâche individuelle
 function run_task() {
