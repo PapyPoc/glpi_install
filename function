@@ -776,7 +776,7 @@ function run_sequence() {
 function run_task() {
     local task_key="$1" task_cmd="$2" index="$3" total="$4"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    debug "${ICON_INFO} ${MSG_RUN_TASK_COMMAND} ${task_cmd}"
+    debug "${ICON_INFO} ${MSG_RUN_TASK_COMMAND} ${task_cmd}" ${task_key}/${total}
     # Exécution isolée
     local output exit_code
     output=$(eval "${task_cmd}" 2>&1)
