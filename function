@@ -663,7 +663,7 @@ function run_sequence() {
             ;;
         backup)
             tasks=(
-                ["${MSG_T30}"]="backup_glpi_only"
+                ["${MSG_T30}"]="backup_glpi"
             )
             task_order=(
                 "${MSG_T30}"
