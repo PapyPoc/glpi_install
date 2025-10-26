@@ -82,4 +82,4 @@ if [ -s "${INFOFILE}" ]; then
     dialog --title "${ICON_INFO} ${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}" 8 70
 fi
 clear
-info "${ICON_INFO} ${MSG_GLPI_INSTALL_END_SCRIPT}"
+info "${ICON_INFO} ${MSG_GLPI_INSTALL_END_SCRIPT}" >&3
