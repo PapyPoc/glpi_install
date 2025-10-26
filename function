@@ -505,9 +505,9 @@ function prompt_install_options(){
             done
             # Sélecteur de répertoire GLPI pour sauvegarde
             FIND_REP_GLPI=$(dialog \
-                --backtitle "$MSG_PROMPT_BACKUP_OPTIONS_BACKTITLE" \
-                --title "${MSG_PROMPT_BACKUP_OPTIONS_DIR_TITLE}" \
-                --radiolist "${MSG_PROMPT_BACKUP_OPTIONS_DIR_RADIOLIST}" 20 70 8 \
+                --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKUP_BACKTITLE" \
+                --title "${MSG_PROMPT_INSTALL_OPTIONS_BACKUP_TITLE}" \
+                --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_BACKUP_RADIOLIST}" 20 70 8 \
                 "${find_rep[@]}" \
                 2>&1 >/dev/tty)
             rc=$?
