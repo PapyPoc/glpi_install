@@ -328,7 +328,6 @@ function selection_menu(){
 # la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    clear
     if [[ "${SELECTED_MENU}" == 1 ]]; then
         tags=""
         # Récupère les tags au format X.Y.Z
