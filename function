@@ -895,15 +895,36 @@ function manage_service() {
     local service="$1"
     local label="$2"
     info "${ICON_INFO} ${MSG_MANAGE_SERVICE_START} ${label}..."
+    # Activer et redémarrer le service avec journalisation
     {
-        systemctl enable "${service}"
-        systemctl restart "${service}"
-    } >>"${DEBUGFILE}" 2>>"${ERRORFILE}" || {
+        systemctl enable "${service}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"
+        systemctl restart "${service}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"
+    } || {
         error "${ICON_ERROR} ${MSG_MANAGE_SERVICE_FAILED} ${label}."
         return 1
     }
-    info "${ICON_INFO} ${MSG_MANAGE_SERVICE_INFO} ${label}."
+    # Vérifier l'état du service
+    if systemctl is-active --quiet "${service}"; then
+        info "${ICON_OK} ${MSG_MANAGE_SERVICE_OK} ${label}."
+    else
+        warn "${ICON_WARN} ${MSG_MANAGE_SERVICE_INACTIVE} ${label}."
+        # Forcer le redémarrage une seconde fois
+        {
+            systemctl restart "${service}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"
+        } || {
+            error "${ICON_ERROR} ${MSG_MANAGE_SERVICE_INACTIVE_FAILED} ${label}."
+            return 1
+        }
+        # Vérifier à nouveau l'état du service
+        if systemctl is-active --quiet "${service}"; then
+            info "${ICON_OK} ${MSG_MANAGE_SERVICE_INACTIVE_OK} ${label}."
+        else
+            error "${ICON_ERROR} ${MSG_MANAGE_SERVICE_STILL_INACTIVE} ${label}."
+            return 1
+        fi
+    fi
 }
+
 function get_timezone() {
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Détection du fuseau horaire
@@ -945,10 +966,13 @@ function mariadb_configure() {
         return 1
     fi
     get_timezone
-    debug "${ICON_DEBUG} Utilisation de la commande : ${MYSQL_CMD}"
-    debug "${ICON_DEBUG} Configuration de la base de données MariaDB/MySQL"
-    debug "${ICON_DEBUG} Connexion à l'hôte : ${DB_HOST}"
-    debug "${ICON_DEBUG} Création base : ${DB_NAME}, utilisateur : ${DB_USER}, timezone : ${TIMEZONES}"
+    info "${ICON_DEBUG} Utilisation de la commande : ${MYSQL_CMD}"
+    info "${ICON_DEBUG} Configuration de la base de données MariaDB/MySQL"
+    info "${ICON_DEBUG} Mot de passe root : ${SQLROOTPWD}"
+    info "${ICON_DEBUG} Connexion à l'hôte : ${DB_HOST}"
+    info "${ICON_DEBUG} Création base : ${DB_NAME}"
+    info "${ICON_DEBUG} Utilisateur : ${DB_USER}, Mdp : ${SQLGLPIPWD}"
+    info "${ICON_DEBUG} timezone : ${TIMEZONES}"
     # --- Script SQL principal ---
     local _sql_root
     _sql_root=$(cat <<SQL
