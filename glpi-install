@@ -31,6 +31,7 @@ if ! selection_menu; then # Demande les options d'installation
     info "${ICON_WARN} ${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS_ABORT}"
     exit 1
 fi
+info "Fichier de sauvegarde des mots de passe : ${FICHIER_MSG}"
 # Droit sur le fichier de sauvegarde des mots de passe
 if [ -f "${FICHIER_MSG}" ]; then # Vérifie si le fichier de sauvegarde existe
     info "${ICON_INFO} ${MSG_GLPI_INSTALL_BACKUP_CREATED}"

@@ -1170,7 +1170,7 @@ function setup_glpi(){
     source_os_release
     local CMD=(
     php "${REP_GLPI}bin/console" db:install
-    --db-host localhost
+    --db-host "${DB_HOST}"
     --db-port=3306
     --db-name="${DB_NAME}"
     --db-user="${DB_USER}"
@@ -1181,6 +1181,7 @@ function setup_glpi(){
     --quiet
     --no-interaction
     )
+    info "Hôte de la base de données : ${DB_HOST}"
     info "Nom de la base de données : ${DB_NAME}"
     info "Utilisateur de la base de données : ${DB_USER}"
     info "MDP : ${SQLGLPIPWD}"
