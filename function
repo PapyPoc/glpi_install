@@ -264,7 +264,24 @@ function check_glpi_installed(){
     #echo "Répertoires GLPI trouvés : ${glpi_dirs[*]}"
     export glpi_dirs FIND_REP_GLPI
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-} 
+}
+# Recherche si des sauvegardes existent
+function check_backups_existed(){
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    BACKUP_FOUND="no"
+    # Vérifie si le répertoire de sauvegarde existe
+    if [[ -d "${REP_BACKUP}" ]]; then
+        # Recherche des fichiers de sauvegarde dans le répertoire
+        shopt -s nullglob
+        backup_files=("${REP_BACKUP}"/*.tar.gz "${REP_BACKUP}"/*.zip)
+        shopt -u nullglob
+        if [[ ${#backup_files[@]} -gt 0 ]]; then
+            BACKUP_FOUND="yes"
+        fi
+    fi
+    export BACKUP_FOUND
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+}
 # Vérifie l'utilisateur web pour le répertoire GLPI
 function check_install_user(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
@@ -287,9 +304,14 @@ function selection_menu(){
         --backtitle "$MSG_INSTALL_UPDATE_BACK_TITLE" \
         --title "${MSG_INSTALL_UPDATE_TITRE}" \
         --radiolist "${MSG_INSTALL_UPDATE_RADIOLIST}" 15 50 3 \
+        "" "-----------------------------" OFF \
         1 "${MSG_INSTALL_UPDATE_INSTALL}" ON \
         2 "${MSG_INSTALL_UPDATE_UPDATE}" OFF \
         3 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
+        4 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
+        5 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
+        "" "-----------------------------" OFF \
+        7 "Sortir" OFF \
         3>&1 1>&2 2>&3)
     rc=$?
     exec 3>&-
@@ -520,6 +542,50 @@ function prompt_install_options(){
             export REP_GLPI INVOKING_HOME REP_BACKUP_COMPRESS
             # Lancement de la sauvegarde
             run_sequence "backup"
+        fi
+    elif [[ "${SELECTED_MENU}" == 4 ]]; then
+        # Recherche dans le répertoire de sauvegardes
+        check_backups_existed
+        if [[ "${BACKUP_FOUND}" == "yes" ]]; then
+            prompt_restore_options
+        fi
+    elif [[ "${SELECTED_MENU}" == 5 ]]; then
+        # Recherche dans le répertoire de sauvegardes
+        check_backups_existed
+        # Si au moins un fichier de sauvegarde trouvé, demander à l'utilisateur de choisir
+        if [[ "${#backup_files[@]}" -gt 0 ]]; then
+            # Préparer les arguments pour dialog
+            find_bck=()
+            rep_map=()
+            number=1
+            first="ON"
+            for dir in "${backup_files[@]}"; do
+                find_bck+=("${number}" "${dir}" "${first}")
+                rep_map+=("${dir}")
+                first="OFF"
+                ((number++))
+            done
+            # Sélecteur de répertoire GLPI pour restauration
+            FIND_REP_GLPI=$(dialog \
+                --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_RESTORE_BACKTITLE" \
+                --title "${MSG_PROMPT_INSTALL_OPTIONS_RESTORE_TITLE}" \
+                --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_RESTORE_RADIOLIST}" 20 70 8 \
+                "${find_bck[@]}" \
+                2>&1 >/dev/tty)
+            rc=$?
+            # Convertir le numéro choisi en index du tableau (0-based)
+            local index=""
+            index=$((FIND_REP_GLPI - 1))
+            # Récupérer le vrai chemin correspondant
+            REP_GLPI="${rep_map[$index]}"
+            if [[ $rc -ne 0 ]]; then
+                warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
+                dialog --title "Annulation" --msgbox "Restauration annulée par l'utilisateur." 7 50
+                return 1
+            fi
+            export REP_GLPI INVOKING_HOME REP_BACKUP_COMPRESS
+            # Lancement de la restauration
+            run_sequence "restore"
         fi
     else
         warn "${ICON_WARN} Option d'installation/mise à jour invalide."
@@ -1329,36 +1395,34 @@ EOF
         info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_NGINX} ${WEB_USER}"
         # Configuration de Nginx pour GLPI
         info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_NGINX_VIRTUAL_HOST}"
-        sudo tee /etc/nginx/conf.d/glpi.conf << EOF
+        sudo tee "/etc/nginx/conf.d/glpi.conf" <<EOF > /dev/null
 server {
-listen 80;
-server_name ${IPADRESS};
-root ${REP_GLPI}public;
-location / {
-    try_files \$uri /index.php\$is_args\$args;
-}
-location ~ ^/index\.php$ {
-    # the following line needs to be adapted, as it changes depending on OS distributions and PHP versions
-    fastcgi_pass unix:/var/run/php-fpm/www.sock;
-    fastcgi_split_path_info ^(.+\.php)(/.*)$;
-    include fastcgi_params;
-    fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-}
+    listen 80;
+    server_name ${IPADRESS};
+    root ${REP_GLPI}public;
+    location / {
+        try_files \$uri /index.php\$is_args\$args;
+    }
+    location ~ ^/index\.php$ {
+        # the following line needs to be adapted, as it changes depending on OS distributions and PHP versions
+        fastcgi_pass unix:/var/run/php-fpm/www.sock;
+        fastcgi_split_path_info ^(.+\.php)(/.*)$;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+    }
 }
 EOF
         info "${ICON_INFO} ${MSG_SETUP_GLPI_CREATE_LOGROTATE}"
         # Configuration de logrotate pour GLPI
-        sudo tee /etc/logrotate.d/glpi << EOF
-# Rotate GLPI logs daily, only if not empty
-# Save 14 days old logs under compressed mode
+        sudo tee "/etc/logrotate.d/glpi" <<EOF > /dev/null
 /var/lib/glpi/files/_log/*.log {
-su nginx nginx
-daily
-rotate 14
-compress
-notifempty
-missingok
-create 644 nginx nginx
+    su nginx nginx
+    daily
+    rotate 14
+    compress
+    notifempty
+    missingok
+    create 644 nginx nginx
 }
 EOF
         chmod 0644 /etc/logrotate.d/glpi
@@ -1512,9 +1576,12 @@ function rights_glpi(){
 function write_credentials(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO}  ${MSG_WRITE_CREDENTIALS_START}"
-    FICHIER_MSG+="${DB_NAME}.txt"
+    local folder_save_credentials="" file_save=""
+    folder_save_credentials="${INVOKING_HOME}/saved_credentials"
+    mkdir -p "${folder_save_credentials}"
+    file_save="${folder_save_credentials}/${FICHIER_MSG}${DB_NAME}.txt"
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
-        cat > "$FICHIER_MSG" << EOF
+        cat > "${file_save}" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
  GLPI Version: ${VERSION_SELECT}
  Répertoire d'installation de GLPI: ${REP_GLPI}
@@ -1542,7 +1609,7 @@ function write_credentials(){
  Si vous rencontrez un probléme avec ce script, veuillez le signaler sur GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	else
-		cat > "$FICHIER_MSG" << EOF
+		cat > "${file_save}" << EOF
 <=============================> GLPI installation details <=====================================>
  GLPI version: ${VERSION_SELECT}
  GLPI installation directory: ${REP_GLPI}
@@ -1570,18 +1637,19 @@ EOF
  If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
-    info "${ICON_INFO}  ${MSG_WRITE_CREDENTIALS_END}"
+    info "${ICON_INFO} ${MSG_WRITE_CREDENTIALS_END}"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Afficher le résultat final
 function display_result() {
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO}  ${MSG_DISPLAY_RESULT_START}"
-    MESSAGE=""
-	if [[ -f "${FICHIER_MSG}" ]]; then
+    local MESSAGE="" file_save=""
+    file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}${DB_NAME}*" | head -n 1)
+	if [[ -f "${file_save}" ]]; then
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
-        done < "${FICHIER_MSG}"
+        done < "${file_save}"
         dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_OK}" --msgbox "${MESSAGE}" 0 0
     else
         dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_NONOK}" --msgbox "${ICON_KO}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0
