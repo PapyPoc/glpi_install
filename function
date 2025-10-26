@@ -1071,10 +1071,12 @@ SQL
 # Téléchargement et décompression de GLPI
 function download_untar_glpi(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    trap 'on_error' ERR
+    set -E -o pipefail
     info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_START}"
     # Téléchargement de GLPI
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
-    debug "${ICON_DEBUG} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD} ${DOWNLOADLINK} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD_TOWARDS} ${tmp_file}"
+    info "${ICON_DEBUG} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD} ${DOWNLOADLINK} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD_TOWARDS} ${tmp_file}"
     if wget -q -O "$tmp_file" "${DOWNLOADLINK}" 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
         info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD_COMPLETED}"
     else
@@ -1082,8 +1084,7 @@ function download_untar_glpi(){
         rm -f "$tmp_file"
         return 1
     fi
-    if [ -d "$REP_GLPI" ]; then
-        mkdir -p "$REP_GLPI"
+    if mkdir -p "$REP_GLPI"; then
         info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_DIR_CREATE} ${REP_GLPI}"
     else
         warn "${ICON_WARN} ${MSG_DOWNLOAD_UNTAR_GLPI_DIR_CREATE_FAILED}"
@@ -1093,13 +1094,12 @@ function download_untar_glpi(){
     # Extraire l'archive dans le répertoire d'installation
     if tar xzf "$tmp_file" --strip-components=1 -C "$REP_GLPI"; then
         info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_EXTRACT_OK} ${REP_GLPI}"
-        
+        rm -f "$tmp_file"
     else
         warn "${ICON_WARN} ${MSG_DOWNLOAD_UNTAR_GLPI_EXTRACT_FAILED}"
         rm -f "$tmp_file"
         return 1
     fi
-    rm -f "$tmp_file"
     sleep 5 # Pause pour s'assurer que les fichiers sont bien écrits
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
