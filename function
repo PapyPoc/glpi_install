@@ -692,8 +692,8 @@ function run_sequence() {
                 ["${MSG_T02}"]="install_packages"
                 ["${MSG_T03}"]="network_info"
                 ["${MSG_T04}"]="mariadb_configure"
-                ["${MSG_T05} ${VERSION_SELECT}"]="download_untar_glpi"
-                ["${MSG_T06} ${VERSION_SELECT}"]="setup_glpi"
+                ["${MSG_T05}"]="download_untar_glpi"
+                ["${MSG_T06}"]="setup_glpi"
                 ["${MSG_T07}"]="maj_user_glpi"
                 ["${MSG_T08}"]="write_credentials"
             )
@@ -755,7 +755,6 @@ function run_sequence() {
             echo "XXX"
             echo "${task_index}/${total_tasks} - ${task_key} ${ICON_KO}"
             echo "XXX"
-
             debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_KO} ${MSG_RUN_SEQUENCE_END} ${mode} - '${task_key}'."
             sleep 3
             exit 1  # << plus sûr que return dans un sous-shell
