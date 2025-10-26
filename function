@@ -764,7 +764,7 @@ function run_sequence() {
 ) | dialog --clear \
            --backtitle "${MSG_RUN_SEQUENCE_BACKTITLE}" \
            --title "${MSG_RUN_SEQUENCE_GAUGE_TITLE}" \
-           --gauge "" 8 120 2>&1 >/dev/tty
+           --gauge "" 8 120 /dev/tty 2>&1
 # --- Vérification du sous-shell ---
 if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
     warn "${ICON_WARN} ${MSG_RUN_SEQUENCE_FAILED_MODE} (${mode})"
