@@ -1247,6 +1247,7 @@ EOF
         warn "${ICON_WARN} ${MSG_SETUP_GLPI_RIGHTS_MODIFY_FAILED}"
         return 1
     fi
+    sync # S'assurer que toutes les écritures sont terminées
     info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG} ${REP_GLPI}"
     if check_install_user "${REP_GLPI}"; then
         info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_USER_DETECTED} ${WEB_USER}"
@@ -1308,11 +1309,13 @@ EOF
                 warn "${ICON_WARN} ${MSG_SETUP_GLPI_RIGHTS_MODIFY_FAILED}"
                 return 1
             fi
+            sync # S'assurer que toutes les écritures sont terminées
             # Installation de GLPI en ligne de commande
             debug "${ICON_DEBUG} $(date '+%Y-%m-%d %H:%M:%S') - [INFO] Exécution : sudo -u ${WEB_USER} php ${CMD[*]}"
             # Exécuter la commande en tant que "${WEB_USER}". Utiliser sudo tee pour écrire vers les fichiers protégés.
             if sudo -u "${WEB_USER}" "${CMD[@]}" | sudo tee -a "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
                 info "${ICON_OK} Installation GLPI réussie."
+                sync # S'assurer que toutes les écritures sont terminées
             else
                 warn "${ICON_WARN} Échec de l’installation GLPI."
                 tail -n 10 "${ERRORFILE}" >&2  # affiche les dernières erreurs
@@ -1385,7 +1388,7 @@ EOF
         info "${ICON_INFO} ${MSG_SETUP_GLPI_CRON_CONFIG}"
         echo "*/2 * * * * ${WEB_USER} /usr/bin/php ${REP_GLPI}front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
-    sleep 5
+    sync # S'assurer que toutes les écritures sont terminées
     info "${ICON_INFO} ${MSG_SETUP_GLPI_REMOVE_INSTALL_FILE}"
     if rm -Rf "${REP_GLPI}install/install.php"; then
         info "${ICON_INFO} ${MSG_SETUP_GLPI_REMOVE_INSTALL_FILE_OK}"
@@ -1599,48 +1602,61 @@ function maintenance(){
 	sleep 2;
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
+function get_glpi_db_info() {
+    set -euo pipefail
+    REP_GLPI="${1:-/var/www/html/glpi}"
+    file_downstream="${REP_GLPI}/inc/downstream.php"
+    #local GLPI_CONFIG_DIR file_conf_glpi _conf_tmp
+    # Vérification du fichier principal
+    if [[ ! -f "${file_downstream}" ]]; then
+        echo "${ICON_WARN} Fichier downstream.php introuvable : ${file_downstream}" >&2
+        return 1
+    fi
+    # Extraction du répertoire de configuration via PHP
+    GLPI_CONFIG_DIR=$(php -r "require '${file_downstream}'; echo (defined('GLPI_CONFIG_DIR')?GLPI_CONFIG_DIR:'');")
+    if [[ -z "${GLPI_CONFIG_DIR}" ]]; then
+        echo "${ICON_WARN} Impossible de déterminer GLPI_CONFIG_DIR" >&2
+        return 1
+    fi
+    file_conf_glpi="${GLPI_CONFIG_DIR}/config_db.php"
+    if [[ ! -f "${file_conf_glpi}" ]]; then
+        echo "${ICON_WARN} Fichier de configuration introuvable : ${file_conf_glpi}" >&2
+        return 1
+    fi
+    # Création d’un fichier temporaire nettoyé des CRLF
+    _conf_tmp=$(mktemp)
+    tr -d '\r' < "${file_conf_glpi}" > "${_conf_tmp}"
+    # Extraction des valeurs (tolérante aux espaces)
+    local DB_HOST DB_USER DB_PASSWORD DB_NAME GLPI_VERSION
+    DB_HOST=$(sed -n "s/.*public[[:space:]]\+\$dbhost[[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" "${_conf_tmp}")
+    DB_USER=$(sed -n "s/.*public[[:space:]]\+\$dbuser[[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" "${_conf_tmp}")
+    DB_PASSWORD=$(sed -n "s/.*public[[:space:]]\+\$dbpassword[[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" "${_conf_tmp}")
+    DB_NAME=$(sed -n "s/.*public[[:space:]]\+\$dbdefault[[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" "${_conf_tmp}")
+    rm -f "${_conf_tmp}"
+    # Détection de version GLPI
+    GLPI_VERSION=$(php -r "require '${file_downstream}'; echo (defined('GLPI_VERSION')?GLPI_VERSION:'inconnue');")
+    # Vérification des résultats
+    if [[ -z "${DB_NAME}" || -z "${DB_USER}" ]]; then
+        warn "${ICON_WARN} Impossible d’extraire les infos de base de données depuis ${file_conf_glpi}" >&2
+        return 1
+    fi
+    # Affichage
+    info "${ICON_INFO} Informations GLPI détectées :"
+    info "  ${ICON_PACKAGE} Version GLPI : ${GLPI_VERSION}"
+    info "  ${ICON_DBHOST} Hôte DB      : ${DB_HOST}"
+    info "  ${ICON_DBNAME} Base DB      : ${DB_NAME}"
+    info "  ${ICON_DBUSER} Utilisateur  : ${DB_USER}"
+    info "  ${ICON_DBPASS} Mot de passe : ${DB_PASSWORD:0:3}********"
+    # Export optionnel des variables dans l’environnement appelant
+    export GLPI_VERSION DB_HOST DB_NAME DB_USER DB_PASSWORD
+}
 # Sauvegarde de la base de donnée et des fichiers de GLPI
 function backup_glpi() {
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_BACKUP_GLPI_START}"
     # Récupération du nom de la base de données dans le fichier config de GLPI suivant le répertoire de GLPI
-    file_downstream="${REP_GLPI}/inc/downstream.php"
-    if [[ -f "${file_downstream}" ]]; then
-        GLPI_CONFIG_DIR=$(grep "define('GLPI_CONFIG_DIR'" "${file_downstream}" | cut -d "'" -f4)
-        echo "Répertoire de configuration GLPI détecté : ${GLPI_CONFIG_DIR}"
-        # etc/glpi/config/config_db.php
-        file_conf_glpi="${GLPI_CONFIG_DIR}/config_db.php"
-        if [[ -f "${file_conf_glpi}" ]]; then
-            DB_NAME=$(grep "define('DB_NAME'" "${file_conf_glpi}" | cut -d "'" -f4)
-            DB_USER=$(grep "define('DB_USER'" "${file_conf_glpi}" | cut -d "'" -f4)
-            PASSWORD=$(grep "define('DB_PASSWORD'" "${file_conf_glpi}" | cut -d "'" -f4)
-        else
-            warn "${ICON_WARN} ${MSG_BACKUP_GLPI_CONFIG_FILE_MISSING} ${file_conf_glpi}"
-            return 1
-        fi
-        echo "Version GLPI détectée : ${GLPI_CLI_VERSION}"
-        echo "Nom de la base de données détectée : ${DB_NAME}"
-        echo "Utilisateur de la base de données détectée : ${DB_USER}"
-        echo "Mot de passe de la base de données détecté : ${DB_PASSWORD}"
-    else
-        warn "${ICON_WARN} ${MSG_BACKUP_GLPI_READ_VERSION_FAILED} ${file_downstream}"
-        return 1
-    fi
-    file_conf_glpi="${REP_GLPI}/config/config_db.php"
-    if [[ -f "${file_conf_glpi}" ]]; then
-        DB_NAME=$(grep "define('DB_NAME'" "${file_conf_glpi}" | cut -d "'" -f4)
-        PASSWORD=$(grep "define('DB_PASSWORD'" "${file_conf_glpi}" | cut -d "'" -f4)
-    else
-        warn "${ICON_WARN} ${MSG_BACKUP_GLPI_CONFIG_FILE_MISSING} ${file_conf_glpi}"
-        return 1
-    fi
-    
-    nom_db_base=$(find "${REP_GLPI}" -maxdepth 1 -type f -name "${DB_NAME}.conf" 2>/dev/null | head -n 1)
-    # Lecture des informations MySQL
-    if [ -z "${DB_NAME}" ] || [ -z "${PASSWORD}" ]; then
-    warn "${MSG_BACKUP_GLPI_READ_SAUVE_FAILED}"
-        return 1
-    fi
+    info "${ICON_INFO} ${MSG_BACKUP_GLPI_READ_SAUVE}"
+    get_glpi_db_info "${REP_GLPI}"
     # Détermination de l’outil de dump
     local MYSQLDUMP_CMD
     MYSQLDUMP_CMD=$(command -v mysqldump 2>/dev/null || command -v mariadb-dump 2>/dev/null || echo mysqldump)
@@ -1654,13 +1670,13 @@ function backup_glpi() {
     # --- Export de la BDD ---
     info "${ICON_INFO} ${MSG_BACKUP_GLPI_DUMP_DB}"
     # shellcheck disable=SC2261
-    if ${MYSQLDUMP_CMD} -u root -p"${PASSWORD}" --databases "${DB_NAME}" \
+    if ${MYSQLDUMP_CMD} -u "${DB_USER}" -p"${DB_PASSWORD}" --databases "${DB_NAME}" \
             > "${REP_BACKUP}/${BDD_BACKUP}" \
             >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
         if [[ -s "${REP_BACKUP}/${BDD_BACKUP}" ]]; then
             info "${ICON_OK} ${MSG_BACKUP_GLPI_DUMP_DB_OK}"
         else
-            warn "${ICON_WARN} Fichier de sauvegarde vide : ${REP_BACKUP}/${BDD_BACKUP}"
+            warn "${ICON_WARN} ${MSG_BACKUP_GLPI_DUMP_DB_EMPTY} ${REP_BACKUP}/${BDD_BACKUP}"
             return 1
         fi
     else
