@@ -1187,7 +1187,7 @@ function setup_glpi(){
     # Définition des répertoires
     FOLDER_LOGS="/var/log/${DB_NAME}"
     FOLDER_CONFIG="/etc/${DB_NAME}/config"
-    FOLDER_FILES="/var/lib/${DB_NAME}/files"
+    FOLDER_FILES="/var/lib/${DB_NAME}/"
     # Définition des fichiers
     FILE_APACHE_CONF="/etc/apache2/sites-available/${DB_NAME}.conf"
 
