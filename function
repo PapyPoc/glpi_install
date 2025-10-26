@@ -253,11 +253,6 @@ function check_glpi_installed(){
     for path in ${PATHS_TO_CHECK}; do
         # Recherche des dossiers contenant "glpi" jusqu’à 3 niveaux de profondeur
         FOUND=$(find "${path}" -maxdepth 3 -type d -name "*glpi*" 2>/dev/null)
-        # Si le répertoire correspond à FIND_REP_GLPI, on enregistre FIND_REP_GLPI et sort de la boucle
-        if [[ "${FOUND}" == "${FIND_REP_GLPI}" ]]; then
-            FIND_REP_GLPI="${FOUND}"
-            break
-        fi
         # Si un ou plusieurs répertoires sont trouvés, on les ajoute au tableau
         if [[ -n "$FOUND" ]]; then
             # On lit chaque ligne de la sortie de find et on l’ajoute au tableau
@@ -266,6 +261,7 @@ function check_glpi_installed(){
             done <<< "$FOUND"
         fi
     done
+    #echo "Répertoires GLPI trouvés : ${glpi_dirs[*]}"
     export glpi_dirs FIND_REP_GLPI
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 } 
@@ -491,7 +487,7 @@ function prompt_install_options(){
     elif [[ "${SELECTED_MENU}" == 3 ]]; then
         check_glpi_installed
         # Si au moins un répertoire GLPI trouvé, demander à l'utilisateur de choisir
-        if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
+        if [[ "${#glpi_dirs[*]}" -gt 0 ]]; then
             # Préparer les arguments pour dialog
             find_rep=()
             rep_map=()
