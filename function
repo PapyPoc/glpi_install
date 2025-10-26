@@ -924,20 +924,20 @@ function manage_service() {
         fi
     fi
 }
-
+# Détection du fuseau horaire système
 function get_timezone() {
-    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    # Détection du fuseau horaire
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Début de ${FUNCNAME[0]:-main}] Appelée par ${FUNCNAME[1]:-main}]"
     info "${ICON_INFO} ${MSG_DETECT_TIMEZONE:-Détection du fuseau horaire...}"
+    # Si TIMEZONES n’est pas encore défini
     if [ -z "${TIMEZONES:-}" ]; then
         local tzfile=""
-        if command -v timedatectl >/dev/null 2>&1; then
+        if command -v timedatectl >/dev/null 2>&1; then # timedatectl (méthode la plus fiable)
             TIMEZONES=$(timedatectl show -p Timezone --value 2>/dev/null || true)
         fi
-        if [ -z "${TIMEZONES:-}" ] && [ -f /etc/timezone ]; then
+        if [ -z "${TIMEZONES:-}" ] && [ -f /etc/timezone ]; then # Fichier /etc/timezone (Debian/Ubuntu)
             TIMEZONES=$(head -n 1 /etc/timezone 2>/dev/null || true)
         fi
-        if [ -z "${TIMEZONES:-}" ]; then
+        if [ -z "${TIMEZONES:-}" ]; then # Lien symbolique /etc/localtime (méthode universelle)
             if [ -L /etc/localtime ] || [ -f /etc/localtime ]; then
                 tzfile=$(readlink -f /etc/localtime 2>/dev/null || true)
                 if [[ "$tzfile" == *"/usr/share/zoneinfo/"* ]]; then
@@ -945,14 +945,19 @@ function get_timezone() {
                 fi
             fi
         fi
-        if [ -z "${TIMEZONES:-}" ] && [ -f /etc/sysconfig/clock ]; then
+        if [ -z "${TIMEZONES:-}" ] && [ -f /etc/sysconfig/clock ]; then # /etc/sysconfig/clock (RHEL / CentOS)
             TIMEZONES=$(awk -F= '/^ZONE/ {gsub(/"/,"",$2); print $2}' /etc/sysconfig/clock 2>/dev/null || true)
         fi
-        TIMEZONES="${TIMEZONE:-UTC}"
+        if [ -z "${TIMEZONES:-}" ]; then # Par défaut si rien trouvé
+            TIMEZONES="UTC"
+        fi
+        TIMEZONES="$(echo "${TIMEZONES}" | xargs)"
         export TIMEZONES
         info "${ICON_OK} ${MSG_GET_TIMEZONE_DETECTED} ${TIMEZONES}"
+    else
+        info "${ICON_INFO} ${MSG_GET_TIMEZONE_ALREADY_SET} ${TIMEZONES}"
     fi
-    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appelée par ${FUNCNAME[1]:-main}]"
 }
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
@@ -989,8 +994,9 @@ FLUSH PRIVILEGES;
 SQL
     )
     # --- Application du script SQL ---
-    # shellcheck disable=SC2024
-    if echo "${_sql_root}" | sudo "${MYSQL_CMD}" -u root --batch --silent >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+    if echo "${_sql_root}" \
+        | { sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --silent 2>>"${ERRORFILE}" || \
+            sudo "${MYSQL_CMD}" -u root --batch --silent 2>>"${ERRORFILE}"; } >> "${DEBUGFILE}"; then
         info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
     else
         warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
@@ -999,20 +1005,27 @@ SQL
     # --- Vérification des tables timezone ---
     local TIMEZONE_TABLE_COUNT
     TIMEZONE_TABLE_COUNT=$(
-        sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent \
-            -e "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}' LIMIT 1;" \
-            2>>"${ERRORFILE}" || echo "0"
+    echo "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}' LIMIT 1;" \
+    | { 
+        sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --skip-column-names --silent 2>>"${ERRORFILE}" \
+        || sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent 2>>"${ERRORFILE}"
+      } 2>>"${ERRORFILE}"
     )
     if [[ -z "${TIMEZONE_TABLE_COUNT}" || "${TIMEZONE_TABLE_COUNT}" -eq 0 ]]; then
         info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
         # shellcheck disable=SC2024
-        if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo \
-            | sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
-            info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORTED}"
-        else
-            warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_ERROR}"
-            return 1
-        fi
+        sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
+        | {
+            sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}" \
+            || sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
+        }
+    rc=${PIPESTATUS[1]}
+    if [ "$rc" -eq 0 ]; then
+        info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORTED}"
+    else
+        warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_ERROR}"
+        return 1
+    fi
         # --- Paramétrage du fuseau horaire ---
         local _sql_tz
         _sql_tz=$(cat <<SQL
@@ -1025,9 +1038,9 @@ GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
         )
-        # shellcheck disable=SC2024
-        if echo "${_sql_tz}" | sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent \
-                mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+        if echo "${_sql_root}" \
+            | { sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --silent 2>>"${ERRORFILE}" || \
+                sudo "${MYSQL_CMD}" -u root --batch --silent 2>>"${ERRORFILE}"; } >> "${DEBUGFILE}"; then
             info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
         else
             warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
