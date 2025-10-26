@@ -362,7 +362,8 @@ function prompt_install_options(){
                 "📁 ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_REP}"     1 2 "${_def_rep}"     1 ${WIDTH} 20 40 \
                 "🖥️ ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_HOST}" 3 2 "${_def_db_host}" 3 ${WIDTH} 20 20 \
                 "🗄️ ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_NAME}" 5 2 "${_def_db}"      5 ${WIDTH} 20 20 \
-                "👤 ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_USER}" 7 2 "${_def_user}"    7 ${WIDTH} 20 20)
+                "👤 ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_USER}" 7 2 "${_def_user}"    7 ${WIDTH} 20 20 \
+                 2>&1 >/dev/tty)
             rc=$?
             # Transformer les lignes du formulaire en variables
             IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
@@ -393,7 +394,7 @@ function prompt_install_options(){
             # Si annulation ou ESC
             if [[ $rc -ne 0 ]]; then
                 warn "${ICON_WARN} ${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}"
-                dialog --title "${MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}" 7 60
+                form=$(dialog --title "${MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}" 7 60 2>&1 >/dev/tty)
                 exit 1
             fi
             # --- VALIDATIONS ---
@@ -466,7 +467,7 @@ function prompt_install_options(){
                 --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_UPDATE" \
                 --title "${MSG_PROMPT_INSTALL_OPTIONS_DIR_TITLE_UPDATE}" \
                 --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_DIR_RADIOLIST_UPDATE}" 20 70 8 \
-                "${find_rep[@]}" )
+                "${find_rep[@]}"  2>&1 >/dev/tty)
             rc=$?
             # Convertir le numéro choisi en index du tableau (0-based)
             local index=""
@@ -475,7 +476,7 @@ function prompt_install_options(){
             REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
                 warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
+                form=$(dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50 2>&1 >/dev/tty)
                 return 1
             fi
             # Sélecteur de version GLPI
@@ -483,7 +484,7 @@ function prompt_install_options(){
                 --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_UPDATE" \
                 --title "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_UPDATE}" \
                 --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_RADIOLIST_UPDATE}" 23 50 8 \
-                "${find_version[@]}")
+                "${find_version[@]}" 2>&1 >/dev/tty)
             rc=$?
             if [[ "${rc}" -ne 0 ]]; then
                 warn "${ICON_WARN} Sélection de la version annulée."
@@ -494,7 +495,7 @@ function prompt_install_options(){
             index=$((VERSION_SELECT - 1))
             # Récupérer le vrai tag correspondant
             VERSION_SELECT="${version_map[$index]}"
-            dialog --title "${MSG_INFO}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_MSG_UPDATE}" 10 100
+            form=$(dialog --title "${MSG_INFO}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_MSG_UPDATE}" 10 100 2>&1 >/dev/tty)
             export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
             export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME GLPI_CLI_VERSION
             # Lancement de la mise à jour
@@ -520,7 +521,7 @@ function prompt_install_options(){
                 --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKUP_BACKTITLE" \
                 --title "${MSG_PROMPT_INSTALL_OPTIONS_BACKUP_TITLE}" \
                 --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_BACKUP_RADIOLIST}" 20 70 8 \
-                "${find_rep[@]}")
+                "${find_rep[@]}" 2>&1 >/dev/tty)
             rc=$?
             # Convertir le numéro choisi en index du tableau (0-based)
             local index=""
@@ -528,8 +529,8 @@ function prompt_install_options(){
             # Récupérer le vrai chemin correspondant
             REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
-                warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-                dialog --title "Annulation" --msgbox "Sauvegarde annulée par l'utilisateur." 7 50
+                warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur."
+                form=$(dialog --title "Annulation" --msgbox "Sauvegarde annulée par l'utilisateur." 7 50 2>&1 >/dev/tty)
                 return 1
             fi
             export REP_GLPI INVOKING_HOME REP_BACKUP_COMPRESS
@@ -563,7 +564,7 @@ function prompt_install_options(){
                 --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_RESTORE_BACKTITLE" \
                 --title "${MSG_PROMPT_INSTALL_OPTIONS_RESTORE_TITLE}" \
                 --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_RESTORE_RADIOLIST}" 20 70 8 \
-                "${find_bck[@]}")
+                "${find_bck[@]}" 2>&1 >/dev/tty)
             rc=$?
             # Convertir le numéro choisi en index du tableau (0-based)
             local index=""
@@ -571,8 +572,8 @@ function prompt_install_options(){
             # Récupérer le vrai chemin correspondant
             REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
-                warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-                dialog --title "Annulation" --msgbox "Restauration annulée par l'utilisateur." 7 50
+                warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur."
+                form=$(dialog --title "Annulation" --msgbox "Restauration annulée par l'utilisateur." 7 50 2>&1 >/dev/tty)
                 return 1
             fi
             export REP_GLPI INVOKING_HOME REP_BACKUP_COMPRESS
@@ -762,7 +763,7 @@ function run_sequence() {
     ) | dialog --clear \
                --backtitle "$MSG_RUN_SEQUENCE_BACKTITLE" \
                --title "$MSG_RUN_SEQUENCE_GAUGE_TITLE" \
-               --gauge "" 8 120
+               --gauge "" 8 120 >/dev/tty 2>&1
     # --- Vérification du sous-shell ---
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         warn "${ICON_WARN} ${MSG_RUN_SEQUENCE_FAILED_MODE} (${mode})"
