@@ -1151,8 +1151,8 @@ function download_untar_glpi(){
         rm -f "$tmp_file"
         return 1
     fi
-    # Extraire l'archive dans le répertoire d'installation
-    if tar --extract --gzip --file="$tmp_file" --directory="$REP_GLPI" --strip-components=1; then
+    # Extraction de l’archive GLPI
+    if tar -xzf "$tmp_file" -C "$REP_GLPI" --strip-components=1; then
         info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_EXTRACT_OK} ${REP_GLPI}"
         rm -f "$tmp_file"
     else
