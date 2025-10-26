@@ -304,7 +304,6 @@ function selection_menu(){
         --backtitle "$MSG_INSTALL_UPDATE_BACK_TITLE" \
         --title "${MSG_INSTALL_UPDATE_TITRE}" \
         --radiolist "${MSG_INSTALL_UPDATE_RADIOLIST}" 15 50 3 \
-        "" "-----------------------------" OFF \
         1 "${MSG_INSTALL_UPDATE_INSTALL}" ON \
         2 "${MSG_INSTALL_UPDATE_UPDATE}" OFF \
         3 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
@@ -315,6 +314,7 @@ function selection_menu(){
         3>&1 1>&2 2>&3)
     rc=$?
     exec 3>&-
+    export SELECTED_MENU
     if [[ $rc -ne 0 ]]; then
         error "${ICON_ERROR} ${MSG_INSTALL_UPGRADE_CANCELLED}"
         exec 3>&1
@@ -322,7 +322,10 @@ function selection_menu(){
         exec 3>&-
         return 1
     fi
-    export SELECTED_MENU
+    if [[ $rc == 7 ]]; then
+        info "${ICON_INFO} ${MSG_INSTALL_UPGRADE_EXITING}"
+        return 100
+    fi
     prompt_install_options
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }

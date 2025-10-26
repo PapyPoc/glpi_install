@@ -28,8 +28,14 @@ fi
 # Demande les options d'installation ou de mise à jour
 info "${ICON_INFO} ${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS}"
 if ! selection_menu; then # Demande les options d'installation
-    info "${ICON_WARN} ${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS_ABORT}"
-    exit 1
+    if [[ $? == 100 ]]; then
+        info "${ICON_INFO} ${MSG_INSTALL_UPGRADE_EXITING}"
+        exit 0
+    fi
+    if [[ ${SELECTED_MENU} == 0 ]] || [[ ${SELECTED_MENU} == 7 ]]; then
+        info "${ICON_INFO} ${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS_ABORT}"
+        exit 1
+    fi
 fi
 info "Fichier de sauvegarde des mots de passe : ${FICHIER_MSG}${DB_NAME}.txt"
 # Droit sur le fichier de sauvegarde des mots de passe
