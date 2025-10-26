@@ -117,7 +117,7 @@ function on_error() {
     done
     message+="──────────────────────────────"
     # Affichage dans dialog (protéger les retours ligne)
-    dialog --backtitle "${MSG_ERROR_DIALOG_TITLE}" \
+    dialog --clear --backtitle "${MSG_ERROR_DIALOG_TITLE}" \
            --title "${MSG_ERROR_DIALOG_ERROR}" \
            --msgbox "$(echo -e "$message")" 20 100 || true
 
@@ -314,7 +314,7 @@ function selection_menu(){
     export SELECTED_MENU
     if [[ $rc -ne 0 ]]; then
         error "${ICON_ERROR} ${MSG_INSTALL_UPGRADE_CANCELLED}"
-        dialog --title "${MSG_DIALOG_TITLE_CANCEL}" --msgbox "${MSG_INSTALL_UPGRADE_CANCELLED}" 7 50
+        dialog --clear --title "${MSG_DIALOG_TITLE_CANCEL}" --msgbox "${MSG_INSTALL_UPGRADE_CANCELLED}" 7 50
         return 1
     fi
     if [[ $rc == 7 ]]; then
@@ -337,7 +337,7 @@ function prompt_install_options(){
             args+=("${tag}" "" "${first}")
             first=OFF
         done <<< "${tags}"
-        VERSION_SELECT=$(dialog --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_INSTALL}" \
+        VERSION_SELECT=$(dialog --clear --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_INSTALL}" \
         --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_RADIOLIST_INSTALL}" 23 50 8 "${args[@]}" 2>&1 >/dev/tty)
         local rc=$?
         if [ "${rc}" -ne 0 ]; then
@@ -357,7 +357,7 @@ function prompt_install_options(){
         local _def_rep="" rep_glpi="" _def_db_host="" db_host="" _def_db_name="" db_name="" _def_db_user="" db_user=""
         local _def_rep="${REP_GLPI:-/var/www/html/glpi}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
         while true; do
-            form=$(dialog --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "$MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_INSTALL" \
+            form=$(dialog --clear --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "$MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_INSTALL" \
                 --form "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_PARAM_1} ${VERSION_SELECT} ${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_PARAM_2}" 18 68 8 \
                 "📁 ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_REP}"     1 2 "${_def_rep}"     1 ${WIDTH} 20 40 \
                 "🖥️ ${MSG_PROMPT_INSTALL_OPTIONS_PARAM_DB_HOST}" 3 2 "${_def_db_host}" 3 ${WIDTH} 20 20 \
@@ -394,7 +394,7 @@ function prompt_install_options(){
             # Si annulation ou ESC
             if [[ $rc -ne 0 ]]; then
                 warn "${ICON_WARN} ${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}"
-                form=$(dialog --title "${MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}" 7 60 2>&1 >/dev/tty)
+                form=$(dialog --clear --title "${MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_ABORT_INSTALL}" 7 60 2>&1 >/dev/tty)
                 exit 1
             fi
             # --- VALIDATIONS ---
@@ -476,7 +476,7 @@ function prompt_install_options(){
             REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
                 warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-                form=$(dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50 2>&1 >/dev/tty)
+                form=$(dialog --clear --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50 2>&1 >/dev/tty)
                 return 1
             fi
             # Sélecteur de version GLPI
@@ -495,7 +495,7 @@ function prompt_install_options(){
             index=$((VERSION_SELECT - 1))
             # Récupérer le vrai tag correspondant
             VERSION_SELECT="${version_map[$index]}"
-            form=$(dialog --title "${MSG_INFO}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_MSG_UPDATE}" 10 100 2>&1 >/dev/tty)
+            form=$(dialog --clear --title "${MSG_INFO}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_MSG_UPDATE}" 10 100 2>&1 >/dev/tty)
             export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
             export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME GLPI_CLI_VERSION
             # Lancement de la mise à jour
@@ -530,7 +530,7 @@ function prompt_install_options(){
             REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
                 warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur."
-                form=$(dialog --title "Annulation" --msgbox "Sauvegarde annulée par l'utilisateur." 7 50 2>&1 >/dev/tty)
+                form=$(dialog --clear --title "Annulation" --msgbox "Sauvegarde annulée par l'utilisateur." 7 50 2>&1 >/dev/tty)
                 return 1
             fi
             export REP_GLPI INVOKING_HOME REP_BACKUP_COMPRESS
@@ -596,7 +596,7 @@ function validate_glpi_path() {
         | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     # Vérification du format
     if ! [[ "$clean_path" =~ ^(/var/www|/srv|/opt|/usr/share)/[^[:space:]]*glpi[^[:space:]]*$ ]]; then
-        dialog --title "${MSG_VALIDATE_GLPI_PATH_DIALOG_TITLE}" --msgbox "${MSG_VALIDATE_GLPI_PATH_DIALOG_FAILED_1} ${clean_path}${MSG_VALIDATE_GLPI_PATH_DIALOG_FAILED_2}" 12 70
+        dialog --clear --title "${MSG_VALIDATE_GLPI_PATH_DIALOG_TITLE}" --msgbox "${MSG_VALIDATE_GLPI_PATH_DIALOG_FAILED_1} ${clean_path}${MSG_VALIDATE_GLPI_PATH_DIALOG_FAILED_2}" 12 70
         warn "${ICON_WARN} ${MSG_VALIDATE_GLPI_PATH_FAILED} (${clean_path})"
         return 1
     fi
@@ -639,7 +639,7 @@ function validate_db_host() {
 function dbhost_err() {
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     v=$1
-    dialog --title "${MSG_VALIDATE_DB_HOST_DIALOG_TITLE}" --msgbox "${MSG_VALIDATE_DB_HOST_DIALOG_FAILED_1} ${v}${MSG_VALIDATE_DB_HOST_DIALOG_FAILED_2}" 10 70
+    dialog --clear --title "${MSG_VALIDATE_DB_HOST_DIALOG_TITLE}" --msgbox "${MSG_VALIDATE_DB_HOST_DIALOG_FAILED_1} ${v}${MSG_VALIDATE_DB_HOST_DIALOG_FAILED_2}" 10 70
     warn "${ICON_WARN} ${MSG_VALIDATE_DB_HOST_FAILED} (${v})"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
@@ -651,12 +651,12 @@ function validate_db_name() {
     clean_name="$(printf '%s' "$name" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     # Vérifier si la base de données est déjà utiliser dans les fichiers de sauvegarde
     if find "${INVOKING_HOME}" -name "${FICHIER_MSG}${clean_name}*" -print -quit | grep -q .; then
-        dialog --title --msgbox "${MSG_VALIDATE_DB_NAME_DIALOG_FAILED_1} ${clean_name}${MSG_VALIDATE_DB_NAME_DIALOG_FAILED_2}" 12 70
+        dialog --clear --title --msgbox "${MSG_VALIDATE_DB_NAME_DIALOG_FAILED_1} ${clean_name}${MSG_VALIDATE_DB_NAME_DIALOG_FAILED_2}" 12 70
         warn "${ICON_WARN} ${MSG_VALIDATE_DB_NAME_FAILED_1} (${clean_name})"
         return 1
     fi
     if [[ ! "$clean_name" =~ ^[A-Za-z_][A-Za-z0-9_]{0,63}$ ]]; then
-        dialog --msgbox "${MSG_VALIDATE_DB_NAME_DIALOG_FAILED_3} ${clean_name}${MSG_VALIDATE_DB_NAME_DIALOG_FAILED_4}" 12 70
+        dialog --clear --msgbox "${MSG_VALIDATE_DB_NAME_DIALOG_FAILED_3} ${clean_name}${MSG_VALIDATE_DB_NAME_DIALOG_FAILED_4}" 12 70
         warn "${ICON_WARN} ${MSG_VALIDATE_DB_NAME_FAILED_2} (${clean_name})"
         return 1
     fi
@@ -670,7 +670,7 @@ function validate_db_user() {
     clean_user="$(printf '%s' "$user" | tr -d '\r\n' \
         | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
     if [[ "$clean_user" == "root" || ! "$clean_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-        dialog --msgbox "${ICON_WARN} ${MSG_VALIDATE_DB_USER_DIALOG_FAILED}" 12 70
+        dialog --clear --msgbox "${ICON_WARN} ${MSG_VALIDATE_DB_USER_DIALOG_FAILED}" 12 70
         warn "${ICON_WARN} ${MSG_VALIDATE_DB_USER_FAILED} (${clean_user})"
         debug "${ICON_DEBUG} ${ICON_KO} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
         return 1
@@ -760,7 +760,7 @@ function run_sequence() {
             exit 1  # << plus sûr que return dans un sous-shell
         fi
     done
-) | dialog --clear \
+        ) | dialog --clear \
            --backtitle "${MSG_RUN_SEQUENCE_BACKTITLE}" \
            --title "${MSG_RUN_SEQUENCE_GAUGE_TITLE}" \
            --gauge "" 8 120 >/dev/tty 2>&1
@@ -1072,14 +1072,17 @@ function mariadb_configure() {
     local _sql_root
     _sql_root=$(cat <<SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
-DELETE FROM mysql.user WHERE User='';
-DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
+DELETE FROM mysql.user WHERE User = '';
+DELETE FROM mysql.user WHERE User = 'root' AND Host != 'localhost';
 DROP DATABASE IF EXISTS test;
-DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test_%';
+DELETE FROM mysql.db WHERE Db = 'test' OR Db LIKE 'test_%';
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
-CREATE DATABASE IF NOT EXISTS ${DB_NAME};
+FLUSH PRIVILEGES;
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
-GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
+GRANT SELECT ON mysql.time_zone TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
     )
@@ -1109,7 +1112,8 @@ SQL
             sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}" \
             || sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
         }
-    rc=${PIPESTATUS[1]}
+        rc=${PIPESTATUS[1]
+    }
     if [ "$rc" -eq 0 ]; then
         info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_OK}"
     else
@@ -1123,8 +1127,6 @@ SET GLOBAL time_zone = '${TIMEZONES}';
 SET time_zone = '${TIMEZONES}';
 GRANT SELECT ON mysql.time_zone_transition TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_transition_type TO '${DB_USER}'@'localhost';
-GRANT SELECT ON mysql.time_zone TO '${DB_USER}'@'localhost';
-GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
         )
@@ -1641,9 +1643,9 @@ function display_result() {
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
         done < "${file_save}"
-        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_OK}" --msgbox "${MESSAGE}" 0 0 >/dev/tty 2>&1
+        dialog --clear --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_OK}" --msgbox "${MESSAGE}" 0 0 >/dev/tty 2>&1
     else
-        dialog --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_NONOK}" --msgbox "${ICON_KO}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0 >/dev/tty 2>&1
+        dialog --clear --backtitle "${MSG_DISPLAY_RESULT_TITLE}" --title "${MSG_DISPLAY_RESULT_TITRE_NONOK}" --msgbox "${ICON_KO}\n\n${MSG_ERROR_FICHIER_MSG}" 0 0 >/dev/tty 2>&1
     fi
     info "${ICON_INFO}  ${MSG_DISPLAY_RESULT_END}"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
@@ -1846,12 +1848,12 @@ function update_glpi() {
         if sudo -u "${WEB_USER}" php ${CMD} 1>> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "${ICON_INFO} ${MSG_UPDATE_GLPI_UPDATE_DATABASE_OK}"
             exec 3>&1
-            dialog --title "${ICON_OK} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_OK}" 7 50
+            dialog --clear --title "${ICON_OK} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_OK}" 7 50
             exec 3>&-
         else
             warn "${ICON_WARN} ${MSG_UPDATE_GLPI_UPDATE_DATABASE_FAILED} (voir ${ERRORFILE})."
             exec 3>&1
-            dialog --title "${ICON_KO} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_FAILED}" 7 50
+            dialog --clear --title "${ICON_KO} ${MSG_UPDATE_GLPI_DIALOG_DATABASE}" --msgbox "${MSG_UPDATE_GLPI_UPDATE_DATABASE_FAILED}" 7 50
             exec 3>&-
             return 1
         fi
