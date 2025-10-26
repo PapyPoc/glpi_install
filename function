@@ -1243,6 +1243,12 @@ EOF
         warn "${ICON_WARN} ${MSG_SETUP_GLPI_CREATE_DOWNSTREAM_FAILED}"
         return 1
     fi
+    # Change permissions
+    info "${ICON_INFO} ${MSG_SETUP_GLPI_RIGHTS_MODIFY}"
+    if ! rights_glpi "${REP_GLPI}"; then
+        warn "${ICON_WARN} ${MSG_SETUP_GLPI_RIGHTS_MODIFY_FAILED}"
+        return 1
+    fi
     info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG} ${REP_GLPI}"
     if check_install_user "${REP_GLPI}"; then
         info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_USER_DETECTED} ${WEB_USER}"
