@@ -1055,19 +1055,22 @@ function mariadb_configure() {
     trap 'on_error' ERR
     set -E -o pipefail
     info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_BDD_CONFIG}"
+    # --- Détection de la commande MySQL ---
     MYSQL_CMD=$(command -v mysql || command -v mariadb || echo mysql)
-    if [ -z "${MYSQL_CMD}" ]; then
+    if [[ -z "${MYSQL_CMD}" ]]; then
         error "${ICON_ERROR} ${MSG_MARIADB_CONFIGURE_COMMAND_NOT_FOUND}"
         return 1
     fi
+    # --- Détermination du fuseau horaire ---
     get_timezone
+    TIMEZONES="${TIMEZONES:-Europe/Paris}"
     info "${ICON_DEBUG} Utilisation de la commande : ${MYSQL_CMD}"
-    info "${ICON_DEBUG} Configuration de la base de données MariaDB/MySQL"
-    info "${ICON_DEBUG} Mot de passe root : ${SQLROOTPWD}"
     info "${ICON_DEBUG} Connexion à l'hôte : ${DB_HOST}"
+    info "${ICON_DEBUG} Mot de passe root : ${SQLROOTPWD}"
     info "${ICON_DEBUG} Création base : ${DB_NAME}"
-    info "${ICON_DEBUG} Utilisateur : ${DB_USER}, Mdp : ${SQLGLPIPWD}"
-    info "${ICON_DEBUG} timezone : ${TIMEZONES}"
+    info "${ICON_DEBUG} Utilisateur : ${DB_USER}"
+    info "${ICON_DEBUG} Mdp utilisateur : ${SQLGLPIPWD}"
+    info "${ICON_DEBUG} Timezone : ${TIMEZONES}"
     # --- Script SQL principal ---
     local _sql_root
     _sql_root=$(cat <<SQL
@@ -1095,34 +1098,42 @@ SQL
         warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
         return 1
     fi
+    # --- Vérification de la création de base ---
+    if ! sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" -e "USE ${DB_NAME};" >/dev/null 2>&1; then
+        error "${ICON_ERROR} Impossible d'accéder à la base ${DB_NAME}"
+        return 1
+    fi
     # --- Vérification des tables timezone ---
     local TIMEZONE_TABLE_COUNT
     TIMEZONE_TABLE_COUNT=$(
-    echo "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}' LIMIT 1;" \
-    | { 
-        sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --skip-column-names --silent 2>>"${ERRORFILE}" \
-        || sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent 2>>"${ERRORFILE}"
-      } 2>>"${ERRORFILE}"
+        echo "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}' LIMIT 1;" \
+        | {
+            sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --skip-column-names --silent 2>>"${ERRORFILE}" \
+            || sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent 2>>"${ERRORFILE}"
+        } 2>>"${ERRORFILE}"
     )
     if [[ -z "${TIMEZONE_TABLE_COUNT}" || "${TIMEZONE_TABLE_COUNT}" -eq 0 ]]; then
         info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
-        # Prépare la commande mysql (évite double sudo inutile)
+        # --- Vérification présence mysql_tzinfo_to_sql ---
+        if ! command -v mysql_tzinfo_to_sql >/dev/null 2>&1; then
+            warn "${ICON_WARN} mysql_tzinfo_to_sql introuvable — impossible d’importer les fuseaux horaires."
+            return 1
+        fi
+        # --- Importation des fuseaux horaires ---
         local mysql_exec="sudo ${MYSQL_CMD:-mysql}"
-        # Importation des fuseaux horaires
+        local rc=0
         if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
             | ${mysql_exec} -u root -p"${SQLROOTPWD}" mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
             rc=0
+        elif sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
+            | ${mysql_exec} -u root mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+            rc=0
         else
-            # Tentative sans mot de passe root
-            if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
-                | ${mysql_exec} -u root mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
-                rc=0
-            else
-                rc=$?
-            fi
+            rc=$?
         fi
         debug "${ICON_DEBUG} ${MSG_MARIADB_CONFIGURE_TIMEZONE_RETURN_CODE} ${rc}"
-        if [ "$rc" -eq 0 ]; then
+
+        if [[ "${rc}" -eq 0 ]]; then
             info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_OK}"
         else
             warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_ERROR}"
@@ -1137,36 +1148,31 @@ GRANT SELECT ON mysql.time_zone_transition TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_transition_type TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
-)
-        if echo "${_sql_root}" \
+        )
+        if echo "${_sql_tz}" \
             | { sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --silent 2>>"${ERRORFILE}" || \
                 sudo "${MYSQL_CMD}" -u root --batch --silent 2>>"${ERRORFILE}"; } >> "${DEBUGFILE}"; then
-            info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
+            info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_ALREADY_LOADED}"
         else
             warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
             return 1
         fi
+    else
         info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_ALREADY_LOADED}"
     fi
     # --- Redémarrage du service ---
     if systemctl is-active --quiet mariadb; then
         info "${ICON_RUN} ${MSG_MARIADB_CONFIGURE_SERVICE_RESTART}"
-        if systemctl restart mariadb >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
-            info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SERVICE_RESTART_OK}"
-        else
-            warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SERVICE_RESTART_FAILED}"
-        fi
+        systemctl restart mariadb >>"${DEBUGFILE}" 2>>"${ERRORFILE}" \
+            && info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SERVICE_RESTART_OK}" \
+            || warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SERVICE_RESTART_FAILED}"
     else
-        warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SERVICES_START}"
-        if systemctl start mariadb >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
-            info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SERVICES_START_OK}"
-        else
-            error "${ICON_ERR} ${MSG_MARIADB_CONFIGURE_SERVICES_START_FAILED}"
-            return 1
-        fi
+        info "${ICON_RUN} ${MSG_MARIADB_CONFIGURE_SERVICES_START}"
+        systemctl start mariadb >>"${DEBUGFILE}" 2>>"${ERRORFILE}" \
+            && info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SERVICES_START_OK}" \
+            || { error "${ICON_ERR} ${MSG_MARIADB_CONFIGURE_SERVICES_START_FAILED}"; return 1; }
     fi
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appelée par ${FUNCNAME[1]:-main}]"
-    
 }
 # Téléchargement et décompression de GLPI
 function download_untar_glpi(){
