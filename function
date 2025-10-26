@@ -290,7 +290,7 @@ function install_update(){
     INSTALL_OR_UPDATE=$(dialog \
         --backtitle "$MSG_INSTALL_UPDATE_BACK_TITLE" \
         --title "${MSG_INSTALL_UPDATE_TITRE}" \
-        --radiolist "${MSG_INSTALL_UPDATE_RADIOLIST}" 10 50 2 \
+        --radiolist "${MSG_INSTALL_UPDATE_RADIOLIST}" 15 50 2 \
         1 "${MSG_INSTALL_UPDATE_INSTALL}" ON \
         2 "${MSG_INSTALL_UPDATE_UPDATE}" OFF \
         3>&1 1>&2 2>&3)
