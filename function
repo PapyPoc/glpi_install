@@ -1599,11 +1599,39 @@ function backup_glpi() {
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_BACKUP_GLPI_START}"
     # Récupération du nom de la base de données dans le fichier config de GLPI suivant le répertoire de GLPI
-    REP_GLPI=$(find /etc -maxdepth 1 -type f -name "${DB_NAME}.conf" 2>/dev/null | head -n 1)
+    file_downstream="${REP_GLPI}/inc/downstream.php"
+    if [[ -f "${file_downstream}" ]]; then
+        GLPI_CONFIG_DIR=$(grep "define('GLPI_CONFIG_DIR'" "${file_downstream}" | cut -d "'" -f4)
+        echo "Répertoire de configuration GLPI détecté : ${GLPI_CONFIG_DIR}"
+        # etc/glpi/config/config_db.php
+        file_conf_glpi="${GLPI_CONFIG_DIR}/config_db.php"
+        if [[ -f "${file_conf_glpi}" ]]; then
+            DB_NAME=$(grep "define('DB_NAME'" "${file_conf_glpi}" | cut -d "'" -f4)
+            DB_USER=$(grep "define('DB_USER'" "${file_conf_glpi}" | cut -d "'" -f4)
+            PASSWORD=$(grep "define('DB_PASSWORD'" "${file_conf_glpi}" | cut -d "'" -f4)
+        else
+            warn "${ICON_WARN} ${MSG_BACKUP_GLPI_CONFIG_FILE_MISSING} ${file_conf_glpi}"
+            return 1
+        fi
+        echo "Version GLPI détectée : ${GLPI_CLI_VERSION}"
+        echo "Nom de la base de données détectée : ${DB_NAME}"
+        echo "Utilisateur de la base de données détectée : ${DB_USER}"
+        echo "Mot de passe de la base de données détecté : ${DB_PASSWORD}"
+    else
+        warn "${ICON_WARN} ${MSG_BACKUP_GLPI_READ_VERSION_FAILED} ${file_downstream}"
+        return 1
+    fi
+    file_conf_glpi="${REP_GLPI}/config/config_db.php"
+    if [[ -f "${file_conf_glpi}" ]]; then
+        DB_NAME=$(grep "define('DB_NAME'" "${file_conf_glpi}" | cut -d "'" -f4)
+        PASSWORD=$(grep "define('DB_PASSWORD'" "${file_conf_glpi}" | cut -d "'" -f4)
+    else
+        warn "${ICON_WARN} ${MSG_BACKUP_GLPI_CONFIG_FILE_MISSING} ${file_conf_glpi}"
+        return 1
+    fi
+    
+    nom_db_base=$(find "${REP_GLPI}" -maxdepth 1 -type f -name "${DB_NAME}.conf" 2>/dev/null | head -n 1)
     # Lecture des informations MySQL
-    local DB_NAME PASSWORD
-    DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
-    PASSWORD=$(sed -n 's/.*\(Mot de passe root\|Root password\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
     if [ -z "${DB_NAME}" ] || [ -z "${PASSWORD}" ]; then
     warn "${MSG_BACKUP_GLPI_READ_SAUVE_FAILED}"
         return 1
