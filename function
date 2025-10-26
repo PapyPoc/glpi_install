@@ -965,6 +965,7 @@ FLUSH PRIVILEGES;
 SQL
     )
     # --- Application du script SQL ---
+    # shellcheck disable=SC2024
     if echo "${_sql_root}" | sudo "${MYSQL_CMD}" -u root --batch --silent >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
         info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
     else
@@ -980,6 +981,7 @@ SQL
     )
     if [[ -z "${TIMEZONE_TABLE_COUNT}" || "${TIMEZONE_TABLE_COUNT}" -eq 0 ]]; then
         info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
+        # shellcheck disable=SC2024
         if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo \
             | sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORTED}"
@@ -999,6 +1001,7 @@ GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
         )
+        # shellcheck disable=SC2024
         if echo "${_sql_tz}" | sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent \
                 mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
