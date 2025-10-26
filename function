@@ -420,7 +420,7 @@ function prompt_install_options(){
         local DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
         export DOWNLOADLINK DB_HOST REP_GLPI DB_NAME DB_USER INVOKING_HOME TIMEZONE VERSION_SELECT
         # Lancement de l’installation
-        run_sequence "install" >&3
+        run_sequence "install"
     elif [[ "${SELECTED_MENU}" == 2 ]]; then
         check_glpi_installed
         # Si au moins un répertoire GLPI trouvé, demander à l'utilisateur de choisir
@@ -606,37 +606,32 @@ function validate_db_host() {
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     host=$1
     # Nettoyage de base
-    clean_host=$(printf '%s' "$host" \
-        | tr -d '\r' \
-        | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    clean_host=$(printf '%s' "$host" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     # Cas simples
     case "$clean_host" in
         localhost|::1|\[::1\])
-            debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
             return 0 ;;
     esac
     # Vérif IPv4 (structure correcte)
-    if printf '%s\n' "$clean_host" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
+    if printf '%s\n' "${clean_host}" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
         IFS=.
-        set -- $clean_host
+        set -- "${clean_host}"
         for o in "$@"; do
             case $o in
-                *[!0-9]*) dbhost_err "$clean_host"; return 1 ;;
+                *[!0-9]*) dbhost_err "${clean_host}"; return 1 ;;
             esac
             [ "$o" -ge 0 ] 2>/dev/null && [ "$o" -le 255 ] 2>/dev/null || {
-                dbhost_err "$clean_host"; return 1;
+                dbhost_err "${clean_host}"; return 1;
             }
         done
-        debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
         return 0
     fi
     # Vérif nom de domaine (FQDN simple)
-    if printf '%s\n' "$clean_host" | grep -Eq '^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$'; then
-        debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    if printf '%s\n' "${clean_host}" | grep -Eq '^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$'; then
         return 0
     fi
     # Sinon invalide
-    dbhost_err "$clean_host"
+    dbhost_err "${clean_host}"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Helper message d'erreur + log
@@ -686,10 +681,6 @@ function run_sequence() {
     local mode="$1"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     trap 'on_error' ERR
-    # Sauvegarde du terminal
-    exec 3>&1
-    # Redirection propre
-    exec > >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     declare -A tasks
     local task_order=()
     # --- Sélection du mode ---
@@ -771,7 +762,7 @@ function run_sequence() {
     ) | dialog --clear \
                --backtitle "$MSG_RUN_SEQUENCE_BACKTITLE" \
                --title "$MSG_RUN_SEQUENCE_GAUGE_TITLE" \
-               --gauge "" 8 120 2>&1 1>&3
+               --gauge "" 8 120
     # --- Vérification du sous-shell ---
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         warn "${ICON_WARN} ${MSG_RUN_SEQUENCE_FAILED_MODE} (${mode})"
@@ -779,30 +770,26 @@ function run_sequence() {
         return 1
     fi
     info "${ICON_INFO} ${MSG_RUN_SEQUENCE_END}"
-    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}" >&3
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Exécute une tâche individuelle
 function run_task() {
     local task_key="$1" task_cmd="$2" index="$3" total="$4"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    info "${ICON_INFO} ${MSG_RUN_TASK_TASK} ${index}/${total} : ${task_key} — ${MSG_RUN_TASK_COMMAND} : ${task_cmd}"
-    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${MSG_RUN_TASK_COMMAND} ${task_cmd}"
+    debug "${ICON_INFO} ${MSG_RUN_TASK_COMMAND} ${task_cmd}"
     # Exécution isolée
     local output exit_code
     output=$(eval "${task_cmd}" 2>&1)
     exit_code=$?
     if (( exit_code == 0 )); then
-        debug "${ICON_DEBUG} ${output}"
-        debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ✅ ${task_key} ${MSG_RUN_TASK_SUCCESS_END}"
+        debug "${ICON_DEBUG} ${task_key} - ✅ ${MSG_RUN_TASK_SUCCESS_END} - '${task_cmd}'"
+        [[ -n "${output}" ]] && debug "↳ ${output}"
     else
-        warn "${ICON_WARN} ${task_key} ${MSG_RUN_TASK_FAILED_END} (exit=${exit_code})"
+        warn "${ICON_WARN} ${task_key} - ❌ ${MSG_RUN_TASK_FAILED_END} - '${task_cmd}' -> (exit=${exit_code})"
         [[ -n "${output}" ]] && warn "↳ ${output}"
-        debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ❌ ${task_key} — ${MSG_RUN_TASK_FAILED} '${task_cmd}'"
         return ${exit_code}
     fi
-    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${MSG_TASK_END} ${FUNCNAME[0]} → ${task_key}"
-    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    return 0
+    debug "${ICON_DEBUG} ${MSG_TASK_END} ${FUNCNAME[0]} → ${task_key}"
 }
 # Mise à jour de la distribution
 function update_distro(){
@@ -995,11 +982,6 @@ EOF
 function manage_service() {
     local service="$1"
     local label="$2"
-    # Sauvegarde du terminal
-    exec 3>&1
-    # Redirection propre
-    exec > >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
-    
     info "${ICON_INFO} ${MSG_MANAGE_SERVICE_START} ${label}..."
     # Activer et redémarrer le service avec journalisation
     {
@@ -1028,7 +1010,7 @@ function manage_service() {
             error "${ICON_ERROR} ${MSG_MANAGE_SERVICE_STILL_INACTIVE} ${label}."
             return 1
         fi
-    fi >&3
+    fi
 }
 # Détection du fuseau horaire système
 function get_timezone() {
