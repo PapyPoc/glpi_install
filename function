@@ -1236,6 +1236,8 @@ function download_untar_glpi(){
 function setup_glpi(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_SETUP_GLPI_START}"
+    trap 'on_error' ERR
+    set -Euo pipefail
     source_os_release
     local CMD=(
     php "${REP_GLPI}bin/console" db:install
