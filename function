@@ -1021,7 +1021,7 @@ SQL
         }
     rc=${PIPESTATUS[1]}
     if [ "$rc" -eq 0 ]; then
-        info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORTED}"
+        info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_OK}"
     else
         warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_ERROR}"
         return 1

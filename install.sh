@@ -87,10 +87,10 @@ fi
 : > "${DEBUGFILE}"
 : > "${UPDATEFILE}"
 function warn(){ 
-    echo -e "\033[0;31m[ERREUR]\033[0m $1";
+    echo -e "⚠️ \033[0;31m$1\033[0m";
 }
 function info(){
-    echo -e "\033[0;36m[INFO]\033[0m $1";
+    echo -e "ℹ️ \033[0;36m$1\033[0m";
 }
 function ensure_dependencies(){
     NEED_RESTART=0
