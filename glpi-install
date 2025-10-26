@@ -15,6 +15,9 @@ trap 'on_error' ERR
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
 load_language # Fichier de langue
+exec 3>&1                   # sauvegarde du terminal (pour dialog)
+exec >"${DEBUGFILE}"        # redirige stdout vers debug.log
+exec 2>"${ERRORFILE}"       # redirige stderr vers error.log
 info "${ICON_INFO} ${MSG_LOAD_LANGUAGE}"
 # Regarde si la distribution est conforme
 info "${ICON_INFO} ${MSG_GLPI_INSTALL_START_SCRIPT}"
