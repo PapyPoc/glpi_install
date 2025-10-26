@@ -293,7 +293,7 @@ function install_update(){
         --radiolist "${MSG_INSTALL_UPDATE_RADIOLIST}" 15 50 3 \
         1 "${MSG_INSTALL_UPDATE_INSTALL}" ON \
         2 "${MSG_INSTALL_UPDATE_UPDATE}" OFF \
-        3 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
+        "" "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
         3>&1 1>&2 2>&3)
     rc=$?
     exec 3>&-
