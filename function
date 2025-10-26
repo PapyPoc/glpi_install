@@ -309,7 +309,7 @@ function selection_menu(){
         4 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
         5 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
         "" "--------------------------------" OFF \
-        7 "Sortir" OFF )
+        7 "Sortir" OFF 2>&1 >/dev/tty)
     rc=$?
     export SELECTED_MENU
     if [[ $rc -ne 0 ]]; then
