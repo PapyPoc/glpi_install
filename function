@@ -935,10 +935,9 @@ function get_timezone() {
 }
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
-    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Début de ${FUNCNAME[0]:-main}] Appelée par ${FUNCNAME[1]:-main}]"
     trap 'on_error' ERR
     set -E -o pipefail
-    # Détecter la commande MySQL/MariaDB
     info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_BDD_CONFIG}"
     MYSQL_CMD=$(command -v mysql || command -v mariadb || echo mysql)
     if [ -z "${MYSQL_CMD}" ]; then
@@ -946,16 +945,13 @@ function mariadb_configure() {
         return 1
     fi
     get_timezone
-    debug "${ICON_DEBUG} Utilisation de la commande : ${MYSQL_CMD}" # Pour le débogage
-    debug "${ICON_DEBUG} Configuration de la base de données MariaDB/MySQL" # Pour le débogage
-    debug "${ICON_DEBUG} Connexion à l'hôte de la base de données : ${DB_HOST}" # Pour le débogage
-    debug "${ICON_DEBUG} Modification du mot de passe de l'utilisateur root de la base de données : ${SQLROOTPWD}" # Pour le débogage
-    debug "${ICON_DEBUG} Création de la base de données : ${DB_NAME}" # Pour le débogage
-    debug "${ICON_DEBUG} Création de l'utilisateur de la base de données : ${DB_USER} avec mot de passe ${SQLGLPIPWD}" # Pour le débogage
-    debug "${ICON_DEBUG} Attribution des privilèges à l'utilisateur de la base de données" # Pour le débogage
-    debug "${ICON_DEBUG} Configuration du fuseau horaire de la base de données : ${TIMEZONES}" # Pour le débogage
+    debug "${ICON_DEBUG} Utilisation de la commande : ${MYSQL_CMD}"
+    debug "${ICON_DEBUG} Configuration de la base de données MariaDB/MySQL"
+    debug "${ICON_DEBUG} Connexion à l'hôte : ${DB_HOST}"
+    debug "${ICON_DEBUG} Création base : ${DB_NAME}, utilisateur : ${DB_USER}, timezone : ${TIMEZONES}"
+    # --- Script SQL principal ---
     local _sql_root
-_sql_root=$(cat <<SQL
+    _sql_root=$(cat <<SQL
 ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.user WHERE User='root' AND Host!='localhost';
@@ -967,48 +963,44 @@ CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}'
 GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
-)
-    # --- Application des commandes SQL ---
-    if echo "${_sql_root}" | sudo "${MYSQL_CMD}" -u root --batch --silent; then
+    )
+    # --- Application du script SQL ---
+    if echo "${_sql_root}" | sudo "${MYSQL_CMD}" -u root --batch --silent >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
         info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
     else
         warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
         return 1
     fi
-    # --- Vérification et import des fuseaux horaires (si nécessaire) ---
+    # --- Vérification des tables timezone ---
     local TIMEZONE_TABLE_COUNT
     TIMEZONE_TABLE_COUNT=$(
         sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent \
-            -e "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}' LIMIT 1;" 2>>"${ERRORFILE}" || echo "0"
+            -e "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}' LIMIT 1;" \
+            2>>"${ERRORFILE}" || echo "0"
     )
     if [[ -z "${TIMEZONE_TABLE_COUNT}" || "${TIMEZONE_TABLE_COUNT}" -eq 0 ]]; then
         info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
-        # --- Importation des fuseaux horaires depuis /usr/share/zoneinfo ---
-            # shellcheck disable=SC2024
         if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo \
             | sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORTED}"
         else
-            warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_FAILED}"
+            warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_ERROR}"
             return 1
         fi
-        # --- Construction sécurisée du script SQL ---
-        local _sql_root
-        _sql_root=$(cat <<SQL
--- Configuration du fuseau horaire global
+        # --- Paramétrage du fuseau horaire ---
+        local _sql_tz
+        _sql_tz=$(cat <<SQL
 SET GLOBAL time_zone = '${TIMEZONES}';
 SET time_zone = '${TIMEZONES}';
--- Droits d’accès pour l’utilisateur GLPI sur les tables de fuseaux horaires
 GRANT SELECT ON mysql.time_zone_transition TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_transition_type TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
-    )
-        # --- Application des commandes SQL ---
-        # shellcheck disable=SC2024
-        if echo "${_sql_root}" | sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+        )
+        if echo "${_sql_tz}" | sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent \
+                mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
         else
             warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
@@ -1016,17 +1008,6 @@ SQL
         fi
     else
         info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_ALREADY_LOADED}"
-    fi
-    # --- Import des informations de fuseaux horaires ---
-    info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
-    # --- Importation sécurisée des fuseaux horaires depuis /usr/share/zoneinfo ---
-    # shellcheck disable=SC2024
-    if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo \
-        | sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
-        info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_OK}"
-    else
-        warn "${ICON_WARN} ${MSG_INSTALL_CONFIG_TIMEZONE_ERROR}"
-        return 1
     fi
     # --- Redémarrage du service ---
     if systemctl is-active --quiet mariadb; then
@@ -1045,7 +1026,7 @@ SQL
             return 1
         fi
     fi
-    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appelée par ${FUNCNAME[1]:-main}]"
 }
 # Téléchargement et décompression de GLPI
 function download_untar_glpi(){
