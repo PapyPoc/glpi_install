@@ -283,11 +283,11 @@ function check_install_user(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Choix entre installation ou mise à jour
-function install_update(){
+function selection_menu(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Demander à l'utilisateur s'il souhaite installer ou mettre à jour GLPI
     exec 3>&1
-    INSTALL_OR_UPDATE=$(dialog \
+    SELECTED_MENU=$(dialog \
         --backtitle "$MSG_INSTALL_UPDATE_BACK_TITLE" \
         --title "${MSG_INSTALL_UPDATE_TITRE}" \
         --radiolist "${MSG_INSTALL_UPDATE_RADIOLIST}" 15 50 3 \
@@ -304,7 +304,7 @@ function install_update(){
         exec 3>&-
         return 1
     fi
-    export INSTALL_OR_UPDATE
+    export SELECTED_MENU
     prompt_install_options
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
@@ -313,88 +313,7 @@ function install_update(){
 function prompt_install_options(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Recherche des installations GLPI existantes
-    if [[ "${INSTALL_OR_UPDATE}" == 2 ]]; then
-        check_glpi_installed
-        # Si au moins un répertoire GLPI trouvé, demander à l'utilisateur de choisir
-        if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
-            # Préparer les arguments pour dialog
-            find_rep=()
-            rep_map=()
-            number=1
-            first="ON"
-            # Correction : boucle while → for (syntaxe correcte)
-            for dir in "${glpi_dirs[@]}"; do
-                find_rep+=("${number}" "${dir}" "${first}")
-                rep_map+=("${dir}")
-                first="OFF"
-                ((number++))
-            done
-            # Vérification utilisateur/distro avant exécution
-            if check_install_user "${REP_GLPI}"; then
-                GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
-            fi
-            # Récupération des versions GLPI disponibles sur GitHub
-            tags=""
-            # Récupère les tags au format X.Y.Z
-            tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | sort -Vr | uniq | head -n 16)
-            # Filtrage : ne garder que les versions avant GLPI_CLI_VERSION (donc plus récentes) ---
-            newer_tags=()
-            for tag in ${tags}; do
-                if [[ "${tag}" == "${GLPI_CLI_VERSION}" ]]; then
-                    break  # On s'arrête dès qu'on atteint la version installée
-                fi
-                newer_tags+=("${tag}")
-            done
-            # Préparation du menu de sélection de version GLPI
-            tag=""; find_version=(); version_map=(); number=1; first="ON"
-            for tag in "${newer_tags[@]}"; do
-                find_version+=("" "GLPI ${tag}" "${first}")
-                version_map+=("${tag}")
-                first="OFF"
-                ((number++))
-            done
-            # Menu de sélection d’installation GLPI
-            FIND_REP_GLPI=$(dialog \
-                --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_UPDATE" \
-                --title "${MSG_PROMPT_INSTALL_OPTIONS_DIR_TITLE_UPDATE}" \
-                --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_DIR_RADIOLIST_UPDATE}" 20 70 8 \
-                "${find_rep[@]}" \
-                2>&1 >/dev/tty)
-            rc=$?
-            # Convertir le numéro choisi en index du tableau (0-based)
-            local index=""
-            index=$((FIND_REP_GLPI - 1))
-            # Récupérer le vrai chemin correspondant
-            REP_GLPI="${rep_map[$index]}"
-            if [[ $rc -ne 0 ]]; then
-                warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
-                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
-                return 1
-            fi
-            # Sélecteur de version GLPI
-            VERSION_SELECT=$(dialog \
-                --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_UPDATE" \
-                --title "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_UPDATE}" \
-                --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_RADIOLIST_UPDATE}" 23 50 8 \
-                "${find_version[@]}" \
-                2>&1 >/dev/tty)
-            rc=$?
-            if [[ "${rc}" -ne 0 ]]; then
-                warn "${ICON_WARN} Sélection de la version annulée."
-                return 1
-            fi
-            # Convertir le numéro choisi en index du tableau (0-based)
-            local index=""
-            index=$((VERSION_SELECT - 1))
-            # Récupérer le vrai tag correspondant
-            VERSION_SELECT="${version_map[$index]}"
-            dialog --title "${MSG_INFO}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_MSG_UPDATE}" 10 100
-            export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
-            export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME GLPI_CLI_VERSION
-            # Lancement de la mise à jour
-            run_sequence "update"
-        fi
-    elif [[ "${INSTALL_OR_UPDATE}" == 1 ]]; then
+    if [[ "${SELECTED_MENU}" == 1 ]]; then
         tags=""
         # Récupère les tags au format X.Y.Z
         tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | sort -Vr | uniq | head -n 16)
@@ -488,6 +407,127 @@ function prompt_install_options(){
         export DOWNLOADLINK DB_HOST REP_GLPI DB_NAME DB_USER INVOKING_HOME TIMEZONE VERSION_SELECT
         # Lancement de l’installation
         run_sequence "install"
+    elif [[ "${SELECTED_MENU}" == 2 ]]; then
+        check_glpi_installed
+        # Si au moins un répertoire GLPI trouvé, demander à l'utilisateur de choisir
+        if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
+            # Préparer les arguments pour dialog
+            find_rep=()
+            rep_map=()
+            number=1
+            first="ON"
+            # Correction : boucle while → for (syntaxe correcte)
+            for dir in "${glpi_dirs[@]}"; do
+                find_rep+=("${number}" "${dir}" "${first}")
+                rep_map+=("${dir}")
+                first="OFF"
+                ((number++))
+            done
+            # Vérification utilisateur/distro avant exécution
+            if check_install_user "${REP_GLPI}"; then
+                GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
+            fi
+            # Récupération des versions GLPI disponibles sur GitHub
+            tags=""
+            # Récupère les tags au format X.Y.Z
+            tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | sort -Vr | uniq | head -n 16)
+            # Filtrage : ne garder que les versions avant GLPI_CLI_VERSION (donc plus récentes) ---
+            newer_tags=()
+            for tag in ${tags}; do
+                if [[ "${tag}" == "${GLPI_CLI_VERSION}" ]]; then
+                    break  # On s'arrête dès qu'on atteint la version installée
+                fi
+                newer_tags+=("${tag}")
+            done
+            # Préparation du menu de sélection de version GLPI
+            tag=""; find_version=(); version_map=(); number=1; first="ON"
+            for tag in "${newer_tags[@]}"; do
+                find_version+=("" "GLPI ${tag}" "${first}")
+                version_map+=("${tag}")
+                first="OFF"
+                ((number++))
+            done
+            # Menu de sélection d’installation GLPI
+            FIND_REP_GLPI=$(dialog \
+                --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_UPDATE" \
+                --title "${MSG_PROMPT_INSTALL_OPTIONS_DIR_TITLE_UPDATE}" \
+                --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_DIR_RADIOLIST_UPDATE}" 20 70 8 \
+                "${find_rep[@]}" \
+                2>&1 >/dev/tty)
+            rc=$?
+            # Convertir le numéro choisi en index du tableau (0-based)
+            local index=""
+            index=$((FIND_REP_GLPI - 1))
+            # Récupérer le vrai chemin correspondant
+            REP_GLPI="${rep_map[$index]}"
+            if [[ $rc -ne 0 ]]; then
+                warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
+                dialog --title "Annulation" --msgbox "Installation annulée par l'utilisateur." 7 50
+                return 1
+            fi
+            # Sélecteur de version GLPI
+            VERSION_SELECT=$(dialog \
+                --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_UPDATE" \
+                --title "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_UPDATE}" \
+                --radiolist "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_RADIOLIST_UPDATE}" 23 50 8 \
+                "${find_version[@]}" \
+                2>&1 >/dev/tty)
+            rc=$?
+            if [[ "${rc}" -ne 0 ]]; then
+                warn "${ICON_WARN} Sélection de la version annulée."
+                return 1
+            fi
+            # Convertir le numéro choisi en index du tableau (0-based)
+            local index=""
+            index=$((VERSION_SELECT - 1))
+            # Récupérer le vrai tag correspondant
+            VERSION_SELECT="${version_map[$index]}"
+            dialog --title "${MSG_INFO}" --msgbox "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_MSG_UPDATE}" 10 100
+            export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
+            export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME GLPI_CLI_VERSION
+            # Lancement de la mise à jour
+            run_sequence "update"
+        fi
+    elif [[ "${SELECTED_MENU}" == 3 ]]; then
+        check_glpi_installed
+        # Si au moins un répertoire GLPI trouvé, demander à l'utilisateur de choisir
+        if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
+            # Préparer les arguments pour dialog
+            find_rep=()
+            rep_map=()
+            number=1
+            first="ON"
+            for dir in "${glpi_dirs[@]}"; do
+                find_rep+=("${number}" "${dir}" "${first}")
+                rep_map+=("${dir}")
+                first="OFF"
+                ((number++))
+            done
+            # Sélecteur de répertoire GLPI pour sauvegarde
+            FIND_REP_GLPI=$(dialog \
+                --backtitle "$MSG_PROMPT_BACKUP_OPTIONS_BACKTITLE" \
+                --title "${MSG_PROMPT_BACKUP_OPTIONS_DIR_TITLE}" \
+                --radiolist "${MSG_PROMPT_BACKUP_OPTIONS_DIR_RADIOLIST}" 20 70 8 \
+                "${find_rep[@]}" \
+                2>&1 >/dev/tty)
+            rc=$?
+            # Convertir le numéro choisi en index du tableau (0-based)
+            local index=""
+            index=$((FIND_REP_GLPI - 1))
+            # Récupérer le vrai chemin correspondant
+            REP_GLPI="${rep_map[$index]}"
+            if [[ $rc -ne 0 ]]; then
+                warn "${ICON_WARN} Sélection du répertoire d'installation GLPI annulée par l'utilisateur." | tee -a "${DEBUGFILE}"
+                dialog --title "Annulation" --msgbox "Sauvegarde annulée par l'utilisateur." 7 50
+                return 1
+            fi
+            export REP_GLPI INVOKING_HOME REP_BACKUP_COMPRESS
+            # Lancement de la sauvegarde
+            run_sequence "backup"
+        fi
+    else
+        warn "${ICON_WARN} Option d'installation/mise à jour invalide."
+        return 1
     fi
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
@@ -623,6 +663,14 @@ function run_sequence() {
             )
             task_order=(
                 "${MSG_T20}" "${MSG_T21}" "${MSG_T22}" "${MSG_T23}" "${MSG_T24}" "${MSG_T25}"
+            )
+            ;;
+        backup)
+            tasks=(
+                ["${MSG_T30}"]="backup_glpi_only"
+            )
+            task_order=(
+                "${MSG_T30}"
             )
             ;;
         *)
@@ -1168,7 +1216,7 @@ function setup_glpi(){
         return 1
     }
     info "${ICON_INFO} ${MSG_SETUP_GLPI_MOVE_FILES}"
-    mv -f "${REP_GLPI}"/files "${FOLDER_FILES}" ||
+    mv -f "${REP_GLPI}"files "${FOLDER_FILES}" ||
     {
         warn "${ICON_WARN} ${MSG_SETUP_GLPI_MOVE_FILES_FAILED}"
         return 1

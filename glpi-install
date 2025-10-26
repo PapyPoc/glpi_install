@@ -27,7 +27,7 @@ if ! check_distro; then # Vérification de la distribution
 fi
 # Demande les options d'installation ou de mise à jour
 info "${ICON_INFO} ${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS}"
-if ! install_update; then # Demande les options d'installation
+if ! selection_menu; then # Demande les options d'installation
     info "${ICON_WARN} ${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS_ABORT}"
     exit 1
 fi
