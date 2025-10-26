@@ -679,9 +679,9 @@ function validate_db_user() {
 }
 # Sequence principale d'installation et de mise à jour de GLPI
 function run_sequence() {
+    trap 'on_error' ERR
     local mode="$1"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
-    trap 'on_error' ERR
     declare -A tasks
     local task_order=()
     # --- Sélection du mode ---
@@ -692,8 +692,8 @@ function run_sequence() {
                 ["${MSG_T02}"]="install_packages"
                 ["${MSG_T03}"]="network_info"
                 ["${MSG_T04}"]="mariadb_configure"
-                ["${MSG_T05}"]="download_untar_glpi"
-                ["${MSG_T06}"]="setup_glpi"
+                ["${MSG_T05} ${VERSION_SELECT}"]="download_untar_glpi"
+                ["${MSG_T06} ${VERSION_SELECT}"]="setup_glpi"
                 ["${MSG_T07}"]="maj_user_glpi"
                 ["${MSG_T08}"]="write_credentials"
             )
@@ -775,6 +775,7 @@ function run_sequence() {
 }
 # Exécute une tâche individuelle
 function run_task() {
+    trap 'on_error' ERR
     local task_key="$1" task_cmd="$2" index="$3" total="$4"
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     debug "${ICON_INFO} ${MSG_RUN_TASK_COMMAND} ${task_cmd}" ${task_key}/${total}
@@ -1453,6 +1454,7 @@ EOF
 }
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){
+    trap 'on_error' ERR
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO}  ${MSG_MAJ_USER_GLPI_START}"
     # Ensure we have a mysql client command; fallback to detecting it if not set
@@ -1565,7 +1567,10 @@ function write_credentials(){
     local folder_save_credentials="" file_save=""
     folder_save_credentials="${INVOKING_HOME}/saved_credentials"
     mkdir -p "${folder_save_credentials}"
-    file_save="${folder_save_credentials}/${FICHIER_MSG}${DB_NAME}.txt"
+    # Nettoie le nom du fichier pour éviter les / ou espaces
+    local safe_name
+    safe_name="$(basename "${FICHIER_MSG}" .txt)_${DB_NAME}.txt"
+    file_save="${folder_save_credentials}/${safe_name}"
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "${file_save}" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
