@@ -306,8 +306,8 @@ function selection_menu(){
         1 "${MSG_INSTALL_UPDATE_INSTALL}" ON \
         2 "${MSG_INSTALL_UPDATE_UPDATE}" OFF \
         3 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
-        4 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
-        5 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
+        4 "${MSG_INSTALL_UPDATE_RESTORE}" OFF \
+        5 "${MSG_INSTALL_UPDATE_MIGRATE}" OFF \
         "" "--------------------------------" OFF \
         7 "Sortir" OFF 2>&1 >/dev/tty)
     rc=$?
@@ -1106,20 +1106,28 @@ SQL
     )
     if [[ -z "${TIMEZONE_TABLE_COUNT}" || "${TIMEZONE_TABLE_COUNT}" -eq 0 ]]; then
         info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
-        # shellcheck disable=SC2024
-        sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
-        | {
-            sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}" \
-            || sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
-        }
-        rc=${PIPESTATUS[1]
-    }
-    if [ "$rc" -eq 0 ]; then
-        info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_OK}"
-    else
-        warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_ERROR}"
-        return 1
-    fi
+        # Prépare la commande mysql (évite double sudo inutile)
+        local mysql_exec="sudo ${MYSQL_CMD:-mysql}"
+        # Importation des fuseaux horaires
+        if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
+            | ${mysql_exec} -u root -p"${SQLROOTPWD}" mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+            rc=0
+        else
+            # Tentative sans mot de passe root
+            if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
+                | ${mysql_exec} -u root mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+                rc=0
+            else
+                rc=$?
+            fi
+        fi
+        debug "${ICON_DEBUG} ${MSG_MARIADB_CONFIGURE_TIMEZONE_RETURN_CODE} ${rc}"
+        if [ "$rc" -eq 0 ]; then
+            info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_OK}"
+        else
+            warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_ERROR}"
+            return 1
+        fi
         # --- Paramétrage du fuseau horaire ---
         local _sql_tz
         _sql_tz=$(cat <<SQL
@@ -1129,7 +1137,7 @@ GRANT SELECT ON mysql.time_zone_transition TO '${DB_USER}'@'localhost';
 GRANT SELECT ON mysql.time_zone_transition_type TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
-        )
+)
         if echo "${_sql_root}" \
             | { sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --silent 2>>"${ERRORFILE}" || \
                 sudo "${MYSQL_CMD}" -u root --batch --silent 2>>"${ERRORFILE}"; } >> "${DEBUGFILE}"; then
@@ -1138,7 +1146,6 @@ SQL
             warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
             return 1
         fi
-    else
         info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_ALREADY_LOADED}"
     fi
     # --- Redémarrage du service ---
@@ -1159,6 +1166,7 @@ SQL
         fi
     fi
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appelée par ${FUNCNAME[1]:-main}]"
+    
 }
 # Téléchargement et décompression de GLPI
 function download_untar_glpi(){
