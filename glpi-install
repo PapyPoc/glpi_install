@@ -14,6 +14,8 @@ source "${REP_SCRIPT}/function" # Fichier de fonctions
 trap 'on_error' ERR
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
+exec 3>&1
+exec > >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
 load_language # Fichier de langue
 #exec 3>&1                   # sauvegarde du terminal (pour dialog)
 #exec >"${DEBUGFILE}"        # redirige stdout vers debug.log
