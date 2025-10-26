@@ -1002,11 +1002,16 @@ EOF
 function manage_service() {
     local service="$1"
     local label="$2"
+    # Sauvegarde du terminal
+    exec 3>&1
+    # Redirection propre
+    exec > >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
+    
     info "${ICON_INFO} ${MSG_MANAGE_SERVICE_START} ${label}..."
     # Activer et redémarrer le service avec journalisation
     {
-        systemctl enable "${service}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"
-        systemctl restart "${service}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"
+        systemctl enable "${service}"
+        systemctl restart "${service}"
     } || {
         error "${ICON_ERROR} ${MSG_MANAGE_SERVICE_FAILED} ${label}."
         return 1
@@ -1018,7 +1023,7 @@ function manage_service() {
         warn "${ICON_WARN} ${MSG_MANAGE_SERVICE_INACTIVE} ${label}."
         # Forcer le redémarrage une seconde fois
         {
-            systemctl restart "${service}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"
+            systemctl restart "${service}"
         } || {
             error "${ICON_ERROR} ${MSG_MANAGE_SERVICE_INACTIVE_FAILED} ${label}."
             return 1
@@ -1030,7 +1035,7 @@ function manage_service() {
             error "${ICON_ERROR} ${MSG_MANAGE_SERVICE_STILL_INACTIVE} ${label}."
             return 1
         fi
-    fi
+    fi >&3
 }
 # Détection du fuseau horaire système
 function get_timezone() {
