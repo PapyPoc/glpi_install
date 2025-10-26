@@ -308,7 +308,7 @@ function selection_menu(){
         3 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
         4 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
         5 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
-        "" "-----------------------------" OFF \
+        "" "--------------------------------" OFF \
         7 "Sortir" OFF )
     rc=$?
     export SELECTED_MENU
