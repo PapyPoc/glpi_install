@@ -1007,7 +1007,8 @@ FLUSH PRIVILEGES;
 SQL
     )
         # --- Application des commandes SQL ---
-        if echo "${_sql_root}" | sudo "${MYSQL_CMD}" -u root --batch --silent mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
+        # shellcheck disable=SC2024
+        if echo "${_sql_root}" | sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
             info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_SQL_CMD_OK}"
         else
             warn "${ICON_WARN} ${MSG_MARIADB_CONFIGURE_SQL_CMD_ERROR}"
@@ -1019,6 +1020,7 @@ SQL
     # --- Import des informations de fuseaux horaires ---
     info "${ICON_INFO} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
     # --- Importation sécurisée des fuseaux horaires depuis /usr/share/zoneinfo ---
+    # shellcheck disable=SC2024
     if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo \
         | sudo "${MYSQL_CMD}" -u root mysql >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
         info "${ICON_OK} ${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT_OK}"
