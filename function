@@ -290,9 +290,10 @@ function install_update(){
     INSTALL_OR_UPDATE=$(dialog \
         --backtitle "$MSG_INSTALL_UPDATE_BACK_TITLE" \
         --title "${MSG_INSTALL_UPDATE_TITRE}" \
-        --radiolist "${MSG_INSTALL_UPDATE_RADIOLIST}" 15 50 2 \
+        --radiolist "${MSG_INSTALL_UPDATE_RADIOLIST}" 15 50 3 \
         1 "${MSG_INSTALL_UPDATE_INSTALL}" ON \
         2 "${MSG_INSTALL_UPDATE_UPDATE}" OFF \
+        3 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
         3>&1 1>&2 2>&3)
     rc=$?
     exec 3>&-
@@ -420,7 +421,7 @@ function prompt_install_options(){
         WIDTH=$(( WIDTH > WIDTH_DB_USER ? WIDTH : WIDTH_DB_USER ))
         WIDTH=$(( WIDTH + 6 ))
         local _def_rep="" rep_glpi="" _def_db_host="" db_host="" _def_db_name="" db_name="" _def_db_user="" db_user=""
-        local _def_rep="${REP_GLPI:-/var/www/glpi}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
+        local _def_rep="${REP_GLPI:-/var/www/html/glpi}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
         while true; do
             form=$(dialog --backtitle "$MSG_PROMPT_INSTALL_OPTIONS_BACKTITLE_INSTALL" --title "$MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_INSTALL" \
                 --form "${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_PARAM_1} ${VERSION_SELECT} ${MSG_PROMPT_INSTALL_OPTIONS_VERSION_TITLE_PARAM_2}" 18 68 8 \
@@ -615,9 +616,10 @@ function run_sequence() {
                 ["${MSG_T20}"]="maintenance 1"
                 ["${MSG_T21}"]="update_distro"
                 ["${MSG_T22}"]="backup_glpi"
-                ["${MSG_T23}"]="download_untar_glpi"
-                ["${MSG_T24}"]="update_glpi"
-                ["${MSG_T25}"]="maintenance 0"
+                ["${MSG_T23}"]="remove_old_glpi"
+                ["${MSG_T24}"]="download_untar_glpi"
+                ["${MSG_T25}"]="update_glpi"
+                ["${MSG_T26}"]="maintenance 0"
             )
             task_order=(
                 "${MSG_T20}" "${MSG_T21}" "${MSG_T22}" "${MSG_T23}" "${MSG_T24}" "${MSG_T25}"
@@ -1069,7 +1071,7 @@ function download_untar_glpi(){
     info "Repertoire d'installation de GLPI : ${REP_GLPI}"
     info "Version sélectionnée de GLPI : ${VERSION_SELECT}"
     info "Lien de téléchargement de GLPI : ${DOWNLOADLINK}"
-    info "URL API SHA256 : ${API_URL_SHA256}"
+    info "URL API SHA256 : ${API_URL_SHA256}/${VERSION_SELECT}"
     info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_START}"
     if [[ -z "${DOWNLOADLINK:-}" ]]; then
         warn "${ICON_WARN} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD_LINK_UNDEFINED}"
@@ -1079,7 +1081,7 @@ function download_untar_glpi(){
     tmp_file="$(mktemp /tmp/glpi_XXX.tar.gz)"
     info "${ICON_DEBUG} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD} ${DOWNLOADLINK} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD_TOWARDS} ${tmp_file}"
     if wget -q -O "$tmp_file" "${DOWNLOADLINK}" >> "${DEBUGFILE}" 2>> "${ERRORFILE}"; then
-        info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD_COMPLETED}"
+        info "${ICON_OK} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD_COMPLETED}"
     else
         warn "${ICON_WARN} ${MSG_DOWNLOAD_UNTAR_GLPI_FAILED}" 1>> "${ERRORFILE}"
         rm -f "$tmp_file"
@@ -1099,7 +1101,7 @@ function download_untar_glpi(){
         if ! [[ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]]; then
             info "${ICON_OK} ${MSG_DOWNLOAD_UNTAR_GLPI_HASH_OK}"
         else
-            warn "${ICON_WARN} ${MSG_DOWNLOAD_UNTAR_GLPI_HASH_FAILED}"
+            info "${ICON_WARN} ${MSG_DOWNLOAD_UNTAR_GLPI_HASH_FAILED}"
         fi
     fi
     # Création du répertoire d'installation si nécessaire
@@ -1128,7 +1130,7 @@ function setup_glpi(){
     info "${ICON_INFO} ${MSG_SETUP_GLPI_START}"
     source_os_release
     local CMD=(
-    php "${REP_GLPI}/bin/console" db:install
+    php "${REP_GLPI}bin/console" db:install
     --db-host localhost
     --db-port=3306
     --db-name="${DB_NAME}"
@@ -1140,32 +1142,39 @@ function setup_glpi(){
     --quiet
     --no-interaction
     )
+    # Définition des répertoires
+    FOLDER_LOGS="/var/log/${DB_NAME}"
+    FOLDER_CONFIG="/etc/${DB_NAME}/config"
+    FOLDER_FILES="/var/lib/${DB_NAME}/files"
+    # Définition des fichiers
+    FILE_APACHE_CONF="/etc/apache2/sites-available/${DB_NAME}.conf"
+
     info "${ICON_INFO} ${MSG_SETUP_GLPI_DIR_LOGS}${DB_NAME}"
-    mkdir -p /var/log/"${DB_NAME}" || 
+    mkdir -p "${FOLDER_LOGS}" || 
     {
         warn "${ICON_WARN} ${MSG_SETUP_GLPI_DIR_LOGS_FAILED}${DB_NAME}."
         return 1
     }
     info "${ICON_INFO} ${MSG_SETUP_GLPI_DIR_CONFIG}"
-    mkdir -p /etc/"${DB_NAME}"/config || 
+    mkdir -p "${FOLDER_CONFIG}" || 
     {
         warn "${ICON_WARN} ${MSG_SETUP_GLPI_DIR_CONFIG_FAILED}"
         return 1
     }
     info "${ICON_INFO} ${MSG_SETUP_GLPI_DIR_FILES}"
-    mkdir -p "/var/lib/${DB_NAME}/files" || 
+    mkdir -p "${FOLDER_FILES}" || 
     {
         warn "${ICON_WARN} ${MSG_SETUP_GLPI_DIR_FILES_FAILED}${DB_NAME}."
         return 1
     }
     info "${ICON_INFO} ${MSG_SETUP_GLPI_MOVE_FILES}"
-    mv -f "${REP_GLPI}"/files /var/lib/"${DB_NAME}"/files ||
+    mv -f "${REP_GLPI}"/files "${FOLDER_FILES}" ||
     {
         warn "${ICON_WARN} ${MSG_SETUP_GLPI_MOVE_FILES_FAILED}"
         return 1
     }
     info "${ICON_INFO} ${MSG_SETUP_GLPI_CREATE_LOCAL_DEFINE}"
-    if sudo tee /etc/"${DB_NAME}"/config/local_define.php >/dev/null <<EOF
+    if sudo tee "${FOLDER_CONFIG}"/local_define.php >/dev/null <<EOF
 <?php
     define('GLPI_VAR_DIR', '/var/lib/${DB_NAME}/files');
     define('GLPI_LOG_DIR', '/var/log/${DB_NAME}');
@@ -1179,7 +1188,7 @@ EOF
     info "${ICON_INFO} ${MSG_SETUP_GLPI_CREATE_DOWNSTREAM}"
     if sudo tee "${REP_GLPI}"/inc/downstream.php >/dev/null <<EOF
 <?php
-    define('GLPI_CONFIG_DIR', '/etc/${DB_NAME}/config');
+    define('GLPI_CONFIG_DIR', '${FOLDER_CONFIG}');
     if (file_exists(GLPI_CONFIG_DIR . '/local_define.php')) {
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
@@ -1190,13 +1199,6 @@ EOF
         warn "${ICON_WARN} ${MSG_SETUP_GLPI_CREATE_DOWNSTREAM_FAILED}"
         return 1
     fi
-    info "${ICON_INFO} ${MSG_SETUP_GLPI_RIGHTS_MODIFY}"
-    if rights_glpi "${REP_GLPI}"; then
-        info "${ICON_INFO} ${MSG_SETUP_GLPI_RIGHTS_MODIFY_OK}"
-    else
-        warn "${ICON_WARN} ${MSG_SETUP_GLPI_RIGHTS_MODIFY_FAILED}"
-        return 1
-    fi
     info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG} ${REP_GLPI}"
     if check_install_user "${REP_GLPI}"; then
         info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_USER_DETECTED} ${WEB_USER}"
@@ -1205,11 +1207,11 @@ EOF
             debug "${ICON_DEBUG} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_APACHE} ${WEB_USER}" # Pour le débogage
             # Configuration d'Apache pour GLPI
             info "${ICON_INFO} ${MSG_SETUP_GLPI_WEB_SERVER_CONFIG_VIRTUAL_HOST}"
-            if tee /etc/apache2/sites-available/glpi.conf <<EOF > /dev/null
+            if tee "${FILE_APACHE_CONF}" <<EOF > /dev/null
 <VirtualHost *:80>
     ServerName ${IPADRESS}
-    DocumentRoot ${REP_GLPI}/public
-    <Directory ${REP_GLPI}/public>
+    DocumentRoot ${REP_GLPI}public
+    <Directory ${REP_GLPI}public>
         Require all granted
         RewriteEngine On
         RewriteCond %{HTTP:Authorization} ^(.+)$
@@ -1243,13 +1245,19 @@ EOF
                 return 1
             fi
             # Activer le site GLPI
-            if ! a2ensite glpi.conf | tee -a "${DEBUGFILE}"; then
+            if ! a2ensite "${DB_NAME}".conf | tee -a "${DEBUGFILE}"; then
                 warn "${ICON_WARN} ${MSG_SETUP_GLPI_APACHE_DEFAULT_SITE_ENABLED_FAILED}"
                 return 1
             fi
             # Recharger la configuration d'Apache
             if ! systemctl reload apache2 | tee -a "${DEBUGFILE}"; then
                 warn "${ICON_WARN} ${MSG_SETUP_GLPI_APACHE_RELOAD_FAILED}"
+                return 1
+            fi
+            # Change permissions
+            info "${ICON_INFO} ${MSG_SETUP_GLPI_RIGHTS_MODIFY}"
+            if ! rights_glpi "${REP_GLPI}"; then
+                warn "${ICON_WARN} ${MSG_SETUP_GLPI_RIGHTS_MODIFY_FAILED}"
                 return 1
             fi
             # Installation de GLPI en ligne de commande
@@ -1259,11 +1267,6 @@ EOF
                 info "${ICON_INFO} ${MSG_SETUP_GLPI_COMPLETED}"
             else
                 warn "${ICON_WARN} ${MSG_SETUP_GLPI_INSTALLATION_FAILED}"
-                return 1
-            fi
-            # Change permissions
-            if ! rights_glpi "${REP_GLPI}"; then
-                warn "${ICON_WARN} ${MSG_SETUP_GLPI_RIGHTS_MODIFY_FAILED}"
                 return 1
             fi
             manage_service "apache2" "Apache2" || return 1
@@ -1331,7 +1334,7 @@ EOF
         fi
         # Configuration de la tâche Cron
         info "${ICON_INFO} ${MSG_SETUP_GLPI_CRON_CONFIG}"
-        echo "*/2 * * * * ${WEB_USER} /usr/bin/php ""${REP_GLPI}""front/cron.php &>/dev/null" >> /etc/cron.d/glpi
+        echo "*/2 * * * * ${WEB_USER} /usr/bin/php ${REP_GLPI}front/cron.php &>/dev/null" >> /etc/cron.d/glpi
     fi
     sleep 5
     info "${ICON_INFO} ${MSG_SETUP_GLPI_REMOVE_INSTALL_FILE}"
@@ -1441,10 +1444,10 @@ function rights_glpi(){
             setsebool -P httpd_can_network_connect on
             setsebool -P httpd_can_network_connect_db on
             setsebool -P httpd_can_sendmail on
-            for p in "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}/marketplace"; do
+            for p in "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}marketplace"; do
                 semanage fcontext -a -t httpd_sys_rw_content_t "${p}(/.*)?"
             done
-            restorecon -R "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}/marketplace"
+            restorecon -R "${REP_GLPI}" /etc/glpi /var/lib/glpi /var/log/glpi "${REP_GLPI}marketplace"
         else
             error "${ICON_ERROR} $(date '+%F %T'): WARN: semanage non disponible — SELinux non configuré"
         fi
@@ -1552,7 +1555,7 @@ function backup_glpi() {
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     info "${ICON_INFO} ${MSG_BACKUP_GLPI_START}"
     # Récupération du nom de la base de données dans le fichier config de GLPI suivant le répertoire de GLPI
-    REP_GLPI=$(find /etc -maxdepth 1 -type f -name "glpi.conf" 2>/dev/null | head -n 1)
+    REP_GLPI=$(find /etc -maxdepth 1 -type f -name "${DB_NAME}.conf" 2>/dev/null | head -n 1)
     # Lecture des informations MySQL
     local DB_NAME PASSWORD
     DB_NAME=$(sed -n 's/.*\(Nom de la base de données GLPI\|GLPI database name\): \([^ ]*\).*/\2/p' "${INVOKING_HOME}/sauve_mdp.txt")
@@ -1610,7 +1613,18 @@ function backup_glpi() {
             warn "${ICON_WARN} ${MSG_BACKUP_GLPI_EMPTY_COMPRESS_BACKUP}"
             return 1
         fi
-        # Suppression sécurisée de l’ancien GLPI
+    else
+        warn "${ICON_WARN} ${MSG_BACKUP_GLPI_COMPRESS_BACKUP_FAILED}"
+        return 1
+    fi
+    info "${ICON_INFO} ${MSG_BACKUP_GLPI_OK}"
+    sleep 2
+    export REP_BACKUP REP_GLPI
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+}
+function remove_old_glpi(){
+    debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    # Suppression sécurisée de l’ancien GLPI
         info "${ICON_INFO} ${MSG_BACKUP_GLPI_REMOVE_OLD_GLPI_DIR}"
         if [ -n "${REP_GLPI}" ] && [ -d "${REP_GLPI}" ]; then
             rm -rf "${REP_GLPI:?}/" >> "${DEBUGFILE}" 2>> "${ERRORFILE}"
@@ -1618,13 +1632,6 @@ function backup_glpi() {
         else
             warn "${ICON_WARN} ${MSG_BACKUP_GLPI_REMOVE_OLD_GLPI_DIR_NOTFOUND} ${REP_GLPI}"
         fi
-    else
-    warn "${ICON_WARN} ${MSG_BACKUP_GLPI_COMPRESS_BACKUP_FAILED}"
-        return 1
-    fi
-    info "${ICON_INFO} ${MSG_BACKUP_GLPI_OK}"
-    sleep 2
-    export REP_BACKUP REP_GLPI
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 # Mise à jour de GLPI
