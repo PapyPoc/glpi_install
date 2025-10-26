@@ -734,25 +734,31 @@ function run_sequence() {
     (
     for task_key in "${task_order[@]}"; do
         ((task_index++))
-        # Sécurité : éviter division par zéro
-        if (( total_tasks == 0 )); then
-            total_tasks=1
-        fi
         local progress=$((task_index * 100 / total_tasks))
         local task_cmd="${tasks[${task_key}]}"
-        # --- Affichage propre ---
-        printf "%d\nXXX\n%s/%s - %s ⏳\nXXX\n" "${progress}" "${task_index}" "${total_tasks}" "${task_key}"
+        # --- Affichage dans la jauge ---
+        echo "${progress}"
+        echo "XXX"
+        echo "${task_index}/${total_tasks} - ${task_key} ⏳"
+        echo "XXX"
         debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_OK} ${MSG_RUN_SEQUENCE_START} ${mode} - '${task_key}' → ${task_cmd}"
-        # --- Exécution propre ---
+        # --- Exécution de la tâche ---
         if run_task "${task_key}" "${task_cmd}" "${task_index}" "${total_tasks}" >/dev/null 2>&1; then
-            printf "%d\nXXX\n%s/%s - %s %s\nXXX\n" "${progress}" "${task_index}" "${total_tasks}" "${task_key}" "${ICON_VALIDATE}"
+            echo "${progress}"
+            echo "XXX"
+            echo "${task_index}/${total_tasks} - ${task_key} ${ICON_VALIDATE}"
+            echo "XXX"
             debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_VALIDATE} ${MSG_RUN_SEQUENCE_END} ${mode} - '${task_key}'."
+            sleep 0.5  # légère pause visuelle
         else
-            printf "100\nXXX\n%s/%s - %s %s\nXXX\n" "${task_index}" "${total_tasks}" "${task_key}" "${ICON_KO}"
+            echo "100"
+            echo "XXX"
+            echo "${task_index}/${total_tasks} - ${task_key} ${ICON_KO}"
+            echo "XXX"
             debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG] ${ICON_KO} ${MSG_RUN_SEQUENCE_END} ${mode} - '${task_key}'."
-            exit 1
+            sleep 3
+            exit 1  # << plus sûr que return dans un sous-shell
         fi
-        sleep 0.5
     done
 ) | dialog --clear \
            --backtitle "${MSG_RUN_SEQUENCE_BACKTITLE}" \
