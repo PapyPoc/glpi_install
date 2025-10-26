@@ -484,14 +484,7 @@ function prompt_install_options(){
         done
         # Assignation des valeurs finales
         local DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
-        local DB_HOST="${DB_HOST}"
-        local REP_GLPI="${REP_GLPI}"
-        local DB_NAME="${DB_NAME}"
-        local DB_USER="${DB_USER}"
-        local INVOKING_HOME="${PWD}"
-        local TIMEZONE="${TIMEZONE:-UTC}"
-        local VERSION_SELECT="${VERSION_SELECT}"
-        export DOWNLOADLINK DB_HOST REP_GLPI DB_NAME DB_USER INVOKING_HOME TIMEZONE
+        export DOWNLOADLINK DB_HOST REP_GLPI DB_NAME DB_USER INVOKING_HOME TIMEZONE VERSION_SELECT
         # Lancement de l’installation
         run_sequence "install"
     fi
@@ -1073,6 +1066,10 @@ function download_untar_glpi(){
     debug "${ICON_DEBUG} $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     trap 'on_error' ERR
     set -Euo pipefail
+    info "Repertoire d'installation de GLPI : ${REP_GLPI}"
+    info "Version sélectionnée de GLPI : ${VERSION_SELECT}"
+    info "Lien de téléchargement de GLPI : ${DOWNLOADLINK}"
+    info "URL API SHA256 : ${API_URL_SHA256}"
     info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_START}"
     if [[ -z "${DOWNLOADLINK:-}" ]]; then
         warn "${ICON_WARN} ${MSG_DOWNLOAD_UNTAR_GLPI_DOWNLOAD_LINK_UNDEFINED}"
@@ -1088,6 +1085,24 @@ function download_untar_glpi(){
         rm -f "$tmp_file"
         return 1
     fi
+    # Vérification de l'intégrité du fichier téléchargé
+    info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_HASH_CHECK}"
+    EXPECTED_HASH=$(curl -s -H "User-Agent: glpi-installer" "${API_URL_SHA256}/${VERSION_SELECT}" \
+    | grep '"digest":' \
+    | sed -E 's/.*"sha256:([0-9a-f]+)".*/\1/' \
+    | head -n 1)
+    if ! [[ -n "$EXPECTED_HASH" ]]; then
+        EXPECTED_HASH=""
+    fi
+    ACTUAL_HASH=$(sha256sum "$tmp_file" | awk '{print $1}')
+    if [[ -n "$EXPECTED_HASH" ]]; then
+        if ! [[ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]]; then
+            info "${ICON_OK} ${MSG_DOWNLOAD_UNTAR_GLPI_HASH_OK}"
+        else
+            warn "${ICON_WARN} ${MSG_DOWNLOAD_UNTAR_GLPI_HASH_FAILED}"
+        fi
+    fi
+    # Création du répertoire d'installation si nécessaire
     if mkdir -p "$REP_GLPI"; then
         info "${ICON_INFO} ${MSG_DOWNLOAD_UNTAR_GLPI_DIR_CREATE} ${REP_GLPI}"
     else
