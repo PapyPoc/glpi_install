@@ -5,7 +5,7 @@
 # Version: 1.9.0
 # Function file
 #
-# set -Eeuo pipefail
+set -Eeuo pipefail
 # Ne pas continuer si le script est exécuté directement
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

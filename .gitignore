@@ -1,2 +1,8 @@
+*.DS_Store
+*~$*
+.env
+.history/
 *.bak
-normalize.ps1
+*.ps1
+*.po
+*.xls
