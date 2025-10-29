@@ -19,7 +19,8 @@ source "${REP_SCRIPT}/config" # Fichier de variable
     export TEXTDOMAIN TEXTDOMAINDIR
     # Détection automatique de la langue du système
     LANGUAGE=${LANG%%_*}
-    [ -z "$LANGUAGE" ] && LANGUAGE="fr_FR"
+    [ -z "$LANGUAGE" ] && LANGUAGE="en_US"
+    LANGUAGE="en_US"
     export LANG=$LANGUAGE.UTF-8
     # Création des dossiers LC_MESSAGES si inexistants
     if [ ! -f "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
@@ -29,38 +30,38 @@ source "${REP_SCRIPT}/config" # Fichier de variable
         fi
     fi
     info "$(gt "Fichier de langue chargé :") ${TEXTDOMAINDIR/$REP_SCRIPT\//}"
-    info "ℹ️ $(gt "Chargement du fichier de langue")"
-    info "ℹ️ $(gt "Début du script d'installation")"
+    info "$(gt "Chargement du fichier de langue")"
+    info "$(gt "Début du script d'installation")"
 # Regarde si la distribution est conforme
-    info "ℹ️ $(gt "Vérification de la distribution")"
+    info "$(gt "Vérification de la distribution")"
     if ! check_distro; then # Vérification de la distribution
         dialog --title "❗ $(gt "Erreur")" --msgbox "$(gt "La vérification de la distribution a échoué.")" 6 50 >/dev/tty 2>&1
-        error "❗ $(gt "La vérification de la distribution a échoué.")"
+        error "$(gt "La vérification de la distribution a échoué.")"
         exit 1
     fi
 # Demande les options d'installation ou de mise à jour
-    info "ℹ️ $(gt "Menu général")"
-    if ! selection_menu; then # Demande les options d'installation
+    info "$(gt "Menu général")"
+    if ! selection_menu; then # Demande les options
         if [[ $? == 100 ]]; then
-            info "ℹ️ ${MSG_INSTALL_UPGRADE_EXITING}"
+            info "$(gt "Sortie du menu général.")"
             exit 0
         fi
         if [[ ${SELECTED_MENU} == 0 ]] || [[ ${SELECTED_MENU} == 7 ]]; then
-            info "ℹ️ $(gt "Arrêt de l'installation par l'utilisateur.")"
+            info "$(gt "Arrêt du menu général par l'utilisateur.")"
             exit 1
         fi
     fi
     info "Fichier de sauvegarde des mots de passe : ${FICHIER_MSG}${DB_NAME}.txt"
 # Droit sur le fichier de sauvegarde des mots de passe
     if file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}${DB_NAME}*" | head -n 1); then # Vérifie si le fichier de sauvegarde existe
-        info "ℹ️ $(gt "Création du fichier de sauvegarde des mots de passe")"
+        info "$(gt "Création du fichier de sauvegarde des mots de passe")"
         chmod -Rf 500 "${INVOKING_HOME}/saved_credentials"
         chown root:root "${file_save}"
         info "$(gt "Le fichier de sauvegarde") ${file_save} $(gt "a été créé avec succès.")"
         export file_save
     else
         dialog --title "❗ $(gt "Erreur")" --msgbox "$(gt "Fichier de sauvegarde introuvable :") ${file_save}" 6 60 >/dev/tty 2>&1
-        error "❗ $(gt "Fichier de sauvegarde introuvable :") ${file_save}"
+        error "$(gt "Fichier de sauvegarde introuvable :") ${file_save}"
         exit 1
     fi
 # Afficher le fichier de sauvegarde des mots de passe
@@ -85,4 +86,4 @@ source "${REP_SCRIPT}/config" # Fichier de variable
         dialog --title "ℹ️ $(gt "Information")" --msgbox "$(gt "Informations sur les fichiers de logs :") ${INFOFILES}" 8 70 >/dev/tty 2>&1
     fi
 clear
-info "ℹ️ $(gt "Fin du script d'installation")"
+info "$(gt "Fin du script d'installation")"
