@@ -61,7 +61,7 @@ function debug(){
     printf '%s\n' "🐞 ${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 function gt(){
-    gettext "$@" || echo "$@"  # Fallback si traduction absente
+    gettext "$@" || echo "$@ - Translation missing"  # Fallback si traduction absente
 }
 # Gestion des erreurs avec trap
 function on_error() {
@@ -196,16 +196,16 @@ function selection_menu(){
     debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     # Demander à l'utilisateur s'il souhaite installer ou mettre à jour GLPI
     SELECTED_MENU=$(dialog \
-        --backtitle "$MSG_INSTALL_UPDATE_BACK_TITLE" \
-        --title "${MSG_INSTALL_UPDATE_TITRE}" \
-        --radiolist "${MSG_INSTALL_UPDATE_RADIOLIST}" 15 50 3 \
-        1 "${MSG_INSTALL_UPDATE_INSTALL}" ON \
-        2 "${MSG_INSTALL_UPDATE_UPDATE}" OFF \
-        3 "${MSG_INSTALL_UPDATE_BACKUP}" OFF \
-        4 "${MSG_INSTALL_UPDATE_RESTORE}" OFF \
-        5 "${MSG_INSTALL_UPDATE_MIGRATE}" OFF \
+        --backtitle "$(gt "Utilitaire de GLPI")" \
+        --title "$(gt "Options pour GLPI")" \
+        --radiolist "$(gt "Choisissez une option :")" 15 50 3 \
+        1 "$(gt "Installation de GLPI")" ON \
+        2 "$(gt "Mise à jour de GLPI")" OFF \
+        3 "$(gt "Sauvegarde complète de GLPI")" OFF \
+        4 "$(gt "Restauration de GLPI")" OFF \
+        5 "$(gt "Migration de GLPI")" OFF \
         "" "--------------------------------" OFF \
-        7 "Sortir" OFF 2>&1 >/dev/tty)
+        7 "$(gt "Sortir")" OFF 2>&1 >/dev/tty)
     rc=$?
     export SELECTED_MENU
     if [[ $rc -ne 0 ]]; then
