@@ -187,7 +187,7 @@ else
     exit 1
 fi
 # Exécution sécurisée
-if bash "${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${DEBUGFILE}"; then
+if source "${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${DEBUGFILE}"; then
     info "$(gt "Exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' réussie.")"
 else
     warn "$(gt "Échec de l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install'.")"
