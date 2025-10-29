@@ -65,9 +65,7 @@ function debug(){
     printf '%s\n' "🐞 ${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 function gt(){
-    local text
-    text="$%"
-    gettext "$text"
+    gettext "$@" || echo "$@"  # Fallback si traduction absente
 }
 # Gestion des erreurs avec trap
 function on_error() {
@@ -98,12 +96,6 @@ function compatible() {
     local version="$1"
     local -n versions_array="$2"
     [[ ${versions_array[*]} =~ ${version} ]]
-    debug "🐞 $(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}"
-}
-# Chargement du fichier de langue
-function load_language() {
-    debug "DEBUG : $(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}"
-    
     debug "🐞 $(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}"
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI

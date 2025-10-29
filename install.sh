@@ -111,7 +111,7 @@ function gt(){
     gettext "$@"
 }
 # Détection de la distribution
-if . /etc/os-release 2>/dev/null; then
+if source /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
     info "$(gt "Distribution détectée :") ${DISTRO_ID^} ${VERSION_ID:-}"
 else
@@ -187,7 +187,7 @@ else
     exit 1
 fi
 # Exécution sécurisée
-if source "${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${DEBUGFILE}"; then
+if bash "${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${DEBUGFILE}"; then
     info "$(gt "Exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' réussie.")"
 else
     warn "$(gt "Échec de l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install'.")"

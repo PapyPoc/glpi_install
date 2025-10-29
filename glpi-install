@@ -15,7 +15,7 @@ source "${REP_SCRIPT}/config" # Fichier de variable
 # Charger le fichier de langue
     # Traduction avec gettext
     TEXTDOMAIN=messages
-    TEXTDOMAINDIR="$SCRIPT_DIR/lang"
+    TEXTDOMAINDIR="$REP_SCRIPT/lang"
     export TEXTDOMAIN TEXTDOMAINDIR
     # Détection automatique de la langue du système
     LANGUAGE=${LANG%%_*}
