@@ -15,7 +15,6 @@ fi
 # Affichage d'erreur en rouge
 function error(){
     local msg="$1"
-    export_display_env
     local expanded
     if command -v envsubst >/dev/null 2>&1; then
         expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
@@ -28,7 +27,6 @@ function error(){
 # Affichage d'alerte en orange
 function warn(){
     local msg="$1"
-    export_display_env
     local expanded
     if command -v envsubst >/dev/null 2>&1; then
         expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
@@ -41,7 +39,6 @@ function warn(){
 # Affichage d'information en bleu
 function info(){
     local msg="$1"
-    export_display_env
     local expanded
     if command -v envsubst >/dev/null 2>&1; then
         expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
@@ -54,7 +51,6 @@ function info(){
 # Affichage debug en normal
 function debug(){
     local msg="$1"
-    export_display_env
     local expanded
     if command -v envsubst >/dev/null 2>&1; then
         expanded=$( ( set +u; printf '%s' "$msg" | envsubst ) )
