@@ -13,84 +13,36 @@ LANGUE="${LANG%%_*}"
 # Variables d'environnement
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
-DEPENDENCIES="curl jq openssl sudo dialog git"
+DEPENDENCIES="curl jq openssl sudo dialog git gettext"
 GIT="https://github.com/PapyPoc/glpi_install.git"
 BRANCHE="dev"
 ERRORFILE="${REP_SCRIPT}/error.log"
 DEBUGFILE="${REP_SCRIPT}/debug.log"
 UPDATEFILE="${REP_SCRIPT}/update.log"
-# Traduction des messages
-if [ "$LANGUE" == "fr" ]; then
-    # Messages pour la détection de la distribution et les privilèges
-    MSG_INSTALL_SH_DETECT_DISTRO="Distribution détectée : "
-    MSG_INSTALL_SH_DETECT_DISTRO_NONOK="Distribution non détectée ou non prise en charge."
-    MSG_INSTALL_SH_CHECK_GROUP_1="Groupe non reconnu. Utilisation de '"
-    MSG_INSTALL_SH_CHECK_GROUP_2="' par défaut."
-    MSG_INSTALL_SH_USER_GROUP_1="L'utilisateur '${ORIG_USER}' appartient au groupe '"
-    MSG_INSTALL_SH_USER_GROUP_2="'."
-    MSG_INSTALL_SH_USER_GROUP_3="L'utilisateur '${ORIG_USER}' n'appartient pas au groupe '"
-    MSG_INSTALL_SH_RESTART_SESSION="Relancez votre session."
-    MSG_INSTALL_SH_RESTART_SCRIPT_SUDO="Relance du script avec privilèges administrateur via sudo..."
-    MSG_INSTALL_SH_RESTART_SCRIPT_SU="Relance du script avec privilèges administrateur via su..."
-    MSG_INSTALL_SH_RESTART_ERROR="Aucune commande disponible pour élever les privilèges (sudo/su)."
-    # Messages pour la gestion des dépendances
-    MSG_INSTALL_SH_DEPENDENCIES_MISSING_01="Dépendances manquantes: "
-    MSG_INSTALL_SH_DEPENDENCIES_MISSING_02=". Tentative d'installation..."
-    MSG_INSTALL_SH_DEPENDENCIES_SATISFIED="Toutes les dépendances sont satisfaites."
-    MSG_INSTALL_SH_DEPENDENCIES_FAILED="Échec de la vérification ou installation des dépendances."
-    MSG_INSTALL_SH_PACKAGE_MANAGER_NOT_FOUND="Aucun gestionnaire de paquets pris en charge trouvé pour installer :"
-    MSG_INSTALL_SH_DEPENDENCIES_INSTALL_FAILED="Échec de l'installation des dépendances :"
-    MSG_INSTALL_SH_DEPENDENCIES_MISSING_AFTER_INSTALL="Commandes toujours manquantes après l'installation :"
-    MSG_INSTALL_SH_DEPENDENCIES_INSTALLED="Dépendances installées. Redémarrage du script..."
-    # Messages pour Github
-    MSG_INSTALL_SH_GITHUB_CLONE="Clonage du dépôt git ${GIT} (branche: ${BRANCHE})"
-    MSG_INSTALL_SH_GITHUB_CLONE="Clonage du dépôt git ${GIT} (branche: ${BRANCHE})"
-    MSG_INSTALL_SH_GITHUB_UPDATE="Mise à jour du dépôt git ${GIT} (branche: ${BRANCHE})"
-    MSG_INSTALL_SH_GITHUB_CLONE_FAILED="Échec du clonage du dépôt git ${GIT}."
-    # Messages dépôt git
-    MSG_INSTALL_SH_GITHUB_SCRIPT_NOT_FOUND="Le script '${REP_SCRIPT}/glpi_install/glpi-install' est introuvable."
-    # Messages execution script
-    MSG_INSTALL_SH_GITHUB_SCRIPT_ERROR="Erreur lors de l'exécution du script"
-    MSG_INSTALL_SH_GITHUB_SCRIPT_EXECUTED="Exécution réussie de ${REP_SCRIPT}/glpi_install/glpi-install"
-    MSG_INSTALL_SH_GITHUB_SCRIPT_EXECUTION_FAILED="Échec de l'exécution de ${REP_SCRIPT}/glpi_install/glpi-install"
-
-elif [ "$LANGUE" == "en" ]; then
-    # Messages for distro detection and privileges
-    MSG_INSTALL_SH_DETECT_DISTRO="Detected distribution: "
-    MSG_INSTALL_SH_DETECT_DISTRO_NONOK="Distribution not detected or not supported."
-    MSG_INSTALL_SH_CHECK_GROUP_1="Unrecognized group. Using "
-    MSG_INSTALL_SH_CHECK_GROUP_2=" by default."
-    MSG_INSTALL_SH_USER_GROUP_1="User ${ORIG_USER} belongs to group "
-    MSG_INSTALL_SH_USER_GROUP_2="."
-    MSG_INSTALL_SH_RESTART_SESSION="Please restart your session."
-    MSG_INSTALL_SH_RESTART_SCRIPT_SUDO="Restarting script with administrator privileges via sudo..."
-    MSG_INSTALL_SH_RESTART_SCRIPT_SU="Restarting script with administrator privileges via su..."
-    MSG_INSTALL_SH_RESTART_ERROR="No command available to elevate privileges (sudo/su)."
-    # Messages for dependency management
-    MSG_INSTALL_SH_DEPENDENCIES_MISSING_01="Missing dependencies: "
-    MSG_INSTALL_SH_DEPENDENCIES_MISSING_02=". Attempting to install..."
-    MSG_INSTALL_SH_DEPENDENCIES_SATISFIED="All dependencies are satisfied."
-    MSG_INSTALL_SH_DEPENDENCIES_FAILED="Failed to verify or install dependencies."
-    MSG_INSTALL_SH_PACKAGE_MANAGER_NOT_FOUND="No supported package manager found to install:"
-    MSG_INSTALL_SH_DEPENDENCIES_INSTALL_FAILED="Failed to install dependencies:"
-    MSG_INSTALL_SH_DEPENDENCIES_MISSING_AFTER_INSTALL="Commands still missing after installation:"
-    MSG_INSTALL_SH_DEPENDENCIES_INSTALLED="Dependencies installed. Restarting script..."
-    # Messages for Github
-    MSG_INSTALL_SH_GITHUB_CLONE="Cloning git repository ${GIT} (branch: ${BRANCHE})"
-    MSG_INSTALL_SH_GITHUB_UPDATE="Updating git repository ${GIT} (branch: ${BRANCHE})"
-    MSG_INSTALL_SH_GITHUB_CLONE_FAILED="Failed to clone git repository ${GIT}."
-    MSG_INSTALL_SH_GITHUB_SCRIPT_NOT_FOUND="The script ${REP_SCRIPT}/glpi_install/glpi-install is not found."
-    MSG_INSTALL_SH_GITHUB_SCRIPT_EXECUTED="Successful execution of ${REP_SCRIPT}/glpi_install/glpi-install"
-    MSG_INSTALL_SH_GITHUB_SCRIPT_EXECUTION_FAILED="Failed to execute ${REP_SCRIPT}/glpi_install/glpi-install"   
-fi
 : > "${ERRORFILE}"
 : > "${DEBUGFILE}"
 : > "${UPDATEFILE}"
+# Traduction avec gettext
+export TEXTDOMAIN="messages"
+export TEXTDOMAINDIR="${REP_SCRIPT}/langs"
+export LANG="$LANGUE.UTF-8"
+# Détection automatique de la langue du système
+if [ -z "$LANGUAGE" ]; then
+    LANGUAGE="$LANGUE"
+    export LANG=$LANGUAGE.UTF-8
+fi
+# Création des dossiers LC_MESSAGES si inexistants
+if [ ! -f "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
+    sudo mkdir -p "$TEXTDOMAINDIR/$LANG/LC_MESSAGES"
+    if [ -f "$TEXTDOMAINDIR/${LANG}.mo" ]; then
+        ln -sf "../../${LANG}.mo" "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo"
+    fi
+fi
 function warn(){ 
-    echo -e "⚠️ \033[0;31m$1\033[0m";
+    echo -e "⚠️ \033[0;31m$1\033[0m" | tee -a "${ERRORFILE}"
 }
 function info(){
-    echo -e "ℹ️ \033[0;36m$1\033[0m";
+    echo -e "ℹ️ \033[0;36m$1\033[0m" | tee -a "${DEBUGFILE}"
 }
 function ensure_dependencies(){
     NEED_RESTART=0
@@ -109,7 +61,7 @@ function ensure_dependencies(){
     if [ -z "$missing" ]; then
         return 0
     fi
-    info "${MSG_INSTALL_SH_DEPENDENCIES_MISSING_01}${missing}${MSG_INSTALL_SH_DEPENDENCIES_MISSING_02}"
+    info "$(gt "Dépendances manquantes:") ${missing}. $(gt "Tentative d'installation...")"
     local pkgmgr install_cmd
     local pkgs="$missing"
     if command -v apt-get >/dev/null; then
@@ -131,12 +83,12 @@ function ensure_dependencies(){
         pkgmgr="zypper"
         install_cmd="${pkgmgr} install -y ${pkgs}"
     else
-        warn "${MSG_INSTALL_SH_PACKAGE_MANAGER_NOT_FOUND}"
+        warn "$(gt "Aucun gestionnaire de paquets pris en charge trouvé pour installer :") ${pkgs}"
         return 1
     fi
     info "Installation via ${pkgmgr} : ${pkgs}"
     if ! bash -c "$install_cmd 1>>${UPDATEFILE} 2>>${ERRORFILE}"; then
-        warn "${MSG_INSTALL_SH_DEPENDENCIES_INSTALL_FAILED} ${pkgs}"
+        warn "$(gt "Échec de l'installation des dépendances :") ${pkgs}"
         return 1
     fi
     local still_missing=""
@@ -146,7 +98,7 @@ function ensure_dependencies(){
         fi
     done
     if [ -n "$still_missing" ]; then
-        warn "${MSG_INSTALL_SH_DEPENDENCIES_MISSING_AFTER_INSTALL} ${still_missing}"
+        warn "$(gt "Dépendances manquantes après installation :") ${still_missing}"
         sleep 3
         return 1
     fi
@@ -154,12 +106,15 @@ function ensure_dependencies(){
     export NEED_RESTART
     return 0
 }
+function gt(){
+    gettext "$@"
+}
 # Détection de la distribution
 if . /etc/os-release 2>/dev/null; then
     DISTRO_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
-    info "${MSG_INSTALL_SH_DETECT_DISTRO}${DISTRO_ID^} ${VERSION_ID:-}"
+    info "$(gt "Distribution détectée :") ${DISTRO_ID^} ${VERSION_ID:-}"
 else
-    warn "${MSG_INSTALL_SH_DETECT_DISTRO_NONOK}"
+    warn "$(gt "Distribution non détectée ou non prise en charge.")"
     exit 1
 fi
 # Définir le groupe administrateur en fonction de la distribution
@@ -172,51 +127,52 @@ case "${DISTRO_ID}" in
         ;;
     *)
         ADMIN_GROUP="sudo"
-        info "${MSG_INSTALL_SH_CHECK_GROUP_1}${ADMIN_GROUP}${MSG_INSTALL_SH_CHECK_GROUP_2}"
+        info "$(gt "Groupe administrateur par défaut : ${ADMIN_GROUP} non reconnu. Utilisation de '${ADMIN_GROUP}' par défaut.")"
         ;;
 esac
 # Vérification des privilèges administrateur
 if [ "$EUID" -ne 0 ]; then
     # Vérification si l'utilisateur fait partie du groupe administrateur
     if id -nG "${ORIG_USER}" | grep -qw "${ADMIN_GROUP}"; then
-        info "${MSG_INSTALL_SH_USER_GROUP_1}${ADMIN_GROUP}${MSG_INSTALL_SH_USER_GROUP_2}"
+        info "$(gt "L'utilisateur ${ORIG_USER} appartient au groupe ${ADMIN_GROUP}.")"
     else
-        warn "${MSG_INSTALL_SH_USER_GROUP_3}${ADMIN_GROUP}'.\n${MSG_INSTALL_SH_RESTART_SESSION}"
-        exit 0 
+        warn "$(gt "L'utilisateur ${ORIG_USER} n'appartient pas au groupe ${ADMIN_GROUP}.")\n$(gt "Veuillez ajouter l'utilisateur au groupe ${ADMIN_GROUP}.")"
+        sleep 3
+        exit 0
     fi
     if command -v sudo >/dev/null 2>&1; then
-        info "${MSG_INSTALL_SH_RESTART_SCRIPT_SUDO}"
+        info "$(gt "Relance du script avec privilèges administrateur via sudo...")"
         exec sudo -E bash "$0" "$@"
     fi
     if command -v su >/dev/null 2>&1; then
-        info "${MSG_INSTALL_SH_RESTART_SCRIPT_SU}"
+        info "$(gt "Relance du script avec privilèges administrateur via su...")"
         exec su -c "bash '$0' $*"
     else
-        warn "${MSG_INSTALL_SH_RESTART_ERROR}"
+        warn "$(gt "Aucune commande disponible pour élever les privilèges (sudo/su).")"
         exit 1
     fi
 fi
 # Vérification et installation des dépendances
 if ensure_dependencies "${DEPENDENCIES}"; then
-    info "${MSG_INSTALL_SH_DEPENDENCIES_SATISFIED}"
+    info "$(gt "Toutes les dépendances sont satisfaites.")"
 else
-    warn "${MSG_INSTALL_SH_DEPENDENCIES_FAILED}"
+    warn "$(gt "Échec de l'installation des dépendances :") ${pkgs}"
     exit 1
 fi
 # Redémarrer le script si des dépendances ont été installées
 if [ "${NEED_RESTART:-0}" -eq 1 ]; then
-    info "${MSG_INSTALL_SH_DEPENDENCIES_INSTALLED}"
+    info "$(gt "Redémarrage du script...")"
     sleep 3
     exec bash "${REP_SCRIPT}/$(basename "$0")" "$@"
 fi
 # Clonage ou mise à jour du dépôt git
 if [ -d "${REP_SCRIPT}/glpi_install" ]; then
-    info "${MSG_INSTALL_SH_GITHUB_UPDATE}"
+    info "$(gt "Mise à jour du dépôt git '${GIT}' (branche: ${BRANCHE})")"
     cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}" && cd ..
 else
-    info "${MSG_INSTALL_SH_GITHUB_CLONE}"
+    info "$(gt "Clonage du dépôt git '${GIT}' (branche: ${BRANCHE})")"
     git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install" || {
-        warn "${MSG_INSTALL_SH_GITHUB_CLONE_FAILED}"
+        warn "$(gt "Échec du clonage du dépôt git '${GIT}' (branche: ${BRANCHE})")"
         exit 1
     }
 fi
@@ -224,17 +180,17 @@ fi
 if [  -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
     sudo chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
 else
-    warn "${MSG_INSTALL_SH_GITHUB_SCRIPT_NOT_FOUND}" | tee -a "${ERRORFILE}"
-    dialog --title "${MSG_NONOK} ${MSG_INSTALL_SH_GITHUB_SCRIPT_ERROR}" \
-           --msgbox "${MSG_INSTALL_SH_GITHUB_SCRIPT_NOT_FOUND}" 7 70
+    warn "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi_install/glpi-install")"
+    dialog --title "$(gt "Erreur")" \
+           --msgbox "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi_install/glpi-install")" 7 70
     exit 1
 fi
 # Exécution sécurisée
 if bash "${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${DEBUGFILE}"; then
-    info "${MSG_INSTALL_SH_GITHUB_SCRIPT_EXECUTED}" | tee -a "${DEBUGFILE}"
+    info "$(gt "Exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' réussie.")"
 else
-    warn "${MSG_INSTALL_SH_GITHUB_SCRIPT_EXECUTION_FAILED}" | tee -a "${ERRORFILE}"
-    dialog --title "${MSG_NONOK} ${MSG_INSTALL_SH_GITHUB_SCRIPT_ERROR}" \
-           --msgbox "Erreur : l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' a échoué. Consultez le log." 8 70
+    warn "$(gt "Échec de l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install'.")"
+    dialog --title "$(gt "Erreur")" \
+           --msgbox "$(gt "L'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' a échoué. Consultez le log.")" 8 70
     exit 1
 fi
