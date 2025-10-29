@@ -9,13 +9,26 @@
 # set -Eeuo pipefail
 clear # Nettoyer le terminal
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
-# shellcheck disable=SC1091
 source "${REP_SCRIPT}/function" # Fichier de fonctions
 trap 'on_error' ERR
-# shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
 # Charger le fichier de langue
-    load_language
+    # Traduction avec gettext
+    TEXTDOMAIN=messages
+    TEXTDOMAINDIR="$SCRIPT_DIR/lang"
+    export TEXTDOMAIN TEXTDOMAINDIR
+    # Détection automatique de la langue du système
+    LANGUAGE=${LANG%%_*}
+    [ -z "$LANGUAGE" ] && LANGUAGE="fr_FR"
+    export LANG=$LANGUAGE.UTF-8
+    # Création des dossiers LC_MESSAGES si inexistants
+    if [ ! -f "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
+        sudo mkdir -p "$TEXTDOMAINDIR/$LANG/LC_MESSAGES"
+        if [ -f "$TEXTDOMAINDIR/${LANG}.mo" ]; then
+            ln -sf "../../${LANG}.mo" "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo"
+        fi
+    fi
+    info "$(gt "Fichier de langue chargé :") ${TEXTDOMAINDIR/$REP_SCRIPT\//}"
     info "ℹ️ $(gt "Chargement du fichier de langue")"
     info "ℹ️ $(gt "Début du script d'installation")"
 # Regarde si la distribution est conforme

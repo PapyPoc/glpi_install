@@ -103,23 +103,7 @@ function compatible() {
 # Chargement du fichier de langue
 function load_language() {
     debug "DEBUG : $(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Depuis ${FUNCNAME[1]:-main}"
-    # Traduction avec gettext
-    export TEXTDOMAIN="messages"
-    export TEXTDOMAINDIR="${REP_SCRIPT}/lang"
-    export LANG="$LANGUE.UTF-8"
-    # Détection automatique de la langue du système
-    if [ -z "$LANGUAGE" ]; then
-        LANGUAGE="$LANGUE"
-        export LANG=$LANGUAGE.UTF-8
-    fi
-    # Création des dossiers LC_MESSAGES si inexistants
-    if [ ! -f "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
-        sudo mkdir -p "$TEXTDOMAINDIR/$LANG/LC_MESSAGES"
-        if [ -f "$TEXTDOMAINDIR/${LANG}.mo" ]; then
-            ln -sf "../../${LANG}.mo" "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo"
-        fi
-    fi
-    info "$(gt "Fichier de langue chargé :") ${TEXTDOMAINDIR/$REP_SCRIPT\//}"
+    
     debug "🐞 $(date '+%F %T') [$$][DEBUG: ${FUNCNAME[0]:-main}] Fin de ${FUNCNAME[1]:-main}"
 }
 # Vérifie si la distribution est prise en compte pour l'installation de GLPI
