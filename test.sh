@@ -24,7 +24,7 @@ export LANG=$LANGUAGE.UTF-8
 
 # === Si les dossiers LC_MESSAGES n'existent pas, on les crée dynamiquement ===
 if [ ! -f "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
-    mkdir -p "$TEXTDOMAINDIR/$LANG/LC_MESSAGES"
+    sudo mkdir -p "$TEXTDOMAINDIR/$LANG/LC_MESSAGES"
     if [ -f "$TEXTDOMAINDIR/${LANG}.mo" ]; then
         ln -sf "../../${LANG}.mo" "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo"
     fi
@@ -35,9 +35,9 @@ if ! command -v dialog &>/dev/null; then
     echo "Installation de 'dialog' requise..."
     sudo apt install -y dialog >/dev/null
 fi
-
+VERSION="10.0.19"
 # === Interface ===
-dialog --backtitle "$(gettext 'Installation GLPI')" \
+dialog --backtitle "$(gettext "Installation GLPI") ${VERSION}" \
        --title "$(gettext "Bienvenue")" \
        --msgbox "$(gettext "Bienvenue dans l'assistant d'installation GLPI")" 10 60
 
