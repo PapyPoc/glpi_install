@@ -1422,7 +1422,7 @@ SQL
     debug "🐞 $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 function source_os_release(){
-    debug "🐞 $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    debug "$(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
     if [[ -f /etc/os-release ]]; then
         # shellcheck disable=SC1091
         . /etc/os-release
@@ -1442,8 +1442,8 @@ function source_os_release(){
         return 1
     fi
     export ID VERSION_ID
-    info "${ICON_INFO} $(gt "Distribution détectée :") ${ID} ${VERSION_ID}"
-    debug "🐞 $(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
+    info "$(gt "Distribution détectée :") ${ID} ${VERSION_ID}"
+    debug "$(date '+%F %T') [$$][DEBUG: Fin de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
 }
 function rights_glpi(){
     debug "🐞 $(date '+%F %T') [$$][DEBUG: Debut de ${FUNCNAME[0]:-main}] Appeler par ${FUNCNAME[1]:-main}"
