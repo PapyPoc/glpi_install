@@ -2,7 +2,7 @@
 #
 # GLPI install script
 # Author: PapyPoc
-# Version: 1.9.0
+# Version: 2.0.0
 # Main file
 # Langage pris en compte français et anglais
 #
@@ -15,68 +15,61 @@ trap 'on_error' ERR
 # shellcheck disable=SC1091
 source "${REP_SCRIPT}/config" # Fichier de variable
 # Charger le fichier de langue
-load_language
-info "ℹ️ $(gt "Chargement du fichier de langue")"
-info "ℹ️ $(gt "Début du script d'installation")"
+    load_language
+    info "ℹ️ $(gt "Chargement du fichier de langue")"
+    info "ℹ️ $(gt "Début du script d'installation")"
 # Regarde si la distribution est conforme
-info "ℹ️ $(gt "Vérification de la distribution")"
-if ! check_distro; then # Vérification de la distribution
-    dialog --title "❗ $(gt "Erreur")" --msgbox "$(gt "La vérification de la distribution a échoué.")" 6 50 >/dev/tty 2>&1
-    error "❗ $(gt "La vérification de la distribution a échoué.")"
-    exit 1
-fi
-# Demande les options d'installation ou de mise à jour
-info "ℹ️ $(gt "Menu général")"
-if ! selection_menu; then # Demande les options d'installation
-    if [[ $? == 100 ]]; then
-        info "ℹ️ ${MSG_INSTALL_UPGRADE_EXITING}"
-        exit 0
-    fi
-    if [[ ${SELECTED_MENU} == 0 ]] || [[ ${SELECTED_MENU} == 7 ]]; then
-        info "ℹ️ ${MSG_GLPI_INSTALL_PROMPT_INSTALL_OPTIONS_ABORT}"
+    info "ℹ️ $(gt "Vérification de la distribution")"
+    if ! check_distro; then # Vérification de la distribution
+        dialog --title "❗ $(gt "Erreur")" --msgbox "$(gt "La vérification de la distribution a échoué.")" 6 50 >/dev/tty 2>&1
+        error "❗ $(gt "La vérification de la distribution a échoué.")"
         exit 1
     fi
-fi
-info "Fichier de sauvegarde des mots de passe : ${FICHIER_MSG}${DB_NAME}.txt"
-# Droit sur le fichier de sauvegarde des mots de passe
-if file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}${DB_NAME}*" | head -n 1); then # Vérifie si le fichier de sauvegarde existe
-    info "ℹ️ ${MSG_GLPI_INSTALL_BACKUP_CREATED}"
-    chmod -Rf 500 "${INVOKING_HOME}/saved_credentials"
-    chown root:root "${file_save}"
-    dialog --title "ℹ️ ${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_CREATED_1}${file_save}${MSG_GLPI_INSTALL_BACKUP_CREATED_2}" 6 60 >/dev/tty 2>&1
-    export file_save
-else
-    dialog --title "❗ ${MSG_DIALOG_TITLE_ERROR}" --msgbox "${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND}${file_save}.txt" 6 60 >/dev/tty 2>&1
-    error "❗ ${MSG_GLPI_INSTALL_BACKUP_NOT_FOUND} ${file_save}.txt"
-    exit 1
-fi
-# Afficher le fichier de sauvegarde des mots de passe
-if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
-    info "⚠️ ${MSG_GLPI_INSTALL_DISPLAY_RESULT}"
-    display_result
-fi
-# Affichage des fichiers de logs s'ils existent
-LOGFILES=("${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}")
-LOGFILEP=()
-# Parcourt chaque fichier pour vérifier sa taille
-for LOGFILE in "${LOGFILES[@]}"; do
-    if [[ -s "${LOGFILE}" ]]; then
-        LOGFILEP+=("${LOGFILE}")
-    else
-        [[ -f "${LOGFILE}" ]] && rm -f "${LOGFILE}"
+# Demande les options d'installation ou de mise à jour
+    info "ℹ️ $(gt "Menu général")"
+    if ! selection_menu; then # Demande les options d'installation
+        if [[ $? == 100 ]]; then
+            info "ℹ️ ${MSG_INSTALL_UPGRADE_EXITING}"
+            exit 0
+        fi
+        if [[ ${SELECTED_MENU} == 0 ]] || [[ ${SELECTED_MENU} == 7 ]]; then
+            info "ℹ️ $(gt "Arrêt de l'installation par l'utilisateur.")"
+            exit 1
+        fi
     fi
-done
-# S’il reste des logs non vides, on les affiche
-if (( ${#LOGFILEP[@]} > 0 )); then
-    info "ℹ️ ${MSG_GLPI_INSTALL_DISPLAY_RESULT_LOGS}"
-    info "⚠️ ${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP[*]}"
-    dialog --title "⚠️ ${MSG_DIALOG_TITLE_WARNING}" \
-           --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_WARN_LOGS} ${LOGFILEP[*]}" 8 70 >/dev/tty 2>&1
-fi
+    info "Fichier de sauvegarde des mots de passe : ${FICHIER_MSG}${DB_NAME}.txt"
+# Droit sur le fichier de sauvegarde des mots de passe
+    if file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}${DB_NAME}*" | head -n 1); then # Vérifie si le fichier de sauvegarde existe
+        info "ℹ️ $(gt "Création du fichier de sauvegarde des mots de passe")"
+        chmod -Rf 500 "${INVOKING_HOME}/saved_credentials"
+        chown root:root "${file_save}"
+        info "$(gt "Le fichier de sauvegarde") ${file_save} $(gt "a été créé avec succès.")"
+        export file_save
+    else
+        dialog --title "❗ $(gt "Erreur")" --msgbox "$(gt "Fichier de sauvegarde introuvable :") ${file_save}" 6 60 >/dev/tty 2>&1
+        error "❗ $(gt "Fichier de sauvegarde introuvable :") ${file_save}"
+        exit 1
+    fi
+# Afficher le fichier de sauvegarde des mots de passe
+    if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
+        info "⚠️ $(gt "Affichage des fichiers de logs")"
+        display_result
+    fi
+# Vérifie et affiche les fichiers de logs non vides
+    LOGFILES=()
+    for f in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
+        [[ -s $f ]] && LOGFILES+=("$f") || [[ -f $f ]] && rm -f "$f"
+    done
+    info "ℹ️ $(gt 'Affichage des fichiers de logs.')"
+    if ((${#LOGFILES[@]})); then
+        msg="$(gt 'Veuillez vérifier les fichiers de logs suivants :') ${LOGFILES[*]}"
+        info "⚠️ $msg"
+        dialog --title "⚠️ Attention" --msgbox "$msg" 8 70 >/dev/tty 2>&1
+    fi
 # Affichage du fichier d'information s'il existe
-if [ -s "${INFOFILE}" ]; then
-    info "ℹ️ ${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}"
-    dialog --title "ℹ️ ${MSG_DIALOG_TITLE_INFO}" --msgbox "${MSG_GLPI_INSTALL_DISPLAY_RESULT_INFO_LOGS} ${INFOFILE}" 8 70 >/dev/tty 2>&1
-fi
+    if [ -s ${INFOFILES} ]; then
+        info "ℹ️ $(gt "Informations sur les fichiers de logs :") ${INFOFILES}"
+        dialog --title "ℹ️ $(gt "Information")" --msgbox "$(gt "Informations sur les fichiers de logs :") ${INFOFILES}" 8 70 >/dev/tty 2>&1
+    fi
 clear
-info "ℹ️ ${MSG_GLPI_INSTALL_END_SCRIPT}"
+info "ℹ️ $(gt "Fin du script d'installation")"
