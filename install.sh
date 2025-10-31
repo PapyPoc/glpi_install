@@ -37,7 +37,14 @@ if [ ! -f "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
             "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES/$TEXTDOMAIN.mo"
     fi
 fi
-export DIALOGOPTS="--ascii-lines"  # option alternative en cas de TTY incompatible
+# --- Correction des locales pour dialog / gettext ---
+if ! locale -a | grep -q "^${LANGUAGE}.UTF-8$"; then
+    echo "[$(date)] Locale ${LANGUAGE}.UTF-8 absente, tentative de génération..." | tee -a "${DEBUGFILE}"
+    if command -v locale-gen >/dev/null 2>&1; then
+        sudo locale-gen "${LANGUAGE}.UTF-8" | tee -a "${DEBUGFILE}" 2>&1 || true
+    fi
+fi
+export DIALOGOPTS="--no-lines"  # conserve le look UTF-8 avec bordures correctes
 # Fonctions d'affichage des messages WARN
 function warn(){ 
     echo -e "⚠️ \033[0;31m$1\033[0m" | tee -a "${ERRORFILE}"
