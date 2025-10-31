@@ -23,18 +23,18 @@ UPDATEFILE="${REP_SCRIPT}/update.log"
 # Détection automatique de la langue du système
 LANGUAGE=${LANG%%.*}
 [ -z "$LANGUAGE" ] && LANGUAGE="fr_FR"
-# Forcer un environnement UTF-8 pour éviter les caractères cassés
 export LANG="${LANGUAGE}.UTF-8"
 export LANGUAGE
-# Configuration gettext
+# --- Configuration gettext ---
 TEXTDOMAIN="messages"
 TEXTDOMAINDIR="${REP_SCRIPT}/glpi_install/lang"
 export TEXTDOMAIN TEXTDOMAINDIR
-# Création des dossiers LC_MESSAGES si inexistants
+# --- Vérifie la présence du .mo et crée le lien symbolique attendu ---
 if [ ! -f "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
     sudo mkdir -p "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES"
     if [ -f "$TEXTDOMAINDIR/${LANGUAGE}.mo" ]; then
-        sudo ln -sf "../../${LANGUAGE}.mo" "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES/$TEXTDOMAIN.mo"
+        sudo ln -sf "../../${LANGUAGE}.mo" \
+            "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES/$TEXTDOMAIN.mo"
     fi
 fi
 # Fonctions d'affichage des messages WARN
