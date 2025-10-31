@@ -169,10 +169,11 @@ fi
 # Clonage ou mise à jour du dépôt git
 if [ -d "${REP_SCRIPT}/glpi_install" ]; then
     info "$(gt "Mise à jour du dépôt git '${GIT}' (branche: ${BRANCHE})")"
-    cd "${REP_SCRIPT}/glpi_install" && git pull origin "${BRANCHE}" && cd ..
+    cd "${REP_SCRIPT}/glpi_install"
+    sudo git pull origin "${BRANCHE}" && cd ..
 else
     info "$(gt "Clonage du dépôt git '${GIT}' (branche: ${BRANCHE})")"
-    git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install" || {
+    sudo git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install" || {
         warn "$(gt "Échec du clonage du dépôt git '${GIT}' (branche: ${BRANCHE})")"
         exit 1
     }
