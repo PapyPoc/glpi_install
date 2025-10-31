@@ -7,7 +7,7 @@
 # Langage pris en compte français et anglais
 #
 set -Eeuo pipefail
-clear
+clear # Nettoyer le terminal
 # Variables d'environnement
 REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
