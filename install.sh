@@ -22,7 +22,7 @@ UPDATEFILE="${REP_SCRIPT}/update.log"
 : > "${UPDATEFILE}"
 # Charger le fichier de langue
 TEXTDOMAIN=messages
-TEXTDOMAINDIR="$SCRIPT_DIR/lang"
+TEXTDOMAINDIR="${REP_SCRIPT}/lang"
 export TEXTDOMAIN TEXTDOMAINDIR
 # Détection automatique de la langue du système
 LANGUAGE=${LANG%%_*}

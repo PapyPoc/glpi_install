@@ -19,8 +19,9 @@ source "${REP_SCRIPT}/config" # Fichier de variable
     export TEXTDOMAIN TEXTDOMAINDIR
     # Détection automatique de la langue du système
     LANGUAGE=${LANG%%_*}
-    [ -z "$LANGUAGE" ] && LANGUAGE="en_US"
-    LANGUAGE="en_US"
+    [ -z "$LANGUAGE" ] && LANGUAGE="fr_FR"
+    # Définition de la langue par défaut en anglais
+    #LANGUAGE="en_US"
     export LANG=$LANGUAGE.UTF-8
     # Création des dossiers LC_MESSAGES si inexistants
     if [ ! -f "$TEXTDOMAINDIR/$LANG/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
