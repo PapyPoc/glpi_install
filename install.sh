@@ -158,7 +158,7 @@ if [ -d "${REP_SCRIPT}/glpi_install" ]; then
     git pull origin "${BRANCHE}" && cd ..
 else
     info "Clonage du dépôt git '${GIT}' (branche: ${BRANCHE})"
-    git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/" || {
+    git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install" || {
         warn "$(gt "Échec du clonage du dépôt git '${GIT}' (branche: ${BRANCHE})")"
         exit 1
     }
