@@ -74,7 +74,7 @@ function debug_end(){
     printf '%s\n' "🐞 ${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 function gt(){
-    gettext "$%" || echo "$% - Missing translation"  # Fallback si traduction absente
+    gettext "$@" || echo "$1 - Missing translation"  # Fallback si traduction absente
 }
 # Gestion des erreurs avec trap
 function on_error() {
