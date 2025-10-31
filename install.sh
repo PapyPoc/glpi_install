@@ -37,6 +37,7 @@ if [ ! -f "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
             "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES/$TEXTDOMAIN.mo"
     fi
 fi
+export DIALOGOPTS="--ascii-lines"  # option alternative en cas de TTY incompatible
 # Fonctions d'affichage des messages WARN
 function warn(){ 
     echo -e "⚠️ \033[0;31m$1\033[0m" | tee -a "${ERRORFILE}"
