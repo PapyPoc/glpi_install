@@ -108,7 +108,7 @@ function ensure_dependencies(){
 }
 # Fonction de traduction
 function gt(){
-    gettext "$@"
+    gettext "$1"
 }
 # Détection de la distribution
 if source /etc/os-release 2>/dev/null; then
