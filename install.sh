@@ -20,30 +20,6 @@ UPDATEFILE="${REP_SCRIPT}/update.log"
 : > "${ERRORFILE}"
 : > "${DEBUGFILE}"
 : > "${UPDATEFILE}"
-# Détection automatique de la langue du système
-LANGUAGE=${LANG%%.*}
-[ -z "$LANGUAGE" ] && LANGUAGE="fr_FR"
-export LANG="${LANGUAGE}.UTF-8"
-export LANGUAGE
-# --- Configuration gettext ---
-TEXTDOMAIN="messages"
-TEXTDOMAINDIR="${REP_SCRIPT}/glpi_install/lang"
-export TEXTDOMAIN TEXTDOMAINDIR
-# --- Vérifie la présence du .mo et crée le lien symbolique attendu ---
-if [ ! -f "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES/$TEXTDOMAIN.mo" ]; then
-    sudo mkdir -p "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES"
-    if [ -f "$TEXTDOMAINDIR/${LANGUAGE}.mo" ]; then
-        sudo ln -sf "../../${LANGUAGE}.mo" \
-            "$TEXTDOMAINDIR/$LANGUAGE/LC_MESSAGES/$TEXTDOMAIN.mo"
-    fi
-fi
-# --- Correction des locales pour dialog / gettext ---
-if ! locale -a | grep -q "^${LANGUAGE}.UTF-8$"; then
-    echo "[$(date)] Locale ${LANGUAGE}.UTF-8 absente, tentative de génération..." | tee -a "${DEBUGFILE}"
-    if command -v locale-gen >/dev/null 2>&1; then
-        sudo locale-gen "${LANGUAGE}.UTF-8" | tee -a "${DEBUGFILE}" 2>&1 || true
-    fi
-fi
 # Fonctions d'affichage des messages WARN
 function warn(){ 
     echo -e "⚠️ \033[0;31m$1\033[0m" | tee -a "${ERRORFILE}"
@@ -177,15 +153,38 @@ if [ "${NEED_RESTART:-0}" -eq 1 ]; then
 fi
 # Clonage ou mise à jour du dépôt git
 if [ -d "${REP_SCRIPT}/glpi_install" ]; then
-    info "$(gt "Mise à jour du dépôt git '${GIT}' (branche: ${BRANCHE})")"
+    info "Mise à jour du dépôt git '${GIT}' (branche: ${BRANCHE})"
     cd "${REP_SCRIPT}/glpi_install"
     git pull origin "${BRANCHE}" && cd ..
 else
-    info "$(gt "Clonage du dépôt git '${GIT}' (branche: ${BRANCHE})")"
+    info "Clonage du dépôt git '${GIT}' (branche: ${BRANCHE})"
     git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}/glpi_install" || {
         warn "$(gt "Échec du clonage du dépôt git '${GIT}' (branche: ${BRANCHE})")"
         exit 1
     }
+fi
+# Détection automatique de la langue du système
+LANGUAGE=${LANG%%.*}
+[ -z "$LANGUAGE" ] && LANGUAGE="fr_FR"
+export LANG="${LANGUAGE}.UTF-8"
+export LANGUAGE
+# --- Configuration gettext ---
+TEXTDOMAIN="messages"
+TEXTDOMAINDIR="${REP_SCRIPT}/glpi_install/lang"
+export TEXTDOMAIN TEXTDOMAINDIR
+# --- Vérifie la présence du .mo et crée le lien symbolique attendu ---
+if [ ! -f "$TEXTDOMAINDIR/$LANGUAGE/$TEXTDOMAIN.mo" ]; then
+    sudo mkdir -p "$TEXTDOMAINDIR/$LANGUAGE"
+    if [ -f "$TEXTDOMAINDIR/${LANGUAGE}.mo" ]; then
+        sudo ln -sf "../../${LANGUAGE}.mo" "$TEXTDOMAINDIR/$LANGUAGE/$TEXTDOMAIN.mo"
+    fi
+fi
+# --- Correction des locales pour dialog / gettext ---
+if ! locale -a | grep -q "^${LANGUAGE}.UTF-8$"; then
+    echo "[$(date)] Locale ${LANGUAGE}.UTF-8 absente, tentative de génération..." | tee -a "${DEBUGFILE}"
+    if command -v locale-gen >/dev/null 2>&1; then
+        sudo locale-gen "${LANGUAGE}.UTF-8" | tee -a "${DEBUGFILE}" 2>&1 || true
+    fi
 fi
 # Vérification d’existence
 if [  -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
