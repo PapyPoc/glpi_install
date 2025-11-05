@@ -242,14 +242,14 @@ function prompt_install_options(){
         tags=""
         # Récupère les tags au format X.Y.Z
         tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | sort -Vr | uniq | head -n 16)
-        local args=() first=ON number=1 version_map=()
+        args=() first=ON number=1 version_map=()
         while IFS= read -r tag; do
             args+=("${tag}" "" "${first}")
             first=OFF
         done <<< "${tags}"
         VERSION_SELECT=$(dialog --clear --backtitle "$(gt "Installation de GLPI")" --title "$(gt "Choix pour l'installation de GLPI")" \
         --radiolist "$(gt "Choisissez la version ?")" 23 50 8 "${args[@]}" 2>&1 >/dev/tty)
-        local rc=$?
+        rc=$?
         if [ "${rc}" -ne 0 ]; then
             warn "$(gt "Arrêt de l'installation par l'utilisateur.")"
             return 1
@@ -1832,5 +1832,5 @@ function update_glpi() {
         exit 1
     fi
     info "$(gt "Mise à jour de GLPI réussie.")"
-    debug_end
+    debug_end 
 }
