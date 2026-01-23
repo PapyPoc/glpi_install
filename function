@@ -106,7 +106,7 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
             if compatible "$VERSION_ID" DEBIAN_VERSIONS || compatible "$VERSION_ID" UBUNTU_VERSIONS || compatible "$VERSION_ID" ALMA_VERSIONS || compatible "$VERSION_ID" CENTOS_VERSIONS || compatible "$VERSION_ID" ROCKY_VERSIONS || compatible "$VERSION_ID" REDHAT_VERSIONS; then
                 info "$MSG_DISTRO_OK"
             else
-                warn "MSG_DISTRO_NONOK"
+                warn "$MSG_DISTRO_NONOK"
                 warn "$MSG_FORCE_DISTRO"
                 info "$MSG_FORCE_DISTRO_QUESTION"
                 read -r RESPONSE
@@ -119,7 +119,7 @@ function check_distro(){ # Vérifie si la distribution est pris en compte pour l
                         exit 1
                         ;;
                     *)
-                        warn "MSG_INVALID_ANSWER"
+                        warn "$MSG_INVALID_ANSWER"
                         exit 1
                         ;;
                 esac
@@ -144,10 +144,10 @@ function check_install(){ # Vérifie si GLPI est installé ou pas
             info "$MSG_GLPI_UPGRADE"
             read -r MaJ
             case "$MaJ" in
-                "O|o|Y|y")
+                [OoYy])
                     update
                     exit 0;;
-                "N"|"n")
+                [Nn])
                     info "$MSG_EXIT"
                     efface_script
                     exit 0;;
@@ -484,16 +484,16 @@ function maintenance(){ # Activé ou déactivé le mode maintenance (1 ou 0)
     if [ "$1" == "1" ]; then
         warn "$MSG_ACTIVE_SERVICE"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:enable 
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable 
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:enable 
         fi
     elif [ "$1" == "0" ]; then
         info "$MSG_DEACTIVE_SERVICE"
         if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-            sudo www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable 
+            sudo -u www-data php "${REP_GLPI}"bin/console glpi:maintenance:disable 
         elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-            sudo nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable 
+            sudo -u nginx php "${REP_GLPI}"bin/console glpi:maintenance:disable 
         fi
     fi
 	sleep 2; }
@@ -529,14 +529,14 @@ EOF
 	info "$MSG_UPDATE_GLPI_DATABASE"
 	if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
 		chown -R www-data:www-data "${REP_GLPI}"
-		sudo www-data php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
+		sudo -u www-data php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
 	elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
 		chown -R nginx:nginx "${REP_GLPI}"
 		semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}(/.*)?"
 		semanage fcontext -a -t httpd_sys_rw_content_t "${REP_GLPI}marketplace"
 		restorecon -Rv "${REP_GLPI}"
 		restorecon -Rv "${REP_GLPI}"marketplace
-		sudo nginx php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
+		sudo -u nginx php "${REP_GLPI}"bin/console db:update --quiet --no-interaction --force 
 	fi
 	info "$MSG_UPDATE_CLEAN"
 	rm -Rf "${REP_GLPI}"install/install.php
