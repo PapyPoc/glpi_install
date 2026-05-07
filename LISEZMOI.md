@@ -55,8 +55,6 @@ GLPI s'installe en lançant la commande suivante dans votre terminal.
 >[!IMPORTANT]
 >⚠️ Il est fortement recommandé d'exécuter ce script sur une nouvelle installation ou sur une installation faite avec ce script.
 >
->⚠️ S'assurer qu'il n'y a plus le script dans le répertoire ```/root```.
->
 >⚠️ Vous devez etre connecté en compte 'root', pour ce faire taper dans la console ```su -```.
 >
 >⚠️ Git doit etre installé sur votre machine, pour l'installer faite :
