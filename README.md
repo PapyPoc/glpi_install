@@ -17,7 +17,7 @@ The installer analyzes the distribution’s locale information to select the def
 >|:--:|:--:|:--:|:--:|
 >|Debian|11|✅|Apache|
 >|Debian|12|✅|Apache|
->|Debian|32|✅|Apache|
+>|Debian|13|✅|Apache|
 >|Ubuntu|23|✅|Apache|
 >|Ubuntu|24|✅|Apache|
 >|Ubuntu|25|⚠️ A tester|Apache|
