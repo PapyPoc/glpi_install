@@ -233,6 +233,44 @@ function selection_menu(){
     prompt_install_options
     debug_end
 }
+function get_installed_glpi_version(){
+    local rep_glpi="$1"
+    if check_install_user "${rep_glpi}"; then
+        sudo -u "${WEB_USER}" php "${rep_glpi}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true
+    fi
+}
+function get_stable_glpi_tags(){
+    curl -fsSL "${API_URL}" \
+        | jq -r '.[].name' \
+        | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+        | grep -v -E '(rc|beta|alpha)' \
+        | sort -Vr \
+        | uniq \
+        | head -n 16
+}
+function get_newer_glpi_tags(){
+    local installed_version="$1"
+    local tag
+    while IFS= read -r tag; do
+        [[ "$tag" == "$installed_version" ]] && break
+        printf '%s\n' "$tag"
+    done < <(get_stable_glpi_tags)
+}
+function build_version_choices(){
+    local first="ON"
+    local tag
+    for tag in "$@"; do
+        printf '%s\nGLPI %s\n%s\n' "$tag" "$tag" "$first"
+        first="OFF"
+    done
+}
+function select_glpi_update_version(){
+    dialog \
+        --backtitle "$(gt "Mise à jour de GLPI")" \
+        --title "$(gt "Sélection de la version")" \
+        --radiolist "$(gt "Veuillez sélectionner la version de GLPI à installer :")" 23 50 8 \
+        "$@" 2>&1 >/dev/tty
+}
 #  Demander à l'utilisateur de choisir le répertoire d'installation,
 # la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
@@ -256,15 +294,35 @@ function prompt_install_options(){
         fi
         # Formulaire des options d'installation
         local form="" WIDTH=0
-        WIDTH_REP=$((${#$(gt "Répertoire d'installation")}))
-        WIDTH_DB_HOST=$((${#$(gt "Hôte de la Base de Données")}))
-        WIDTH_DB_NAME=$((${#$(gt "Nom de la Base de Données")}))
-        WIDTH_DB_USER=$((${#$(gt "Utilisateur de la Base de Données")}))
-        WIDTH=$((WIDTH_REP > WIDTH_DB_HOST ? WIDTH_REP : WIDTH_DB_HOST))
-        WIDTH=$((WIDTH > WIDTH_DB_NAME ? WIDTH : WIDTH_DB_NAME))
-        WIDTH=$((WIDTH > WIDTH_DB_USER ? WIDTH : WIDTH_DB_USER))
+        local label_rep label_db_host label_db_name label_db_user
+        label_rep="$(gt "Répertoire d'installation")"
+        label_db_host="$(gt "Hôte de la Base de Données")"
+        label_db_name="$(gt "Nom de la Base de Données")"
+        label_db_user="$(gt "Utilisateur de la Base de Données")"
+        WIDTH_REP=${#label_rep}
+        WIDTH_DB_HOST=${#label_db_host}
+        WIDTH_DB_NAME=${#label_db_name}
+        WIDTH_DB_USER=${#label_db_user}
+        for label_width in "$WIDTH_REP" "$WIDTH_DB_HOST" "$WIDTH_DB_NAME" "$WIDTH_DB_USER"; do
+            (( label_width > WIDTH )) && WIDTH=$label_width
+        done
         WIDTH=$((WIDTH + 6))
         local _def_rep="${REP_GLPI:-/var/www/html/glpi}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
+        function trim_dialog_value(){
+            local value="$1"
+            value="${value#"${value%%[![:space:]]*}"}"
+            printf '%s' "${value%"${value##*[![:space:]]}"}"
+        }
+        function sanitize_path_value(){
+            local value
+            value="$(trim_dialog_value "$1")"
+            printf '%s' "${value//[^A-Za-z0-9_\/.-]/_}"
+        }
+        function sanitize_name_value(){
+            local value
+            value="$(trim_dialog_value "$1")"
+            printf '%s' "${value//[^A-Za-z0-9_]/_}"
+        }
         while true; do
             form=$(dialog --clear --backtitle "$(gt "Installation de GLPI")" --title "$(gt "Choix pour l'installation de GLPI")" \
                 --form "$(gt "Paramètres pour GLPI") ${VERSION_SELECT} $(gt "Modifiez et confirmez les valeurs ci-dessous")" 18 68 8 \
@@ -276,14 +334,10 @@ function prompt_install_options(){
             rc=$?
             # Transformer les lignes du formulaire en variables
             IFS=$'\n' read -r rep_glpi db_host db_name db_user <<< "$form"
-            rep_glpi="${rep_glpi#"${rep_glpi%%[![:space:]]*}"}"; rep_glpi="${rep_glpi%"${rep_glpi##*[![:space:]]}"}"
-            db_host="${db_host#"${db_host%%[![:space:]]*}"}"; db_host="${db_host%"${db_host##*[![:space:]]}"}"
-            db_name="${db_name#"${db_name%%[![:space:]]*}"}"; db_name="${db_name%"${db_name##*[![:space:]]}"}"
-            db_user="${db_user#"${db_user%%[![:space:]]*}"}"; db_user="${db_user%"${db_user##*[![:space:]]}"}"
-            rep_glpi="${rep_glpi//[^A-Za-z0-9_\/.-]/_}"
-            db_host="${db_host//[^A-Za-z0-9_\/.-]/_}"
-            db_name="${db_name//[^A-Za-z0-9_]/_}"
-            db_user="${db_user//[^A-Za-z0-9_]/_}"
+            rep_glpi="$(sanitize_path_value "$rep_glpi")"
+            db_host="$(sanitize_path_value "$db_host")"
+            db_name="$(sanitize_name_value "$db_name")"
+            db_user="$(sanitize_name_value "$db_user")"
             [ -z "$rep_glpi" ] && rep_glpi="$_def_rep"
             [ -z "$db_host" ] && db_host="$_def_db_host"
             [ -z "$db_name" ] && db_name="$_def_db"
@@ -348,28 +402,6 @@ function prompt_install_options(){
                 first="OFF"
                 ((number++))
             done
-            # Vérification utilisateur/distro avant exécution
-            if check_install_user "${REP_GLPI}"; then
-                GLPI_CLI_VERSION=$(sudo -u "${WEB_USER}" php "${REP_GLPI}/bin/console" --no-ansi --version 2>/dev/null | awk '{print $3}' || true)
-            fi
-            # Récupération des versions GLPI disponibles sur GitHub
-            tags=""
-            # Récupère les tags au format X.Y.Z
-            tags=$(curl -s "${API_URL}" | jq -r '.[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -E '(rc|beta|alpha)' | sort -Vr | uniq | head -n 16)
-            # Filtrage : ne garder que les versions avant GLPI_CLI_VERSION (donc plus récentes) ---
-            newer_tags=()
-            for tag in $tags; do
-                [[ $tag == "$GLPI_CLI_VERSION" ]] && break
-                newer_tags+=("$tag")
-            done
-            # Préparation du menu de sélection de version GLPI
-            tag=""; find_version=(); version_map=(); number=1; first="ON"
-            for tag in "${newer_tags[@]}"; do
-                find_version+=("" "GLPI ${tag}" "${first}")
-                version_map+=("${tag}")
-                first="OFF"
-                ((number++))
-            done
             # Menu de sélection d’installation GLPI
             FIND_REP_GLPI=$(dialog \
                 --backtitle "$(gt "Mise à jour de GLPI")" \
@@ -387,23 +419,14 @@ function prompt_install_options(){
                 form=$(dialog --clear --title "$(gt "Annulation")" --msgbox "$(gt "Installation annulée par l'utilisateur.")" 7 50 2>&1 >/dev/tty)
                 return 1
             fi
-            # Sélecteur de version GLPI
-            VERSION_SELECT=$(dialog \
-                --backtitle "$(gt "Mise à jour de GLPI")" \
-                --title "$(gt "Sélection de la version")" \
-                --radiolist "$(gt "Veuillez sélectionner la version de GLPI à installer :")" 23 50 8 \
-                "${find_version[@]}" 2>&1 >/dev/tty)
-            rc=$?
-            if [[ "${rc}" -ne 0 ]]; then
+            GLPI_CLI_VERSION="$(get_installed_glpi_version "${REP_GLPI}")"
+            mapfile -t newer_tags < <(get_newer_glpi_tags "${GLPI_CLI_VERSION}")
+            mapfile -t find_version < <(build_version_choices "${newer_tags[@]}")
+            if ! VERSION_SELECT="$(select_glpi_update_version "${find_version[@]}")"; then
                 warn "$(gt "Sélection annulée par l'utilisateur.")"
                 return 1
             fi
-            # Convertir le numéro choisi en index du tableau (0-based)
-            local index=""
-            index=$((VERSION_SELECT - 1))
-            # Récupérer le vrai tag correspondant
-            VERSION_SELECT="${version_map[$index]}"
-            form=$(dialog --clear --title "${MSG_INFO}" --msgbox "$(gt "Version installée :") ${VERSION_SELECT} $(gt ", dans le répertoire :") ${REP_GLPI}" 10 100 2>&1 >/dev/tty)
+            dialog --clear --title "${MSG_INFO}" --msgbox "$(gt "Version installée :") ${VERSION_SELECT} $(gt ", dans le répertoire :") ${REP_GLPI}" 10 100 >/dev/tty 2>&1
             export DOWNLOADLINK="https://github.com/glpi-project/glpi/releases/download/${VERSION_SELECT}/glpi-${VERSION_SELECT}.tgz"
             export VERSION_SELECT REP_GLPI DOWNLOADLINK REP_BACKUP_COMPRESS INVOKING_HOME GLPI_CLI_VERSION
             # Lancement de la mise à jour
@@ -413,7 +436,7 @@ function prompt_install_options(){
         info "$(gt "Options de sauvegarde de GLPI")"
         check_glpi_installed
         # Si au moins un répertoire GLPI trouvé, demander à l'utilisateur de choisir
-        if [[ "${#glpi_dirs[*]}" -gt 0 ]]; then
+        if [[ "${#glpi_dirs[@]}" -gt 0 ]]; then
             # Préparer les arguments pour dialog
             find_rep=()
             rep_map=()
@@ -432,16 +455,12 @@ function prompt_install_options(){
                 --radiolist "$(gt "Veuillez sélectionner le répertoire de sauvegarde de GLPI :")" 20 70 8 \
                 "${find_rep[@]}" 2>&1 >/dev/tty)
             rc=$?
-            # Convertir le numéro choisi en index du tableau (0-based)
-            local index=""
-            index=$((FIND_REP_GLPI - 1))
-            # Récupérer le vrai chemin correspondant
-            REP_GLPI="${rep_map[$index]}"
             if [[ $rc -ne 0 ]]; then
                 warn "$(gt "Sélection annulée par l'utilisateur.")"
-                form=$(dialog --clear --title "$(gt "Annulation")" --msgbox "$(gt "Sélection annulée par l'utilisateur.")" 7 50 2>&1 >/dev/tty)
+                dialog --clear --title "$(gt "Annulation")" --msgbox "$(gt "Sélection annulée par l'utilisateur.")" 7 50 >/dev/tty 2>&1
                 return 1
             fi
+            REP_GLPI="${rep_map[$((FIND_REP_GLPI - 1))]}"
             export REP_GLPI INVOKING_HOME REP_BACKUP_COMPRESS
             # Lancement de la sauvegarde
             run_sequence "backup"
@@ -652,7 +671,7 @@ function run_sequence() {
             ;;
         backup)
             tasks=(
-                ["$(gt "Sauvegarde complète de GLPI")"]="backup_glpi_all"
+                ["$(gt "Sauvegarde complète de GLPI")"]="backup_glpi"
             )
             task_order=(
                 "$(gt "Sauvegarde complète de GLPI")"
@@ -1700,7 +1719,7 @@ function backup_glpi() {
     # --- Export de la BDD ---
     info "$(gt "Exportation de la base de données.")"
     if ${MYSQLDUMP_CMD} -u "${DB_USER}" -p"${DB_PASSWORD}" --databases "${DB_NAME}" | \
-        tea -a "${REP_BACKUP}/${BDD_BACKUP}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+        tee -a "${REP_BACKUP}/${BDD_BACKUP}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
         if [[ -s "${REP_BACKUP}/${BDD_BACKUP}" ]]; then
             info "$(gt "Exportation de la base de données terminée avec succès.")"
         else
@@ -1725,8 +1744,13 @@ function backup_glpi() {
     # --- Compression ---
     info "$(gt "Compression de la sauvegarde")"
     mkdir -p "${REP_BACKUP_COMPRESS}"
-    local BACKUP_FILE
-    BACKUP_FILE="${REP_BACKUP_COMPRESS}/glpi_$(date +"%Y-%m-%d")_${GLPI_CLI_VERSION}->${VERSION_SELECT}.tar.gz"
+    local BACKUP_FILE backup_label
+    if [[ -n "${GLPI_CLI_VERSION:-}" && -n "${VERSION_SELECT:-}" ]]; then
+        backup_label="${GLPI_CLI_VERSION}->${VERSION_SELECT}"
+    else
+        backup_label="${GLPI_VERSION:-${GLPI_CLI_VERSION:-unknown}}"
+    fi
+    BACKUP_FILE="${REP_BACKUP_COMPRESS}/glpi_$(date +"%Y-%m-%d")_${backup_label}.tar.gz"
     if tar -czf "${BACKUP_FILE}" -C "${REP_BACKUP}" . 2>> "${ERRORFILE}"; then
         info "$(gt "Compression terminée avec succès. Fichier créé :") (${BACKUP_FILE})"
         # Vérifier que le fichier compressé n'est pas vide
