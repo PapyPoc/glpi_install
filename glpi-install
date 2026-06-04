@@ -12,6 +12,7 @@
     REP_SCRIPT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)" # Définir le répertoire du script
     source "${REP_SCRIPT}/function" # Fichier de fonctions
     source "${REP_SCRIPT}/config" # Fichier de variable
+    configure_locale_timezone_by_country || exit 1
 # Détection automatique de la langue du système
     LANGUAGE="${LANG:-fr_FR.UTF-8}"
     LANGUAGE="${LANGUAGE%%.*}"

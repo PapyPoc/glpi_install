@@ -109,6 +109,126 @@ function on_error() {
     error "$(echo -e "$message")"
     exit "${rc}"
 }
+# Détéction du code pays pour les paramètres régionaux et le fuseau horaire
+detect_country_code() {
+    local country="${COUNTRY_CODE:-}"
+    # Si COUNTRY_CODE n'est pas fourni, tentative via IP publique
+    if [ -z "${country}" ] && command -v curl >/dev/null 2>&1; then
+        country="$(curl -fsSL --max-time 5 https://ipapi.co/country_code/ 2>/dev/null || true)"
+    fi
+    country="${country^^}"
+    case "${country}" in
+        [A-Z][A-Z])
+            printf '%s\n' "${country}"
+            ;;
+        *)
+            printf '%s\n' "FR"
+            ;;
+    esac
+}
+# Détection du code pays et configuration des paramètres régionaux et du fuseau horaire
+set_country_defaults() {
+    local country="$1"
+    case "${country}" in
+        FR)
+            DEFAULT_LOCALE="fr_FR.UTF-8"
+            DEFAULT_LANGUAGE="fr_FR"
+            TIMEZONES="Europe/Paris"
+            ;;
+        BE)
+            DEFAULT_LOCALE="fr_BE.UTF-8"
+            DEFAULT_LANGUAGE="fr_BE"
+            TIMEZONES="Europe/Brussels"
+            ;;
+        CH)
+            DEFAULT_LOCALE="fr_CH.UTF-8"
+            DEFAULT_LANGUAGE="fr_CH"
+            TIMEZONES="Europe/Zurich"
+            ;;
+        LU)
+            DEFAULT_LOCALE="fr_LU.UTF-8"
+            DEFAULT_LANGUAGE="fr_LU"
+            TIMEZONES="Europe/Luxembourg"
+            ;;
+        GB|UK)
+            DEFAULT_LOCALE="en_GB.UTF-8"
+            DEFAULT_LANGUAGE="en_GB"
+            TIMEZONES="Europe/London"
+            ;;
+        US)
+            DEFAULT_LOCALE="en_US.UTF-8"
+            DEFAULT_LANGUAGE="en_US"
+            TIMEZONES="America/New_York"
+            ;;
+        DE)
+            DEFAULT_LOCALE="de_DE.UTF-8"
+            DEFAULT_LANGUAGE="de_DE"
+            TIMEZONES="Europe/Berlin"
+            ;;
+        ES)
+            DEFAULT_LOCALE="es_ES.UTF-8"
+            DEFAULT_LANGUAGE="es_ES"
+            TIMEZONES="Europe/Madrid"
+            ;;
+        IT)
+            DEFAULT_LOCALE="it_IT.UTF-8"
+            DEFAULT_LANGUAGE="it_IT"
+            TIMEZONES="Europe/Rome"
+            ;;
+        *)
+            DEFAULT_LOCALE="fr_FR.UTF-8"
+            DEFAULT_LANGUAGE="fr_FR"
+            TIMEZONES="Europe/Paris"
+            ;;
+    esac
+}
+# Configuration de la locale et du fuseau horaire en fonction du pays détecté
+configure_locale_timezone_by_country() {
+    local country
+    country="$(detect_country_code)"
+    set_country_defaults "${country}"
+    info "$(gt "Pays détecté :") ${country}"
+    info "$(gt "Locale sélectionnée :") ${DEFAULT_LOCALE}"
+    info "$(gt "Langue sélectionnée :") ${DEFAULT_LANGUAGE}"
+    info "$(gt "Fuseau horaire sélectionné :") ${TIMEZONES}"
+    if command -v apt-get >/dev/null 2>&1; then
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq >>"${UPDATEFILE}" 2>>"${ERRORFILE}"
+        apt-get install -y -qq locales tzdata curl >>"${UPDATEFILE}" 2>>"${ERRORFILE}"
+    fi
+    # Génération locale
+    if [ -f /etc/locale.gen ]; then
+        if grep -Fxq "# ${DEFAULT_LOCALE} UTF-8" /etc/locale.gen; then
+            sed -i "s/^# ${DEFAULT_LOCALE} UTF-8/${DEFAULT_LOCALE} UTF-8/" /etc/locale.gen
+        elif ! grep -Fxq "${DEFAULT_LOCALE} UTF-8" /etc/locale.gen; then
+            echo "${DEFAULT_LOCALE} UTF-8" >> /etc/locale.gen
+        fi
+
+        locale-gen "${DEFAULT_LOCALE}" >>"${DEBUGFILE}" 2>>"${ERRORFILE}" || {
+            warn "$(gt "Impossible de générer la locale :") ${DEFAULT_LOCALE}"
+            return 1
+        }
+    fi
+    # Configuration persistante locale
+    cat > /etc/default/locale <<EOF
+LANG=${DEFAULT_LOCALE}
+LANGUAGE=${DEFAULT_LANGUAGE}
+EOF
+    export LANG="${DEFAULT_LOCALE}"
+    export LANGUAGE="${DEFAULT_LANGUAGE}"
+    unset LC_ALL
+    # Configuration timezone
+    if [ -f "/usr/share/zoneinfo/${TIMEZONES}" ]; then
+        ln -snf "/usr/share/zoneinfo/${TIMEZONES}" /etc/localtime
+        echo "${TIMEZONES}" > /etc/timezone
+
+        dpkg-reconfigure -f noninteractive tzdata >>"${DEBUGFILE}" 2>>"${ERRORFILE}" || true
+    else
+        warn "$(gt "Fuseau horaire introuvable :") ${TIMEZONES}"
+        return 1
+    fi
+    info "$(gt "Configuration langue/timezone terminée.")"
+}
 # Vérifie si la version est compatible
 function compatible() {
     debug_start
