@@ -1555,7 +1555,7 @@ function write_credentials(){
     mkdir -p "${folder_save_credentials}"
     # Nettoie le nom du fichier pour éviter les / ou espaces
     local safe_name
-    safe_name="$(basename "${FICHIER_MSG}_${DB_NAME}.txt"
+    safe_name="$(basename "${FICHIER_MSG}_${DB_NAME}.txt")"
     file_save="${folder_save_credentials}/${safe_name}"
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "${file_save}" << EOF
@@ -1614,7 +1614,7 @@ EOF
  If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
-    info "$(gt "Fichier de sauvegarde des mots de passe du serveur GLPI créé avec succès.")"
+    info " $(gt "Fichier de sauvegarde des mots de passe du serveur GLPI créé avec succès.")"
     debug_end
 }
 # Afficher le résultat final

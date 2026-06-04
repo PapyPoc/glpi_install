@@ -188,6 +188,7 @@ detect_system_language() {
 glpi_locale_exists() {
     local lang="$1"
     [ -f "${INVOKING_HOME}/glpi_install/locales/${lang}.mo" ] 
+}
 
 select_glpi_language() {
     local detected lang_prefix candidate
