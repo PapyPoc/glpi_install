@@ -6,12 +6,12 @@
 # Main file
 # Langage pris en compte français et anglais
 #
-set -Eeuo pipefail
-clear # Nettoyer le terminal
-trap 'on_error' ERR
-REP_SCRIPT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)" # Définir le répertoire du script
-source "${REP_SCRIPT}/config" # Fichier de variable
-source "${REP_SCRIPT}/function" # Fichier de fonctions
+    set -Eeuo pipefail
+    clear # Nettoyer le terminal
+    trap 'on_error' ERR
+    REP_SCRIPT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)" # Définir le répertoire du script
+    source "${REP_SCRIPT}/function" # Fichier de fonctions
+    source "${REP_SCRIPT}/config" # Fichier de variable
 # Détection automatique de la langue du système
     LANGUAGE="${LANG:-fr_FR.UTF-8}"
     LANGUAGE="${LANGUAGE%%.*}"
@@ -21,26 +21,25 @@ source "${REP_SCRIPT}/function" # Fichier de fonctions
     fi
     export LANGUAGE
     export LANG="${LANGUAGE}.UTF-8"
-    # --- Configuration gettext ---
+# --- Configuration gettext ---
     TEXTDOMAIN="messages"
     TEXTDOMAINDIR="${REP_SCRIPT}/glpi_install/lang"
     export TEXTDOMAIN TEXTDOMAINDIR
-    # --- Vérifie la présence du .mo et crée le lien symbolique attendu ---
+# --- Vérifie la présence du .mo et crée le lien symbolique attendu ---
     if [ ! -f "$TEXTDOMAINDIR/$LANGUAGE/$TEXTDOMAIN.mo" ]; then
         sudo mkdir -p "$TEXTDOMAINDIR/$LANGUAGE"
         if [ -f "$TEXTDOMAINDIR/${LANGUAGE}.mo" ]; then
             sudo ln -sf "../../${LANGUAGE}.mo" "$TEXTDOMAINDIR/$LANGUAGE/$TEXTDOMAIN.mo"
         fi
     fi
-    # --- Correction des locales pour dialog / gettext ---
+# --- Correction des locales pour dialog / gettext ---
     if ! locale -a | grep -q "^${LANGUAGE}.UTF-8$"; then
         echo "[$(date)] Locale ${LANGUAGE}.UTF-8 absente, tentative de génération..." | tee -a "${DEBUGFILE}"
         if command -v locale-gen >/dev/null 2>&1; then
             sudo locale-gen "${LANGUAGE}.UTF-8" | tee -a "${DEBUGFILE}" 2>&1 || true
         fi
     fi
-    info "Fichier de langue chargé : ${TEXTDOMAINDIR/$REP_SCRIPT\//}"
-    info "$(gt "Chargement du fichier de langue")"
+    info "$(gt "Chargement du fichier de langue : ${TEXTDOMAINDIR/$REP_SCRIPT\//}")"
     info "$(gt "Début du script d'installation")"
 # Regarde si la distribution est conforme
     info "$(gt "Vérification de la distribution")"
