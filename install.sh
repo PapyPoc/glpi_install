@@ -163,58 +163,46 @@ else
         exit 1
     }
 fi
-# Détection automatique de la langue du système
 
+# Détection automatique de la langue du système
 detect_system_language() {
     local value=""
-
     for var in LC_ALL LC_MESSAGES LANGUAGE LANG; do
         value="${!var:-}"
         [ -n "$value" ] && break
     done
-
     # LANGUAGE peut contenir fr_FR:fr:en
     value="${value%%:*}"
-
     # fr_FR.UTF-8 -> fr_FR
     # fr_FR@euro  -> fr_FR
     value="${value%%.*}"
     value="${value%%@*}"
-
     case "$value" in
         ""|"C"|"POSIX"|"C.UTF-8")
             value="$FALLBACK_GLPI_LANG"
             ;;
     esac
-
     printf '%s\n' "$value"
 }
 
 glpi_locale_exists() {
     local lang="$1"
-
-    [ -f "${INVOKING_HOME}/glpi_install/locales/${lang}.mo" ] || \
-    [ -f "${INVOKING_HOME}/glpi_install/locales/${lang}.po" ]
-}
+    [ -f "${INVOKING_HOME}/glpi_install/locales/${lang}.mo" ] 
 
 select_glpi_language() {
     local detected lang_prefix candidate
-
     detected="$(detect_system_language)"
     lang_prefix="${detected%%_*}"
-
     # Exemple : fr_FR existe dans GLPI
     if glpi_locale_exists "$detected"; then
         printf '%s\n' "$detected"
         return 0
     fi
-
     # Cas anglais : système en_US, GLPI utilise souvent en_GB
     if [ "$lang_prefix" = "en" ] && glpi_locale_exists "en_GB"; then
         printf '%s\n' "en_GB"
         return 0
     fi
-
     # Recherche approximative : de_DE, es_ES, it_IT, etc.
     candidate="$(
         find "${INVOKING_HOME}/glpi_install/locales" -maxdepth 1 -type f \
@@ -224,18 +212,15 @@ select_glpi_language() {
         | sort -u \
         | head -n 1
     )"
-
     if [ -n "$candidate" ]; then
         printf '%s\n' "$candidate"
         return 0
     fi
-
     # Fallback demandé : français
     printf '%s\n' "$FALLBACK_GLPI_LANG"
 }
 
 GLPI_LANGUAGE="$(select_glpi_language)"
-
 echo "Langue GLPI sélectionnée : ${GLPI_LANGUAGE}"
 # --- Configuration gettext ---
 TEXTDOMAIN="messages"

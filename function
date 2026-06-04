@@ -1555,7 +1555,7 @@ function write_credentials(){
     mkdir -p "${folder_save_credentials}"
     # Nettoie le nom du fichier pour éviter les / ou espaces
     local safe_name
-    safe_name="$(basename "${FICHIER_MSG}" .txt)_${DB_NAME}.txt"
+    safe_name="$(basename "${FICHIER_MSG}_${DB_NAME}.txt"
     file_save="${folder_save_credentials}/${safe_name}"
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "${file_save}" << EOF
@@ -1580,7 +1580,7 @@ function write_credentials(){
  Mot de passe root: ${SQLROOTPWD}
  Mot de passe ${DB_USER}: ${SQLGLPIPWD}
 
- Fichier de sauvegarde enregistré dans ${FICHIER_MSG}
+ Fichier de sauvegarde enregistré dans ${file_save}
  <===============================================================================================>
 
  Si vous rencontrez un probléme avec ce script, veuillez le signaler sur GitHub : https://github.com/PapyPoc/glpi_install/issues
@@ -1608,7 +1608,7 @@ EOF
  Root password: ${SQLROOTPWD}
  ${DB_USER} password: ${SQLGLPIPWD}
 
- Backup file saved to ${FICHIER_MSG}
+ Backup file saved to ${file_save}
  <===============================================================================================>
 
  If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
@@ -1619,9 +1619,10 @@ EOF
 }
 # Afficher le résultat final
 function display_result() {
-    debug_start    info " $(gt "Affichage des résultats")"
-    local MESSAGE="" file_save=""
-    file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}${DB_NAME}*" | head -n 1)
+    debug_start
+    info " $(gt "Affichage des résultats")"
+    local MESSAGE="" 
+    file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${safe_name}*" | head -n 1)
 	if [[ -f "${file_save}" ]]; then
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
