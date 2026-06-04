@@ -48,7 +48,7 @@ function info(){
     echo -e "ℹ️ ${CYAN}${expanded}${NC}" # Couleur cyan
     printf '%s\n' "${expanded}" | tee -a "${INFOFILE}" >/dev/null # Affichage dans le fichier d'info
 }
-debug() {
+function debug() {
     local message="$*"
     
     mkdir -p "$(dirname -- "${DEBUGFILE}")"
