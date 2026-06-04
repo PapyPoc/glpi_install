@@ -271,6 +271,22 @@ function select_glpi_update_version(){
         --radiolist "$(gt "Veuillez sélectionner la version de GLPI à installer :")" 23 50 8 \
         "$@" 3>&1 1>/dev/tty 2>&3
 }
+function trim_dialog_value(){
+            local value="$1"
+            value="${value#"${value%%[![:space:]]*}"}"
+            printf '%s' "${value%"${value##*[![:space:]]}"}"
+}
+function sanitize_path_value(){
+    local value
+    value="$(trim_dialog_value "$1")"
+    printf '%s' "${value//[^A-Za-z0-9_\/.-]/_}"
+}
+function sanitize_name_value(){
+    local value
+    value="$(trim_dialog_value "$1")"
+    printf '%s' "${value//[^A-Za-z0-9_]/_}"
+}
+
 #  Demander à l'utilisateur de choisir le répertoire d'installation,
 # la version de GLPI à installer ou de lancer une installation complète via dialog.
 function prompt_install_options(){
@@ -308,21 +324,6 @@ function prompt_install_options(){
         done
         WIDTH=$((WIDTH + 6))
         local _def_rep="${REP_GLPI:-/var/www/html/glpi}" _def_db_host="${DB_HOST:-localhost}" _def_db="${DB_NAME:-glpi}" _def_user="${DB_USER:-glpi_user}"
-        function trim_dialog_value(){
-            local value="$1"
-            value="${value#"${value%%[![:space:]]*}"}"
-            printf '%s' "${value%"${value##*[![:space:]]}"}"
-        }
-        function sanitize_path_value(){
-            local value
-            value="$(trim_dialog_value "$1")"
-            printf '%s' "${value//[^A-Za-z0-9_\/.-]/_}"
-        }
-        function sanitize_name_value(){
-            local value
-            value="$(trim_dialog_value "$1")"
-            printf '%s' "${value//[^A-Za-z0-9_]/_}"
-        }
         while true; do
             form=$(dialog --clear --backtitle "$(gt "Installation de GLPI")" --title "$(gt "Choix pour l'installation de GLPI")" \
                 --form "$(gt "Paramètres pour GLPI") ${VERSION_SELECT} $(gt "Modifiez et confirmez les valeurs ci-dessous")" 18 68 8 \
