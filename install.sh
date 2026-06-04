@@ -10,7 +10,6 @@ set -Eeuo pipefail
 clear # Nettoyer le terminal
 # Variables d'environnement
 REP_SCRIPT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)" # Définir le répertoire du script
-source "${REP_SCRIPT}/config" # Fichier de variable
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
 DEPENDENCIES="curl jq openssl sudo dialog git gettext"
 GIT="https://github.com/PapyPoc/glpi_install.git"
@@ -227,7 +226,7 @@ select_glpi_language() {
         return 0
     fi
     # Fallback demandé : français
-    printf '%s\n' "$FALLBACK_GLPI_LANG"
+    printf '%s\n' "fr_FR"
 }
 
 GLPI_LANGUAGE="$(select_glpi_language)"
@@ -251,20 +250,20 @@ if ! locale -a | grep -q "^${LANGUAGE}.UTF-8$"; then
     fi
 fi
 # Vérification d’existence
-if [  -f "${REP_SCRIPT}/glpi-install" ]; then
-    sudo chmod +x "${REP_SCRIPT}/glpi-install" 2>/dev/null
+if [  -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
+    sudo chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
 else
-    warn "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi-install")"
+    warn "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi_install/glpi-install")"
     dialog --title "$(gt "Erreur")" \
-        --msgbox "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi-install")" 7 70
+        --msgbox "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi_install/glpi-install")" 7 70
     exit 1
 fi
 # Exécution sécurisée
-if bash "${REP_SCRIPT}/glpi-install" | tee -a "${DEBUGFILE}"; then
-    info "$(gt "Exécution du script '${REP_SCRIPT}/glpi-install' réussie.")"
+if bash "${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${DEBUGFILE}"; then
+    info "$(gt "Exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' réussie.")"
 else
-    warn "$(gt "Échec de l'exécution du script '${REP_SCRIPT}/glpi-install'.")"
+    warn "$(gt "Échec de l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install'.")"
     dialog --title "$(gt "Erreur")" \
-        --msgbox "$(gt "L'exécution du script '${REP_SCRIPT}/glpi-install' a échoué. Consultez le log.")" 8 70
+        --msgbox "$(gt "L'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' a échoué. Consultez le log.")" 8 70
     exit 1
 fi
