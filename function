@@ -1036,13 +1036,11 @@ sql_escape_string() {
     value="${value//\'/\'\'}"
     printf '%s' "$value"
 }
-
 sql_escape_identifier() {
     local value="$1"
     value="${value//\`/\`\`}"
     printf '%s' "$value"
 }
-
 mysql_root_exec() {
     local sql="$1"
     if [ -n "${SQLROOTPWD:-}" ]; then
@@ -1050,10 +1048,8 @@ mysql_root_exec() {
             return 0
         fi
     fi
-
     sudo "${MYSQL_CMD}" -u root --batch --silent 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}" <<< "${sql}"
 }
-
 mysql_root_query() {
     local sql="$1"
     if [ -n "${SQLROOTPWD:-}" ]; then
@@ -1062,6 +1058,17 @@ mysql_root_query() {
         fi
     fi
     sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent 2>>"${ERRORFILE}" <<< "${sql}"
+}
+get_tzinfo_cmd() {
+    if command -v mysql_tzinfo_to_sql >/dev/null 2>&1; then
+        printf '%s\n' "mysql_tzinfo_to_sql"
+        return 0
+    fi
+    if command -v mariadb-tzinfo-to-sql >/dev/null 2>&1; then
+        printf '%s\n' "mariadb-tzinfo-to-sql"
+        return 0
+    fi
+    return 1
 }
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
@@ -1135,16 +1142,18 @@ SQL
     )"
     if [[ -z "${TIMEZONE_TABLE_COUNT}" || "${TIMEZONE_TABLE_COUNT}" -eq 0 ]]; then
         info "$(gt "Configuration de l'import des fuseaux horaires dans MariaDB")"
-        if ! command -v mysql_tzinfo_to_sql >/dev/null 2>&1; then
-            warn "$(gt "La commande mysql_tzinfo_to_sql est introuvable, impossible d'importer les fuseaux horaires.")"
+        local TZINFO_CMD
+        if ! TZINFO_CMD="$(get_tzinfo_cmd)"; then
+            warn "$(gt "Commande mysql_tzinfo_to_sql/mariadb-tzinfo-to-sql introuvable, impossible d'importer les fuseaux horaires.")"
+            warn "$(gt "Installe le paquet mariadb-client-compat, mariadb-client ou mysql-client selon ta distribution.")"
             return 1
         fi
         local rc=1
         if [ -n "${SQLROOTPWD:-}" ] && \
-            sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
+            sudo "${TZINFO_CMD}" /usr/share/zoneinfo 2>>"${ERRORFILE}" \
             | sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" mysql 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
             rc=0
-        elif sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
+        elif sudo "${TZINFO_CMD}" /usr/share/zoneinfo 2>>"${ERRORFILE}" \
             | sudo "${MYSQL_CMD}" -u root mysql 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
             rc=0
         else
