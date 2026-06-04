@@ -204,7 +204,7 @@ function check_backups_existed(){
 # Vérifie l'utilisateur web pour le répertoire GLPI
 function check_install_user(){
     debug_start
-    info "${MSG_CHECK_WEB_USER}"
+    info "$(gt "Vérification de l'utilisateur web pour le répertoire :") ${REP_GLPI}"
     REP_GLPI="${1:-/var/www/html/glpi}"
     if ! WEB_USER=$(stat -c '%U' "${REP_GLPI}") >/dev/null 2>&1; then
         debug "$(gt "Impossible de déterminer l'utilisateur web pour le répertoire :") ${REP_GLPI}."
@@ -998,7 +998,7 @@ function manage_service() {
 # Détection du fuseau horaire système
 function get_timezone() {
     debug_start
-    info "${MSG_DETECT_TIMEZONE:-Détection du fuseau horaire...}"
+    info "$(gt "Détection du fuseau horaire...")"
     # Si TIMEZONES n’est pas encore défini
     if [ -z "${TIMEZONES:-}" ]; then
         local tzfile=""
@@ -1094,7 +1094,7 @@ SQL
         } 2>>"${ERRORFILE}"
     )
     if [[ -z "${TIMEZONE_TABLE_COUNT}" || "${TIMEZONE_TABLE_COUNT}" -eq 0 ]]; then
-        info "${MSG_MARIADB_CONFIGURE_TIMEZONE_IMPORT}"
+        info "$(gt "Configuration de l'import des fuseaux horaires dans MariaDB")"
         # --- Vérification présence mysql_tzinfo_to_sql ---
         if ! command -v mysql_tzinfo_to_sql >/dev/null 2>&1; then
             warn "$(gt "La commande mysql_tzinfo_to_sql est introuvable, impossible d'importer les fuseaux horaires.")"
@@ -1533,7 +1533,7 @@ function rights_glpi(){
     debug_start    
     REP_GLPI="${1:-/var/www/html/glpi}"
     # Changer les droits des répertoires et fichiers
-    info "${MSG_SETUP_GLPI_RIGHTS_MODIFY}"
+    info "$(gt "Modification des permissions de") ${REP_GLPI}"
     find "${REP_GLPI}" -type d -exec chmod 755 {} \; 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     find "${REP_GLPI}" -type f -exec chmod 644 {} \; 1> >(tee -a "${DEBUGFILE}") 2> >(tee -a "${ERRORFILE}" >&2)
     # Changer le propriétaire des répertoires
@@ -1795,7 +1795,7 @@ function update_glpi() {
     debug_start    
     info "$(gt "Mise à jour de GLPI")"
     # Restauration des fichiers de configuration et des plugins
-    info "${MSG_UPDATE_GLPI_RESTORE_FILES}"
+    info "$(gt "Restauration des fichiers de configuration, des plugins et du marketplace")"
     for DIR in config files plugins marketplace; do
         SRC="${REP_BACKUP}/${DIR}"
         if [ -d "${SRC}" ]; then
