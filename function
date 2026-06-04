@@ -80,7 +80,11 @@ function debug_end(){
     printf '%s\n' "🐞 ${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 function gt(){
-    gettext "$@" || echo "$1 - Missing translation"  # Fallback si traduction absente
+    if command -v gettext >/dev/null 2>&1; then
+        gettext "$@" || echo "$1 - Missing translation"  # Fallback si traduction absente
+    else
+        printf '%s\n' "$1"
+    fi
 }
 # Gestion des erreurs avec trap
 function on_error() {
@@ -953,7 +957,7 @@ EOF
             return 1
         fi
     fi
-    info "${MSG_INSTALL_PACKAGES_END}"
+    info "$(gt "Fin de l'installation des paquets nécessaires...")"
     debug_end
 }
 function manage_service() {
@@ -1317,7 +1321,7 @@ EOF
 </VirtualHost>
 EOF
             then
-                echo "$(gt "Fichier de configuration Apache pour GLPI créé avec succès.")"
+                gt "Fichier de configuration Apache pour GLPI créé avec succès."
             else
                 erreur "$(gt "Échec de la création du fichier de configuration Apache pour GLPI.")"
                 return 1
