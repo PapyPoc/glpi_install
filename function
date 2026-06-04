@@ -1419,15 +1419,29 @@ function setup_glpi(){
     done
     # Déplacement des fichiers GLPI
     info "$(gt "Déplacement du répertoire des fichiers GLPI")"
-    if mv -f "${REP_GLPI}files/*" "${GLPI_DIRS[FILES]}/" 2>/dev/null; then
-        info "$(gt "Répertoire des fichiers GLPI déplacé avec succès.")"
+    mkdir -p "${GLPI_DIRS[FILES]}" "${GLPI_DIRS[CONFIG]}" "${GLPI_DIRS[LOGS]}"
+    if [ -d "${REP_GLPI}/files" ]; then
+        shopt -s dotglob nullglob
+        glpi_files=( "${REP_GLPI}/files/"* )
+        if [ "${#glpi_files[@]}" -gt 0 ]; then
+            if mv -f "${glpi_files[@]}" "${GLPI_DIRS[FILES]}/"; then
+                info "$(gt "Répertoire des fichiers GLPI déplacé avec succès.")"
+            else
+                warn "$(gt "Échec du déplacement du répertoire des fichiers GLPI.")"
+                shopt -u dotglob nullglob
+                return 1
+            fi
+        else
+            info "$(gt "Aucun fichier GLPI à déplacer.")"
+        fi
+        shopt -u dotglob nullglob
     else
-        warn "$(gt "Échec du déplacement du répertoire des fichiers GLPI.")"
+        warn "$(gt "Répertoire GLPI files introuvable :") ${REP_GLPI}/files"
         return 1
     fi
     # Création du fichier local_define.php
     info "$(gt "Création du fichier local_define.php")"
-    if sudo tee "${GLPI_DIRS[CONFIG]}/local_define.php" >/dev/null <<EOF
+    if tee "${GLPI_DIRS[CONFIG]}/local_define.php" >/dev/null <<EOF
 <?php
     define('GLPI_VAR_DIR', '${GLPI_DIRS[FILES]}');
     define('GLPI_LOG_DIR', '${GLPI_DIRS[LOGS]}');
@@ -1438,10 +1452,12 @@ EOF
         warn "$(gt "Échec de la création du fichier local_define.php.")"
         return 1
     fi
+    # Création du fichier downstream.php
     info "$(gt "Création du fichier downstream.php")"
-    if sudo tee "${REP_GLPI}"/inc/downstream.php >/dev/null <<EOF
+
+    if tee "${REP_GLPI}/inc/downstream.php" >/dev/null <<EOF
 <?php
-    define('GLPI_CONFIG_DIR', '${FOLDER_CONFIG}');
+    define('GLPI_CONFIG_DIR', '${GLPI_DIRS[CONFIG]}');
     if (file_exists(GLPI_CONFIG_DIR . '/local_define.php')) {
         require_once GLPI_CONFIG_DIR . '/local_define.php';
     }
