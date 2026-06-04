@@ -1045,32 +1045,23 @@ sql_escape_identifier() {
 
 mysql_root_exec() {
     local sql="$1"
-
     if [ -n "${SQLROOTPWD:-}" ]; then
-        if sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --silent \
-            >>"${DEBUGFILE}" 2>>"${ERRORFILE}" <<< "${sql}"; then
+        if sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --silent 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}" <<< "${sql}"; then
             return 0
         fi
     fi
 
-    sudo "${MYSQL_CMD}" -u root --batch --silent \
-        >>"${DEBUGFILE}" 2>>"${ERRORFILE}" <<< "${sql}"
+    sudo "${MYSQL_CMD}" -u root --batch --silent 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}" <<< "${sql}"
 }
 
 mysql_root_query() {
     local sql="$1"
-
     if [ -n "${SQLROOTPWD:-}" ]; then
-        if sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" \
-            --batch --skip-column-names --silent \
-            2>>"${ERRORFILE}" <<< "${sql}"; then
+        if sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --skip-column-names --silent 2>>"${ERRORFILE}" <<< "${sql}"; then
             return 0
         fi
     fi
-
-    sudo "${MYSQL_CMD}" -u root \
-        --batch --skip-column-names --silent \
-        2>>"${ERRORFILE}" <<< "${sql}"
+    sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent 2>>"${ERRORFILE}" <<< "${sql}"
 }
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
@@ -1151,10 +1142,10 @@ SQL
         local rc=1
         if [ -n "${SQLROOTPWD:-}" ] && \
             sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
-            | sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+            | sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" mysql 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
             rc=0
         elif sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
-            | sudo "${MYSQL_CMD}" -u root mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+            | sudo "${MYSQL_CMD}" -u root mysql 1>>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
             rc=0
         else
             rc=$?
