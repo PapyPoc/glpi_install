@@ -12,15 +12,15 @@ Le programme d'installation analyse les informations de localisation de la distr
 ## Distribution et serveur Web
 
 >[!IMPORTANT]
->
->| OS | VERSION | COMPATIBILITÉ | SERVEUR WEB |
+>| OS | VERSION | COMPATIBILITY | WEB SERVER |
 >|:--:|:--:|:--:|:--:|
 >|Debian|11|✅|Apache|
 >|Debian|12|✅|Apache|
->|Debian|13|✅|Apache|
+>|Debian|13|⚠️ En cours de test|Apache|
 >|Ubuntu|23.10|✅|Apache|
 >|Ubuntu|24.04|✅|Apache|
 >|Ubuntu|24.10|⚠️ A tester|Apache|
+>|Ubuntu|26.04|⚠️ A tester|Apache|
 >|Alma Linux|9.5|✅|Engine X (Nginx)|
 >|Centos|9|✅|Engine X (Nginx)|
 >|Rocky Linux|9.5|✅|Engine X (Nginx)|
@@ -67,5 +67,5 @@ GLPI s'installe en lançant la commande suivante dans votre terminal.
 Pour les distribution Debian et Red Hat
 
 ```bash
-if [ -d glpi_install ]; then cd glpi_install && git pull origin dev; else git clone https://github.com/PapyPoc/glpi_install.git -b dev; fi && chmod +x glpi_install/glpi-install && ./glpi_install/glpi-install
+curl -fsSL -o install.sh "https://raw.githubusercontent.com/PapyPoc/glpi_install/dev/install.sh" && chmod u+x install.sh && ./install.sh
 ```

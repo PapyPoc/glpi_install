@@ -4,7 +4,7 @@
 
 ## About this script
 
-### Latest version of GLPI : 11.0.7
+### Latest version of GLPI : null
 
 This script was written to quickly and automatically install the GLPI version you choose on Ubuntu, Debian, Alma Linux, CentOS, Rocky Linux, and Red Hat servers.
 The installer analyzes the distribution’s locale information to select the default installation language.
@@ -12,15 +12,15 @@ The installer analyzes the distribution’s locale information to select the def
 ## Distribution and Web server
 
 >[!IMPORTANT]
->
 >| OS | VERSION | COMPATIBILITY | WEB SERVER |
 >|:--:|:--:|:--:|:--:|
 >|Debian|11|✅|Apache|
 >|Debian|12|✅|Apache|
->|Debian|13|✅|Apache|
->|Ubuntu|23|✅|Apache|
->|Ubuntu|24|✅|Apache|
->|Ubuntu|25|⚠️ A tester|Apache|
+>|Debian|13|⚠️ En cours de test|Apache|
+>|Ubuntu|23.10|✅|Apache|
+>|Ubuntu|24.04|✅|Apache|
+>|Ubuntu|24.10|⚠️ A tester|Apache|
+>|Ubuntu|26.04|⚠️ A tester|Apache|
 >|Alma Linux|9.5|✅|Engine X (Nginx)|
 >|Centos|9|✅|Engine X (Nginx)|
 >|Rocky Linux|9.5|✅|Engine X (Nginx)|
@@ -68,5 +68,5 @@ GLPI is installed by running the following command in your terminal.
 For the distribution Debian and Red Hat
 
 ```bash
-if [ -d glpi_install ]; then cd glpi_install && git pull origin dev; else git clone https://github.com/PapyPoc/glpi_install.git -b dev; fi && chmod +x glpi_install/glpi-install && ./glpi_install/glpi-install
+curl -fsSL -o install.sh "https://raw.githubusercontent.com/PapyPoc/glpi_install/dev/install.sh" && chmod u+x install.sh && ./install.sh
 ```
