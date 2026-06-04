@@ -16,7 +16,7 @@ The installer analyzes the distribution's locale information to propose the defa
 >|:--:|:--:|:--:|:--:|
 >|Debian|11|✅|Apache|
 >|Debian|12|✅|Apache|
->>|Debian|13|⚠️ En cours de test|Apache|
+>|Debian|13|⚠️ En cours de test|Apache|
 >|Ubuntu|23.10|✅|Apache|
 >|Ubuntu|24.04|✅|Apache|
 >|Ubuntu|24.10|⚠️ A tester|Apache|
