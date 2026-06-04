@@ -767,12 +767,12 @@ function run_task() {
 function update_distro(){
     debug_start
     if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-           info "${MSG_UPDATE_DISTRO_START}"
+           info "$(gt "Mise à jour de la distribution") ${ID} ${VERSION_ID}"
            timedatectl set-ntp true # Synchronise l'heure
            sleep 5
            apt-get update && apt-get upgrade -y >> "${UPDATEFILE}" 2>> "${ERRORFILE}"
     elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-           info "${MSG_UPDATE_DISTRO_START}"
+           info "$(gt "Mise à jour de la distribution") ${ID} ${VERSION_ID}"
            chronyc makestep # Synchronise l'heure
            sleep 5
            yum update -y && yum upgrade -y >> "${UPDATEFILE}" 2>> "${ERRORFILE}"
