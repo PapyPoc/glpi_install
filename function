@@ -109,6 +109,20 @@ function on_error() {
     error "$(echo -e "$message")"
     exit "${rc}"
 }
+source_os_release() {
+    if [ -r /etc/os-release ]; then
+        # shellcheck disable=SC1091
+        source /etc/os-release
+        DISTRO_ID="${ID,,}"
+        DISTRO_NAME="${NAME:-${ID}}"
+        DISTRO_VERSION="${VERSION_ID:-}"
+        debug "$(gt "Distribution détectée :") ${DISTRO_NAME} ${DISTRO_VERSION}"
+        export DISTRO_ID DISTRO_NAME DISTRO_VERSION
+        return 0
+    fi
+    warn "$(gt "Fichier /etc/os-release introuvable ou illisible.")"
+    return 1
+}
 # Détéction du code pays pour les paramètres régionaux et le fuseau horaire
 detect_country_code() {
     local country="${COUNTRY_CODE:-}"
@@ -243,8 +257,8 @@ function check_distro(){
     # Vérifie si le fichier os-release existe
     source_os_release
     # Vérifie si la distribution est basée sur Debian, Ubuntu, Alma Linux, Centos ou Rocky Linux
-    if [[ "${ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
-        if [[ "$ID" == "debian" || "$ID" == "ubuntu" ]]; then
+    if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu|almalinux|centos|rocky|rhel)$ ]]; then
+        if [[ "$DISTRO_ID" == "debian" || "$DISTRO_ID" == "ubuntu" ]]; then
             WEB_USER="www-data"
         else
             WEB_USER="nginx"
@@ -275,12 +289,12 @@ function check_distro(){
                 return 1
             fi
         fi
-        export VERSION_ID ID WEB_USER
+        export VERSION_ID DISTRO_ID WEB_USER
     else
         warn "$(gt "Impossible de déterminer la distribution")"
         return 1
     fi
-    export VERSION_ID ID WEB_USER
+    export VERSION_ID DISTRO_ID WEB_USER
     debug_end
 }
 # Recherche si GLPI est déjà installé
@@ -896,13 +910,13 @@ function run_task() {
 # Mise à jour de la distribution
 function update_distro(){
     debug_start
-    if [[ "${ID}" =~ ^(debian|ubuntu)$ ]]; then
-           info "$(gt "Mise à jour de la distribution") ${ID} ${VERSION_ID}"
+    if [[ "${DISTRO_ID}" =~ ^(debian|ubuntu)$ ]]; then
+           info "$(gt "Mise à jour de la distribution") ${DISTRO_ID} ${VERSION_ID}"
            timedatectl set-ntp true # Synchronise l'heure
            sleep 5
            apt-get update && apt-get upgrade -y >> "${UPDATEFILE}" 2>> "${ERRORFILE}"
-    elif [[ "${ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
-           info "$(gt "Mise à jour de la distribution") ${ID} ${VERSION_ID}"
+    elif [[ "${DISTRO_ID}" =~ ^(almalinux|centos|rocky|rhel)$ ]]; then
+           info "$(gt "Mise à jour de la distribution") ${DISTRO_ID} ${VERSION_ID}"
            chronyc makestep # Synchronise l'heure
            sleep 5
            yum update -y && yum upgrade -y >> "${UPDATEFILE}" 2>> "${ERRORFILE}"
@@ -940,7 +954,7 @@ function install_packages(){
     debug_start    
     info "$(gt "Début de l'installation des paquets nécessaires...")"
     source_os_release
-    if [[ "${ID:-}" =~ ^(debian|ubuntu)$ ]]; then
+    if [[ "${DISTRO_ID:-}" =~ ^(debian|ubuntu)$ ]]; then
         export DEBIAN_FRONTEND=noninteractive
         # update cache first
         if command -v sudo apt-get update | sudo tee -a "${UPDATEFILE}" 2> >(sudo tee -a "${ERRORFILE}" >&2); then
@@ -964,7 +978,7 @@ function install_packages(){
         manage_service "mariadb" "MariaDB" || return 1
         manage_service "apache2" "Apache2" || return 1
     fi
-    if [[ "${ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
+    if [[ "${DISTRO_ID:-}" =~ ^(almalinux|centos|rocky|rhel|fedora)$ ]]; then
         sudo dnf makecache --refresh
         if ! command -v dnf >/dev/null 2>&1; then
             error "$(gt "dnf introuvable, impossible d'installer les paquets sur la branche RHEL-like.")" | tee -a "${ERRORFILE}"
