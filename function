@@ -1645,19 +1645,20 @@ EOF
 }
 # Fonction pour générer un hash de mot de passe compatible avec PHP
 php_password_hash() {
-    local password="$1" hash
+    local password="$1"
     if ! command -v php >/dev/null 2>&1; then
         warn "$(gt "PHP est introuvable, impossible de générer le hash du mot de passe.")"
         return 1
     fi
-    printf '%s' "${password}" | php -r "
+    # shellcheck disable=SC2016
+    printf '%s' "${password}" | php -r '
 $password = stream_get_contents(STDIN);
 $hash = password_hash($password, PASSWORD_DEFAULT);
 if ($hash === false) {
     exit(1);
 }
 echo $hash, PHP_EOL;
-"
+'
 }
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){
@@ -1698,17 +1699,16 @@ function maj_user_glpi(){
     debug "Timezone GLPI : ${glpi_timezone}"
     debug "Langue GLPI : ${glpi_language}"
     debug "URL GLPI : ${url_base}"
-    debug "User GLPI : glpi MdP : ${ADMINGLPIPWD}"
-    debug "User GLPI : post-only MdP : ${POSTGLPIPWD}"
-    debug "User GLPI : tech MdP : ${TECHGLPIPWD}"
-    debug "User GLPI : normal MdP : ${NORMGLPIPWD}"
+    debug "User GLPI : glpi ADMINGLPIPWD=${ADMINGLPIPWD}"
+    debug "User GLPI : post-only POSTGLPIPWD=${POSTGLPIPWD}"
+    debug "User GLPI : tech TECHGLPIPWD=${TECHGLPIPWD}"
+    debug "User GLPI : normal NORMGLPIPWD=${NORMGLPIPWD}"
     debug "Construction des hash PHP password_hash()..."
-    local hash_admin hash_post hash_tech hash_normal
+    local hash_admin hash_post hash_tech hash_normal hash_admin_sql hash_post_sql hash_tech_sql hash_normal_sql timezone_sql language_sql url_base_sql _sql_user
     hash_admin="$(php_password_hash "${ADMINGLPIPWD}")" || return 1
     hash_post="$(php_password_hash "${POSTGLPIPWD}")" || return 1
     hash_tech="$(php_password_hash "${TECHGLPIPWD}")" || return 1
     hash_normal="$(php_password_hash "${NORMGLPIPWD}")" || return 1
-    local hash_admin_sql hash_post_sql hash_tech_sql hash_normal_sql timezone_sql language_sql url_base_sql
     hash_admin_sql="$(sql_escape_string "${hash_admin}")"
     hash_post_sql="$(sql_escape_string "${hash_post}")"
     hash_tech_sql="$(sql_escape_string "${hash_tech}")"
@@ -1716,7 +1716,6 @@ function maj_user_glpi(){
     timezone_sql="$(sql_escape_string "${glpi_timezone}")"
     language_sql="$(sql_escape_string "${glpi_language}")"
     url_base_sql="$(sql_escape_string "${url_base}")"
-    local _sql_user
     _sql_user=$(cat <<SQL
 UPDATE glpi_users SET password = '${hash_admin_sql}', is_active = 1 WHERE name = 'glpi';
 UPDATE glpi_users SET password = '${hash_post_sql}', is_active = 1 WHERE name = 'post-only';
@@ -1835,6 +1834,7 @@ EOF
  If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
+    export FICHIER_MSG="${file_save}"
     info " $(gt "Fichier de sauvegarde des mots de passe du serveur GLPI créé avec succès.")"
     debug_end
 }
@@ -1843,7 +1843,7 @@ function display_result() {
     debug_start
     info " $(gt "Affichage des résultats")"
     local MESSAGE="" 
-    file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${safe_name}*" | head -n 1)
+    file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}*" | head -n 1)
 	if [[ -f "${file_save}" ]]; then
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
