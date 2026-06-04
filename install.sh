@@ -243,20 +243,20 @@ if ! locale -a | grep -q "^${LANGUAGE}.UTF-8$"; then
     fi
 fi
 # Vérification d’existence
-if [  -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
-    sudo chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
+if [  -f "${REP_SCRIPT}/glpi-install" ]; then
+    sudo chmod +x "${REP_SCRIPT}/glpi-install" 2>/dev/null
 else
-    warn "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi_install/glpi-install")"
+    warn "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi-install")"
     dialog --title "$(gt "Erreur")" \
-        --msgbox "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi_install/glpi-install")" 7 70
+        --msgbox "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi-install")" 7 70
     exit 1
 fi
 # Exécution sécurisée
-if bash "${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${DEBUGFILE}"; then
-    info "$(gt "Exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' réussie.")"
+if bash "${REP_SCRIPT}/glpi-install" | tee -a "${DEBUGFILE}"; then
+    info "$(gt "Exécution du script '${REP_SCRIPT}/glpi-install' réussie.")"
 else
-    warn "$(gt "Échec de l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install'.")"
+    warn "$(gt "Échec de l'exécution du script '${REP_SCRIPT}/glpi-install'.")"
     dialog --title "$(gt "Erreur")" \
-        --msgbox "$(gt "L'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' a échoué. Consultez le log.")" 8 70
+        --msgbox "$(gt "L'exécution du script '${REP_SCRIPT}/glpi-install' a échoué. Consultez le log.")" 8 70
     exit 1
 fi
