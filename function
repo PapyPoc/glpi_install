@@ -718,7 +718,7 @@ function validate_db_name() {
     fi
     # Vérifier si le nom est déjà utilisé dans les fichiers de sauvegarde
     local found_file
-    found_file="$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}${clean_name}*" -print -quit 2>/dev/null)"
+    found_file="$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}_${clean_name}*" -print -quit 2>/dev/null)"
     if [[ -n "$found_file" ]]; then
         local existing_name="${found_file##*${FICHIER_MSG}}"
         existing_name="${existing_name%%.*}"
@@ -1397,10 +1397,8 @@ function setup_glpi(){
     info "Nom de la base de données : ${DB_NAME}"
     info "Utilisateur de la base de données : ${DB_USER}"
     info "MDP : ${SQLGLPIPWD}"
-    
     # Définition des fichiers
     FILE_APACHE_CONF="/etc/apache2/sites-available/${DB_NAME}.conf"
-    
     info "$(gt "Création du répertoire des logs.")"
     declare -A GLPI_DIRS=(
     [LOGS]="/var/log/${DB_NAME}"
@@ -1413,9 +1411,9 @@ function setup_glpi(){
         msg_ok_var="$(gt "Création du répertoire") ${key}"
         msg_fail_var="$(gt "Échec de créer le répertoire") ${key}"
         if mkdir -p "$folder"; then
-            info "${!msg_ok_var}"
+            info "${msg_ok_var}"
         else
-            warn "${!msg_fail_var}${DB_NAME}."
+            warn "${msg_fail_var}"
             return 1
         fi
     done
@@ -1488,9 +1486,9 @@ EOF
 </VirtualHost>
 EOF
             then
-                gt "Fichier de configuration Apache pour GLPI créé avec succès."
+                info "$(gt "Fichier de configuration Apache pour GLPI créé avec succès.")"
             else
-                erreur "$(gt "Échec de la création du fichier de configuration Apache pour GLPI.")"
+                warn "$(gt "Échec de la création du fichier de configuration Apache pour GLPI.")"
                 return 1
             fi
             phpversion=$(php -v | grep -i '(cli)' | awk '{print $2}' | cut -d. -f1,2)
