@@ -61,11 +61,11 @@
             exit 1
         fi
     fi
-    info "Fichier de sauvegarde des mots de passe : ${FICHIER_MSG}${DB_NAME}.txt"
+    info "Fichier de sauvegarde des mots de passe : ${FICHIER_MSG}_${DB_NAME}.txt"
 # Droit sur le fichier de sauvegarde des mots de passe
-    if file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}${DB_NAME}*" | head -n 1); then # Vérifie si le fichier de sauvegarde existe
+    if file_save=$(find "${REP_SCRIPT}/saved_credentials" -type f -name "${FICHIER_MSG}_${DB_NAME}*" | head -n 1); then # Vérifie si le fichier de sauvegarde existe
         info "$(gt "Création du fichier de sauvegarde des mots de passe")"
-        chmod -Rf 500 "${INVOKING_HOME}/saved_credentials"
+        chmod -Rf 500 "${REP_SCRIPT}/saved_credentials"
         chown root:root "${file_save}"
         info "$(gt "Le fichier de sauvegarde") ${file_save} $(gt "a été créé avec succès.")"
         export file_save
@@ -91,7 +91,7 @@
         dialog --title "⚠️ Attention" --msgbox "$msg" 8 70 >/dev/tty 2>&1
     fi
 # Affichage du fichier d'information s'il existe
-    if [ -s ${INFOFILES} ]; then
+    if [ -s "${INFOFILES}" ]; then
         info "ℹ️ $(gt "Informations sur les fichiers de logs :") ${INFOFILES}"
         dialog --title "ℹ️ $(gt "Information")" --msgbox "$(gt "Informations sur les fichiers de logs :") ${INFOFILES}" 8 70 >/dev/tty 2>&1
     fi
