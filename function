@@ -50,10 +50,8 @@ function info(){
 }
 function debug() {
     local message="$*"
-    
     mkdir -p "$(dirname -- "${DEBUGFILE}")"
-    touch "${DEBUG_LOG}"
-
+    touch "${DEBUGFILE}"
     echo "${message}" >> "${DEBUGFILE}"
 }
 # Affichage debug en normal
