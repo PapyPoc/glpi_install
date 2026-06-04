@@ -8,10 +8,10 @@
 #
 set -Eeuo pipefail
 clear # Nettoyer le terminal
-REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Définir le répertoire du script
-source "${REP_SCRIPT}/function" # Fichier de fonctions
 trap 'on_error' ERR
+REP_SCRIPT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)" # Définir le répertoire du script
 source "${REP_SCRIPT}/config" # Fichier de variable
+source "${REP_SCRIPT}/function" # Fichier de fonctions
 # Détection automatique de la langue du système
     LANGUAGE="${LANG:-fr_FR.UTF-8}"
     LANGUAGE="${LANGUAGE%%.*}"

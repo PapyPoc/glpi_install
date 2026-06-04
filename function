@@ -1462,9 +1462,13 @@ function maj_user_glpi(){
         error "$(gt "Un ou plusieurs mots de passe GLPI ne sont pas définis")"
         return 1
     fi
+    # Mise à jour des mots de passe des utilisateurs GLPI via la console de GLPI
+    sudo -u www-data /var/www/glpi/php bin/console user:reset_password --password="${ADMINGLPIPWD}" glpi
+    sudo -u www-data /var/www/glpi/php bin/console user:reset_password --password="${POSTGLPIPWD}" post-only
+    sudo -u www-data /var/www/glpi/php bin/console user:reset_password --password="${TECHGLPIPWD}" tech
+    sudo -u www-data /var/www/glpi/php bin/console user:reset_password --password="${NORMGLPIPWD}" normal
     # Construire la requête SQL et exécuter via -e
     local _sql_user
-    debug "Préparation des commandes SQL pour mettre à jour les mots de passe des utilisateurs GLPI." # Pour le débogage
     debug "Base de données: ${DB_NAME}, Utilisateur: ${DB_USER}, Mot de passe SQL: ${SQLGLPIPWD}" # Pour le débogage
     debug "Nouveaux mots de passe des utilisateurs GLPI:" # Pour le débogage
     debug "  - glpi: ${ADMINGLPIPWD}" # Pour le débogage
@@ -1477,10 +1481,6 @@ function maj_user_glpi(){
     _sql_user=$(
         cat <<SQL
 USE ${DB_NAME};
-UPDATE glpi_users SET password = MD5('${ADMINGLPIPWD}') WHERE name = 'glpi';
-UPDATE glpi_users SET password = MD5('${POSTGLPIPWD}') WHERE name = 'post-only';
-UPDATE glpi_users SET password = MD5('${TECHGLPIPWD}') WHERE name = 'tech';
-UPDATE glpi_users SET password = MD5('${NORMGLPIPWD}') WHERE name = 'normal';
 UPDATE glpi_configs SET value = '${TIMEZONE}' WHERE context = 'core' AND name = 'timezone';
 UPDATE glpi_configs SET value = '${LANGUAGE}' WHERE context = 'core' AND name = 'language';
 UPDATE glpi_configs SET value = '${IPADRESS}' WHERE context = 'core' AND name = 'url_base';
