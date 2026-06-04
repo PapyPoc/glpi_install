@@ -9,7 +9,8 @@
 set -Eeuo pipefail
 clear # Nettoyer le terminal
 # Variables d'environnement
-REP_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REP_SCRIPT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)" # Définir le répertoire du script
+source "${REP_SCRIPT}/config" # Fichier de variable
 ORIG_USER="${SUDO_USER:-$(logname 2>/dev/null || echo "${USER:-unknown}")}"
 DEPENDENCIES="curl jq openssl sudo dialog git gettext"
 GIT="https://github.com/PapyPoc/glpi_install.git"
