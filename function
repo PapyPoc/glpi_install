@@ -33,7 +33,7 @@ function warn(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e "${ORANGE}${expanded}${NC}" # Couleur orange # Affichage à l'écran désactivé
+    echo -e "${ORANGE}${expanded}${NC}" # Couleur orange
     printf '%s\n' "${expanded}" | tee -a "${ERRORFILE}" >/dev/null # Affichage dans le fichier d'alerte
 }
 # Affichage d'information en bleu
@@ -45,7 +45,7 @@ function info(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    echo -e "ℹ️ ${CYAN}${expanded}${NC}" # Couleur cyan # Affichage à l'écran désactivé
+    echo -e "ℹ️ ${CYAN}${expanded}${NC}" # Couleur cyan
     printf '%s\n' "${expanded}" | tee -a "${INFOFILE}" >/dev/null # Affichage dans le fichier d'info
 }
 # Affichage debug en normal
@@ -58,7 +58,7 @@ function debug_start(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    #echo -e "🐞 ${NC}${expanded}${NC}" # Couleur normale Affichage à l'écran désactivé
+    #echo -e "🐞 ${NC}${expanded}${NC}" # Couleur normale
     printf '%s\n' "🐞 ${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 function debug_end(){
@@ -70,7 +70,7 @@ function debug_end(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    #echo -e "🐞 ${NC}${expanded}${NC}" # Couleur normale Affichage à l'écran désactivé
+    #echo -e "🐞 ${NC}${expanded}${NC}" # Couleur normale
     printf '%s\n' "🐞 ${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 function gt(){

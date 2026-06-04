@@ -164,10 +164,14 @@ else
     }
 fi
 # Détection automatique de la langue du système
-LANGUAGE=${LANG%%.*}
-[ -z "$LANGUAGE" ] && LANGUAGE="fr_FR"
-export LANG="${LANGUAGE}.UTF-8"
+LANGUAGE="${LANG:-fr_FR.UTF-8}"
+LANGUAGE="${LANGUAGE%%.*}"
+LANGUAGE="${LANGUAGE%%@*}"
+if [ -z "${LANGUAGE}" ] || [ "${LANGUAGE}" = "C" ] || [ "${LANGUAGE}" = "POSIX" ]; then
+    LANGUAGE="fr_FR"
+fi
 export LANGUAGE
+export LANG="${LANGUAGE}.UTF-8"
 # --- Configuration gettext ---
 TEXTDOMAIN="messages"
 TEXTDOMAINDIR="${REP_SCRIPT}/glpi_install/lang"
