@@ -28,6 +28,14 @@ function warn(){
 function info(){
     echo -e "ℹ️ \033[0;36m$1\033[0m" | tee -a "${DEBUGFILE}"
 }
+# Fonction de traduction
+function gt(){
+    if command -v gettext >/dev/null 2>&1; then
+        gettext "$1"
+    else
+        printf '%s\n' "$1"
+    fi
+}
 # Fonction d'installation des dépendances
 function ensure_dependencies(){
     NEED_RESTART=0
@@ -90,10 +98,6 @@ function ensure_dependencies(){
     NEED_RESTART=1
     export NEED_RESTART
     return 0
-}
-# Fonction de traduction
-function gt(){
-    gettext "$1"
 }
 # Détection de la distribution
 if source /etc/os-release 2>/dev/null; then
@@ -187,7 +191,7 @@ detect_system_language() {
     value="${value%%@*}"
     case "$value" in
         ""|"C"|"POSIX"|"C.UTF-8")
-            value="$FALLBACK_GLPI_LANG"
+            value="fr_FR"
             ;;
     esac
     printf '%s\n' "$value"
@@ -195,7 +199,7 @@ detect_system_language() {
 
 glpi_locale_exists() {
     local lang="$1"
-    [ -f "${INVOKING_HOME}/glpi_install/locales/${lang}.mo" ] 
+    [ -f "${DEPOT_DIR}/locales/${lang}.mo" ] 
 }
 
 select_glpi_language() {
@@ -214,7 +218,7 @@ select_glpi_language() {
     fi
     # Recherche approximative : de_DE, es_ES, it_IT, etc.
     candidate="$(
-        find "${INVOKING_HOME}/glpi_install/locales" -maxdepth 1 -type f \
+        find "${DEPOT_DIR}/locales" -maxdepth 1 -type f \
             \( -name "${lang_prefix}_*.mo" -o -name "${lang_prefix}_*.po" \) \
             -printf '%f\n' 2>/dev/null \
         | sed -E 's/\.(mo|po)$//' \
@@ -230,10 +234,10 @@ select_glpi_language() {
 }
 
 GLPI_LANGUAGE="$(select_glpi_language)"
-echo "Langue GLPI sélectionnée : ${GLPI_LANGUAGE}"
+export LANGUAGE="${GLPI_LANGUAGE}"
 # --- Configuration gettext ---
 TEXTDOMAIN="messages"
-TEXTDOMAINDIR="${REP_SCRIPT}/glpi_install/lang"
+TEXTDOMAINDIR="${DEPOT_DIR}/lang"
 export TEXTDOMAIN TEXTDOMAINDIR
 # --- Vérifie la présence du .mo et crée le lien symbolique attendu ---
 if [ ! -f "$TEXTDOMAINDIR/$LANGUAGE/$TEXTDOMAIN.mo" ]; then
@@ -250,20 +254,20 @@ if ! locale -a | grep -q "^${LANGUAGE}.UTF-8$"; then
     fi
 fi
 # Vérification d’existence
-if [  -f "${REP_SCRIPT}/glpi_install/glpi-install" ]; then
-    sudo chmod +x "${REP_SCRIPT}/glpi_install/glpi-install" 2>/dev/null
+if [  -f "${DEPOT_DIR}/glpi-install" ]; then
+    sudo chmod +x "${DEPOT_DIR}/glpi-install" 2>/dev/null
 else
-    warn "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi_install/glpi-install")"
+    warn "$(gt "Script d'installation non trouvé : ${DEPOT_DIR}/glpi-install")"
     dialog --title "$(gt "Erreur")" \
-        --msgbox "$(gt "Script d'installation non trouvé : ${REP_SCRIPT}/glpi_install/glpi-install")" 7 70
+        --msgbox "$(gt "Script d'installation non trouvé : ${DEPOT_DIR}/glpi-install")" 7 70
     exit 1
 fi
 # Exécution sécurisée
-if bash "${REP_SCRIPT}/glpi_install/glpi-install" | tee -a "${DEBUGFILE}"; then
-    info "$(gt "Exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' réussie.")"
+if bash "${DEPOT_DIR}/glpi-install" | tee -a "${DEBUGFILE}"; then
+    info "$(gt "Exécution du script '${DEPOT_DIR}/glpi-install' réussie.")"
 else
-    warn "$(gt "Échec de l'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install'.")"
+    warn "$(gt "Échec de l'exécution du script '${DEPOT_DIR}/glpi-install'.")"
     dialog --title "$(gt "Erreur")" \
-        --msgbox "$(gt "L'exécution du script '${REP_SCRIPT}/glpi_install/glpi-install' a échoué. Consultez le log.")" 8 70
+        --msgbox "$(gt "L'exécution du script '${DEPOT_DIR}/glpi-install' a échoué. Consultez le log.")" 8 70
     exit 1
 fi
