@@ -153,13 +153,21 @@ if [ "${NEED_RESTART:-0}" -eq 1 ]; then
     exec bash "${REP_SCRIPT}/$(basename "$0")" "$@"
 fi
 # Clonage ou mise à jour du dépôt git
-if [ -d "${REP_SCRIPT}/glpi_install" ]; then
+DEPOT_DIR="${REP_SCRIPT}/glpi_install"
+if [ -d "${DEPOT_DIR}/.git" ]; then
     info "Mise à jour du dépôt git '${GIT}' (branche: ${BRANCHE})"
-    cd "${REP_SCRIPT}/glpi_install"
-    git pull origin "${BRANCHE}" && cd ..
+    (
+        cd "${DEPOT_DIR}"
+        git fetch origin "${BRANCHE}"
+        git checkout "${BRANCHE}"
+        git pull origin "${BRANCHE}"
+    ) || {
+        warn "$(gt "Échec de la mise à jour du dépôt git '${GIT}' (branche: ${BRANCHE})")"
+        exit 1
+    }
 else
     info "Clonage du dépôt git '${GIT}' (branche: ${BRANCHE})"
-    git clone "${GIT}" -b "${BRANCHE}" "${REP_SCRIPT}" || {
+    git clone -b "${BRANCHE}" "${GIT}" "${DEPOT_DIR}" || {
         warn "$(gt "Échec du clonage du dépôt git '${GIT}' (branche: ${BRANCHE})")"
         exit 1
     }
