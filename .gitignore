@@ -1,9 +1,4 @@
 *.DS_Store
 *~$*
 .env
-.history/
-*.bak
-*.ps1
 *.po
-*.xls
-install.sh
