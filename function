@@ -1030,90 +1030,136 @@ function get_timezone() {
     fi
     debug_end
 }
+sql_escape_string() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\'/\'\'}"
+    printf '%s' "$value"
+}
+
+sql_escape_identifier() {
+    local value="$1"
+    value="${value//\`/\`\`}"
+    printf '%s' "$value"
+}
+
+mysql_root_exec() {
+    local sql="$1"
+
+    if [ -n "${SQLROOTPWD:-}" ]; then
+        if sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --silent \
+            >>"${DEBUGFILE}" 2>>"${ERRORFILE}" <<< "${sql}"; then
+            return 0
+        fi
+    fi
+
+    sudo "${MYSQL_CMD}" -u root --batch --silent \
+        >>"${DEBUGFILE}" 2>>"${ERRORFILE}" <<< "${sql}"
+}
+
+mysql_root_query() {
+    local sql="$1"
+
+    if [ -n "${SQLROOTPWD:-}" ]; then
+        if sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" \
+            --batch --skip-column-names --silent \
+            2>>"${ERRORFILE}" <<< "${sql}"; then
+            return 0
+        fi
+    fi
+
+    sudo "${MYSQL_CMD}" -u root \
+        --batch --skip-column-names --silent \
+        2>>"${ERRORFILE}" <<< "${sql}"
+}
 # Configuration de la base de données MariaDB
 function mariadb_configure() {
     debug_start
     trap 'on_error' ERR
-    set -E -o pipefail
     info "$(gt "Configuration de la base de données")"
-    # --- Détection de la commande MySQL ---
-    MYSQL_CMD=$(command -v mysql || command -v mariadb || echo mysql)
-    if [[ -z "${MYSQL_CMD}" ]]; then
-        error "$(gt "Commande MySQL/MariaDB introuvable.")"
+    # --- Détection de la commande MySQL/MariaDB ---
+    if MYSQL_CMD="$(command -v mariadb 2>/dev/null)"; then
+        :
+    elif MYSQL_CMD="$(command -v mysql 2>/dev/null)"; then
+        :
+    else
+        warn "$(gt "Commande MySQL/MariaDB introuvable.")"
         return 1
     fi
     # --- Détermination du fuseau horaire ---
     get_timezone
     TIMEZONES="${TIMEZONES:-Europe/Paris}"
+    local db_name_sql db_user_sql sql_root_pwd_sql sql_glpi_pwd_sql timezone_sql
+    db_name_sql="$(sql_escape_identifier "${DB_NAME}")"
+    db_user_sql="$(sql_escape_string "${DB_USER}")"
+    sql_root_pwd_sql="$(sql_escape_string "${SQLROOTPWD}")"
+    sql_glpi_pwd_sql="$(sql_escape_string "${SQLGLPIPWD}")"
+    timezone_sql="$(sql_escape_string "${TIMEZONES}")"
     info "Utilisation de la commande : ${MYSQL_CMD}"
-    info "Connexion à l'hôte : ${DB_HOST}"
-    info "Mot de passe root : ${SQLROOTPWD}"
+    info "Connexion à l'hôte : ${DB_HOST:-localhost}"
+    info "Mot de passe root : ${sql_root_pwd_sql}"
     info "Création base : ${DB_NAME}"
     info "Utilisateur : ${DB_USER}"
-    info "Mdp utilisateur : ${SQLGLPIPWD}"
+    info "Mdp utilisateur : ${sql_glpi_pwd_sql}"
     info "Timezone : ${TIMEZONES}"
     # --- Script SQL principal ---
     local _sql_root
     _sql_root=$(cat <<SQL
-ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQLROOTPWD}';
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${sql_root_pwd_sql}';
 DELETE FROM mysql.user WHERE User = '';
 DELETE FROM mysql.user WHERE User = 'root' AND Host != 'localhost';
 DROP DATABASE IF EXISTS test;
-DELETE FROM mysql.db WHERE Db = 'test' OR Db LIKE 'test_%';
+DELETE FROM mysql.db WHERE Db = 'test' OR Db LIKE 'test\\_%';
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
-CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${SQLGLPIPWD}';
-GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
-GRANT SELECT ON mysql.time_zone_name TO '${DB_USER}'@'localhost';
-GRANT SELECT ON mysql.time_zone TO '${DB_USER}'@'localhost';
+CREATE DATABASE IF NOT EXISTS \`${db_name_sql}\`
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${db_user_sql}'@'localhost'
+    IDENTIFIED BY '${sql_glpi_pwd_sql}';
+ALTER USER '${db_user_sql}'@'localhost'
+    IDENTIFIED BY '${sql_glpi_pwd_sql}';
+GRANT ALL PRIVILEGES ON \`${db_name_sql}\`.* TO '${db_user_sql}'@'localhost';
+GRANT SELECT ON mysql.time_zone_name TO '${db_user_sql}'@'localhost';
+GRANT SELECT ON mysql.time_zone TO '${db_user_sql}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
     )
     # --- Application du script SQL ---
-    if echo "${_sql_root}" \
-        | { sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --silent 2>>"${ERRORFILE}" || \
-            sudo "${MYSQL_CMD}" -u root --batch --silent 2>>"${ERRORFILE}"; } >> "${DEBUGFILE}"; then
+    if mysql_root_exec "${_sql_root}"; then
         info "$(gt "Configuration de la base de données terminée avec succès.")"
     else
-        warn "$(gt "Erreur SQL lors de l'installation")"
+        warn "$(gt "Erreur SQL lors de l'installation.")"
         return 1
     fi
     # --- Vérification de la création de base ---
-    if ! sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" -e "USE ${DB_NAME};" >/dev/null 2>&1; then
-        error "$(gt "Impossible d'accéder à la base :") ${DB_NAME}"
+    if ! mysql_root_exec "USE \`${db_name_sql}\`;"; then
+        warn "$(gt "Impossible d'accéder à la base :") ${DB_NAME}"
         return 1
     fi
     # --- Vérification des tables timezone ---
     local TIMEZONE_TABLE_COUNT
-    TIMEZONE_TABLE_COUNT=$(
-        echo "SELECT COUNT(*) FROM mysql.time_zone_name WHERE name = '${TIMEZONES}' LIMIT 1;" \
-        | {
-            sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --skip-column-names --silent 2>>"${ERRORFILE}" \
-            || sudo "${MYSQL_CMD}" -u root --batch --skip-column-names --silent 2>>"${ERRORFILE}"
-        } 2>>"${ERRORFILE}"
-    )
+    TIMEZONE_TABLE_COUNT="$(
+        mysql_root_query "SELECT COUNT(*) FROM mysql.time_zone_name WHERE Name = '${timezone_sql}';" || true
+    )"
     if [[ -z "${TIMEZONE_TABLE_COUNT}" || "${TIMEZONE_TABLE_COUNT}" -eq 0 ]]; then
         info "$(gt "Configuration de l'import des fuseaux horaires dans MariaDB")"
-        # --- Vérification présence mysql_tzinfo_to_sql ---
         if ! command -v mysql_tzinfo_to_sql >/dev/null 2>&1; then
             warn "$(gt "La commande mysql_tzinfo_to_sql est introuvable, impossible d'importer les fuseaux horaires.")"
             return 1
         fi
-        # --- Importation des fuseaux horaires ---
-        local mysql_exec="sudo ${MYSQL_CMD:-mysql}"
-        local rc=0
-        if sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
-            | ${mysql_exec} -u root -p"${SQLROOTPWD}" mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+        local rc=1
+        if [ -n "${SQLROOTPWD:-}" ] && \
+            sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
+            | sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
             rc=0
         elif sudo mysql_tzinfo_to_sql /usr/share/zoneinfo 2>>"${ERRORFILE}" \
-            | ${mysql_exec} -u root mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
+            | sudo "${MYSQL_CMD}" -u root mysql >>"${DEBUGFILE}" 2>>"${ERRORFILE}"; then
             rc=0
         else
             rc=$?
         fi
         debug "$(gt "Code retour de l'import des timezones :") ${rc}"
-
         if [[ "${rc}" -eq 0 ]]; then
             info "$(gt "Importation des fuseaux horaires terminée avec succès.")"
         else
@@ -1123,16 +1169,14 @@ SQL
         # --- Paramétrage du fuseau horaire ---
         local _sql_tz
         _sql_tz=$(cat <<SQL
-SET GLOBAL time_zone = '${TIMEZONES}';
-SET time_zone = '${TIMEZONES}';
-GRANT SELECT ON mysql.time_zone_transition TO '${DB_USER}'@'localhost';
-GRANT SELECT ON mysql.time_zone_transition_type TO '${DB_USER}'@'localhost';
+SET GLOBAL time_zone = '${timezone_sql}';
+SET time_zone = '${timezone_sql}';
+GRANT SELECT ON mysql.time_zone_transition TO '${db_user_sql}'@'localhost';
+GRANT SELECT ON mysql.time_zone_transition_type TO '${db_user_sql}'@'localhost';
 FLUSH PRIVILEGES;
 SQL
         )
-        if echo "${_sql_tz}" \
-            | { sudo "${MYSQL_CMD}" -u root -p"${SQLROOTPWD}" --batch --silent 2>>"${ERRORFILE}" || \
-                sudo "${MYSQL_CMD}" -u root --batch --silent 2>>"${ERRORFILE}"; } >> "${DEBUGFILE}"; then
+        if mysql_root_exec "${_sql_tz}"; then
             info "$(gt "Configuration du fuseau horaire dans MariaDB terminée avec succès.")"
         else
             warn "$(gt "Erreur lors de la configuration du fuseau horaire dans MariaDB.")"
@@ -1145,9 +1189,12 @@ SQL
     if systemctl is-active --quiet mariadb; then
         info "$(gt "Redémarrage du service MariaDB...")"
         manage_service "mariadb" "MariaDB" || return 1
+    elif systemctl is-active --quiet mysql; then
+        info "$(gt "Redémarrage du service MySQL...")"
+        manage_service "mysql" "MySQL" || return 1
     fi
     debug_end
-}
+}   
 # Téléchargement et décompression de GLPI
 function download_untar_glpi(){
     debug_start    

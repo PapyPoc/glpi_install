@@ -6,6 +6,8 @@
 # Install file
 # Langage pris en compte français et anglais
 #
+# curl -fsSL -o install.sh "https://raw.githubusercontent.com/PapyPoc/glpi_install/dev/install.sh" && chmod u+x install.sh && ./install.sh
+#
 set -Eeuo pipefail
 clear # Nettoyer le terminal
 # Variables d'environnement
