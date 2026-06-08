@@ -1695,16 +1695,16 @@ function maj_user_glpi(){
     if [[ "${url_base}" != http://* && "${url_base}" != https://* ]]; then
         url_base="http://${url_base}"
     fi
-    debug "Base de données : ${DB_NAME}"
-    debug "Utilisateur SQL : ${DB_USER}"
-    debug "Mot de passe SQL : ${SQLGLPIPWD}"
-    debug "Timezone GLPI : ${glpi_timezone}"
-    debug "Langue GLPI : ${glpi_language}"
-    debug "URL GLPI : ${url_base}"
-    debug "User GLPI : glpi ADMINGLPIPWD=${ADMINGLPIPWD}"
-    debug "User GLPI : post-only POSTGLPIPWD=${POSTGLPIPWD}"
-    debug "User GLPI : tech TECHGLPIPWD=${TECHGLPIPWD}"
-    debug "User GLPI : normal NORMGLPIPWD=${NORMGLPIPWD}"
+    # debug "Base de données : ${DB_NAME}"
+    # debug "Utilisateur SQL : ${DB_USER}"
+    # debug "Mot de passe SQL : ${SQLGLPIPWD}"
+    # debug "Timezone GLPI : ${glpi_timezone}"
+    # debug "Langue GLPI : ${glpi_language}"
+    # debug "URL GLPI : ${url_base}"
+    # debug "User GLPI : glpi ADMINGLPIPWD=${ADMINGLPIPWD}"
+    # debug "User GLPI : post-only POSTGLPIPWD=${POSTGLPIPWD}"
+    # debug "User GLPI : tech TECHGLPIPWD=${TECHGLPIPWD}"
+    # debug "User GLPI : normal NORMGLPIPWD=${NORMGLPIPWD}"
     debug "Construction des hash PHP password_hash()..."
     local hash_admin hash_post hash_tech hash_normal hash_admin_sql hash_post_sql hash_tech_sql hash_normal_sql timezone_sql language_sql url_base_sql _sql_user
     hash_admin="$(php_password_hash "${ADMINGLPIPWD}")" || return 1
@@ -1846,7 +1846,7 @@ function display_result() {
     debug_start
     info " $(gt "Affichage des résultats")"
     local MESSAGE="" 
-    file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}*" | head -n 1)
+    file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}_${DB_NAME}.txt" | head -n 1)
 	if [[ -f "${file_save}" ]]; then
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
