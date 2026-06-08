@@ -1828,7 +1828,7 @@ EOF
 EOF
 	fi
     info "$(gt "Sécurisation du fichier de sauvegarde des mots de passe")"
-    chmod -Rf 400 "${INVOKING_HOME}/saved_credentials"
+    chmod -Rf 400 "${INVOKING_HOME}/${FOLDER_SAVE_CREDENTIALS}"
     chown root:root "${file_save}"
     info "$(gt "Le fichier de sauvegarde") ${file_save} $(gt "a été sécurisé avec succès.")"
     export file_save

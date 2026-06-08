@@ -63,9 +63,9 @@
         fi
     fi
 # Afficher le fichier de sauvegarde des mots de passe
-    info "$(gt "Fichier de sauvegarde des mots de passe :") ${file_save}"
+    info "$(gt "Fichier de sauvegarde des mots de passe :") ${file_save} ${DB_NAME}"
     # Rechercher le fichier de sauvegarde des mots de passe existe et n'est pas vide, puis affiche un message d'information et une boîte de dialogue pour afficher le contenu du fichier
-     if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
+     if [ -f "${file_save}" ] && [ -s "${file_save}" ]; then
         info "ℹ️ $(gt "Affichage du fichiers de sauvegarde des mots de passe :") ${file_save}"
         display_result
     else
