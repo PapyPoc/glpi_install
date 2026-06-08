@@ -62,9 +62,9 @@
         fi
     fi
 # Droit sur le fichier de sauvegarde des mots de passe
-    if file_save=$(find "${REP_SCRIPT}/saved_credentials" -type f -name "${FICHIER_MSG}_${DB_NAME}*" | head -n 1); then # Vérifie si le fichier de sauvegarde existe
+    if file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}_${DB_NAME}*" | head -n 1); then # Vérifie si le fichier de sauvegarde existe
         info "$(gt "Création du fichier de sauvegarde des mots de passe")"
-        chmod -Rf 500 "${REP_SCRIPT}/saved_credentials"
+        chmod -Rf 500 "${INVOKING_HOME}/saved_credentials"
         chown root:root "${file_save}"
         info "$(gt "Le fichier de sauvegarde") ${file_save} $(gt "a été créé avec succès.")"
         export file_save

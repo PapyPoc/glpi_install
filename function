@@ -1725,14 +1725,9 @@ UPDATE glpi_configs SET value = '${timezone_sql}' WHERE context = 'core' AND nam
 UPDATE glpi_configs SET value = '${language_sql}' WHERE context = 'core' AND name = 'language';
 UPDATE glpi_configs SET value = '${url_base_sql}' WHERE context = 'core' AND name = 'url_base';
 SQL
-    )
-    debug $_sql_user
-    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" \
-        -u "${DB_USER}" \
-        --database="${DB_NAME}" \
-        --batch \
-        --silent \
-        >>"${DEBUGFILE}" 2>>"${ERRORFILE}" <<< "${_sql_user}"; then
+)
+    if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" -u "${DB_USER}" --database="${DB_NAME}" \
+        --batch --silent >>"${DEBUGFILE}" 2>>"${ERRORFILE}" <<< "${_sql_user}"; then
         warn "$(gt "Échec de la mise à jour des mots de passe des utilisateurs GLPI.")"
         return 1
     fi
