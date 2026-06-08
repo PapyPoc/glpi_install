@@ -64,7 +64,8 @@
     fi
 # Afficher le fichier de sauvegarde des mots de passe
     info "$(gt "Fichier de sauvegarde des mots de passe :") ${file_save}"
-    if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
+    # Rechercher le fichier de sauvegarde des mots de passe existe et n'est pas vide, puis affiche un message d'information et une boîte de dialogue pour afficher le contenu du fichier
+     if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
         info "ℹ️ $(gt "Affichage du fichiers de sauvegarde des mots de passe :") ${file_save}"
         display_result
     else
@@ -73,17 +74,15 @@
     fi
 # Supprime les fichiers de logs vides
     info "ℹ️ $(gt 'Suppression des fichiers de logs vides.')"
-    # Crée un tableau de fichier de logs
     LOGFILES=()
     for f in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
-        [[ -s $f ]] && LOGFILES+=("$f") || [[ -f $f ]] && rm -f "$f"
+        [[ -f "$f" && -s "$f" ]] && LOGFILES+=("$f") || [[ -f "$f" ]] && rm -f "$f"
     done
 # Verifie que les fichiers de logs existent et ne sont pas vides, puis affiche un message d'information et une boîte de dialogue pour chaque fichier de log non vide
     info "ℹ️ $(gt 'Affichage des fichiers de logs.')"
+    LOGFILES=()
     for f in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
-        if [ -s "$f" ]; then
-            [[ -s $f ]] && LOGFILES+=("$f")
-        fi
+        [[ -f "$f" && -s "$f" ]] && LOGFILES+=("$f")
     done
     if ((${#LOGFILES[@]})); then
         info "📄 ${LOGFILES[*]} : $(gt "Ces fichiers contiennent des informations importantes sur l'installation. Veuillez le consulter pour plus de détails.")"

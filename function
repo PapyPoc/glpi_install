@@ -22,7 +22,7 @@ function error(){
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
     echo -e "❗ ${ROUGE}${expanded}${NC}" # Couleur rouge # Affichage à l'écran désactivé
-    printf '%s\n' "${expanded}" | tee -a "${ERRORFILE}" >/dev/null
+    printf '%s\n' "${ROUGE}${expanded}" | tee -a "${ERRORFILE}" >/dev/null
 }
 # Affichage d'alerte en orange
 function warn(){
@@ -34,7 +34,7 @@ function warn(){
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
     echo -e "${ORANGE}${expanded}${NC}" # Couleur orange
-    printf '%s\n' "${expanded}" | tee -a "${ERRORFILE}" >/dev/null # Affichage dans le fichier d'alerte
+    printf '%s\n' "${ORANGE}${expanded}" | tee -a "${ERRORFILE}" >/dev/null # Affichage dans le fichier d'alerte
 }
 # Affichage d'information en bleu
 function info(){
@@ -46,7 +46,7 @@ function info(){
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
     echo -e "ℹ️ ${CYAN}${expanded}${NC}" # Couleur cyan
-    printf '%s\n' "${expanded}" | tee -a "${INFOFILE}" >/dev/null # Affichage dans le fichier d'info
+    printf '%s\n' "${CYAN}${expanded}" | tee -a "${INFOFILE}" >/dev/null # Affichage dans le fichier d'info
 }
 function debug() {
     local message="$*"
@@ -64,8 +64,8 @@ function debug_start(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    #echo -e "🐞 ${NC}${expanded}${NC}" # Couleur normale
-    printf '%s\n' "🐞 ${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
+    echo -e "🐞 ${CYAN}${expanded}${NC}" # Couleur normale
+    printf '%s\n' "🐞 ${CYAN}${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 function debug_end(){
     local msg
@@ -76,14 +76,12 @@ function debug_end(){
     else
         expanded=$( ( set +u; eval "printf '%s' \"$msg\"" ) )
     fi
-    #echo -e "🐞 ${NC}${expanded}${NC}" # Couleur normale
-    printf '%s\n' "🐞 ${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
+    echo -e "🐞 ${CYAN}${expanded}${NC}" # Couleur normale
+    printf '%s\n' "🐞 ${CYAN}${expanded}" | tee -a "${DEBUGFILE}" >/dev/null # Affichage dans le fichier de debug
 }
 function gt(){
     if command -v gettext >/dev/null 2>&1; then
         gettext "$@" || echo "$1 - Missing translation"  # Fallback si traduction absente
-    else
-        printf '%s\n' "$1"
     fi
 }
 # Gestion des erreurs avec trap
@@ -1766,13 +1764,12 @@ function rights_glpi(){
 function write_credentials(){
     debug_start    
     info "$(gt "Écriture du fichier pour sauvegarder les mots de passe du serveur GLPI")"
-    local folder_save_credentials="" file_save=""
-    folder_save_credentials="selection_menu/saved_credentials"
-    mkdir -p "${folder_save_credentials}"
+    file_save=""
+    mkdir -p "${FOLDER_SAVE_CREDENTIALS}"
     # Nettoie le nom du fichier pour éviter les / ou espaces
     local safe_name
-    safe_name="$(basename "${FICHIER_MSG}_${DB_NAME}.txt")"
-    file_save="${folder_save_credentials}/${safe_name}"
+    safe_name="${FICHIER_MSG}_${DB_NAME}.txt"
+    file_save="${FOLDER_SAVE_CREDENTIALS}/${safe_name}"
     if [[ "${LANGUAGE}" == "fr_FR" ]]; then
         cat > "${file_save}" << EOF
 <==========================> Détails de l'installation de GLPI <=================================>
