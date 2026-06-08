@@ -6,7 +6,6 @@
 # Install file
 # Langage pris en compte français et anglais
 #
-# curl -fsSL -o install.sh "https://raw.githubusercontent.com/PapyPoc/glpi_install/dev/install.sh" && chmod u+x install.sh && ./install.sh
 #
 set -Eeuo pipefail
 clear # Nettoyer le terminal
@@ -267,9 +266,9 @@ fi
 # Exécution sécurisée
 if bash "${DEPOT_DIR}/glpi-install" | tee -a "${DEBUGFILE}"; then
     info "$(gt "Exécution du script '${DEPOT_DIR}/glpi-install' réussie.")"
-else
-    warn "$(gt "Échec de l'exécution du script '${DEPOT_DIR}/glpi-install'.")"
-    dialog --title "$(gt "Erreur")" \
-        --msgbox "$(gt "L'exécution du script '${DEPOT_DIR}/glpi-install' a échoué. Consultez le log.")" 8 70
-    exit 1
+#else
+#    warn "$(gt "Échec de l'exécution du script '${DEPOT_DIR}/glpi-install'.")"
+#    dialog --title "$(gt "Erreur")" \
+#        --msgbox "$(gt "L'exécution du script '${DEPOT_DIR}/glpi-install' a échoué. Consultez le log.")" 8 70
+#    exit 1
 fi

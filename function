@@ -1767,7 +1767,7 @@ function write_credentials(){
     debug_start    
     info "$(gt "Écriture du fichier pour sauvegarder les mots de passe du serveur GLPI")"
     local folder_save_credentials="" file_save=""
-    folder_save_credentials="${INVOKING_HOME}/saved_credentials"
+    folder_save_credentials="selection_menu/saved_credentials"
     mkdir -p "${folder_save_credentials}"
     # Nettoie le nom du fichier pour éviter les / ou espaces
     local safe_name
@@ -1830,6 +1830,10 @@ EOF
  If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
+    info "$(gt "Sécurisation du fichier de sauvegarde des mots de passe")"
+    chmod -Rf 400 "${INVOKING_HOME}/saved_credentials"
+    chown root:root "${file_save}"
+    info "$(gt "Le fichier de sauvegarde") ${file_save} $(gt "a été sécurisé avec succès.")"
     export file_save
     info " $(gt "Fichier de sauvegarde des mots de passe du serveur GLPI créé avec succès.")"
     debug_end

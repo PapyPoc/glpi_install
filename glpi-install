@@ -13,6 +13,7 @@
     source "${REP_SCRIPT}/function" # Fichier de fonctions
     source "${REP_SCRIPT}/config" # Fichier de variable
     configure_locale_timezone_by_country || exit 1
+    file_save=""
 # Détection automatique de la langue du système
     LANGUAGE="${LANG:-fr_FR.UTF-8}"
     LANGUAGE="${LANGUAGE%%.*}"
@@ -61,32 +62,22 @@
             exit 1
         fi
     fi
-# Droit sur le fichier de sauvegarde des mots de passe
-    if file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}_${DB_NAME}*" | head -n 1); then # Vérifie si le fichier de sauvegarde existe
-        info "$(gt "Création du fichier de sauvegarde des mots de passe")"
-        chmod -Rf 500 "${INVOKING_HOME}/saved_credentials"
-        chown root:root "${file_save}"
-        info "$(gt "Le fichier de sauvegarde") ${file_save} $(gt "a été créé avec succès.")"
-        export file_save
-    else
-        dialog --title "❗ $(gt "Erreur")" --msgbox "$(gt "Fichier de sauvegarde introuvable :") ${file_save}" 6 60 >/dev/tty 2>&1
-        error "$(gt "Fichier de sauvegarde introuvable :") ${file_save}"
-        exit 1
-    fi
 # Afficher le fichier de sauvegarde des mots de passe
-    info -e "\n$(gt "Fichier de sauvegarde des mots de passe :") ${file_save}\n"
+    info "$(gt "Fichier de sauvegarde des mots de passe :") ${file_save}"
     if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
-        info "⚠️ $(gt "Affichage des fichiers de logs")"
+        info "ℹ️ $(gt "Affichage du fichiers de sauvegarde des mots de passe :") ${file_save}"
         display_result
     else
         dialog --title "❗ $(gt "Erreur")" --msgbox "$(gt "Le fichier de sauvegarde des mots de passe est introuvable ou vide :") ${file_save}" 6 60 >/dev/tty 2>&1
         error "$(gt "Le fichier de sauvegarde des mots de passe est introuvable ou vide :") ${file_save}"
     fi
-# Vérifie et affiche les fichiers de logs non vides
+# Supprime les fichiers de logs vides
+    info "ℹ️ $(gt 'Suppression des fichiers de logs vides.')"
     LOGFILES=()
     for f in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
         [[ -s $f ]] && LOGFILES+=("$f") || [[ -f $f ]] && rm -f "$f"
     done
+# Vérifie et affiche les fichiers de logs non vides
     info "ℹ️ $(gt 'Affichage des fichiers de logs.')"
     if ((${#LOGFILES[@]})); then
         msg="$(gt 'Veuillez vérifier les fichiers de logs suivants :') ${LOGFILES[*]}"
