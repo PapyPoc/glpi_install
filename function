@@ -1409,10 +1409,6 @@ function setup_glpi(){
     --quiet
     --no-interaction
     )
-    info "Hôte de la base de données : ${DB_HOST}"
-    info "Nom de la base de données : ${DB_NAME}"
-    info "Utilisateur de la base de données : ${DB_USER}"
-    info "MDP : ${SQLGLPIPWD}"
     # Définition des fichiers
     FILE_APACHE_CONF="/etc/apache2/sites-available/${DB_NAME}.conf"
     info "$(gt "Création du répertoire des logs.")"
