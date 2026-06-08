@@ -73,21 +73,21 @@
     fi
 # Supprime les fichiers de logs vides
     info "ℹ️ $(gt 'Suppression des fichiers de logs vides.')"
+    # Crée un tableau de fichier de logs
     LOGFILES=()
     for f in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
         [[ -s $f ]] && LOGFILES+=("$f") || [[ -f $f ]] && rm -f "$f"
     done
-# Vérifie et affiche les fichiers de logs non vides
+# Verifie que les fichiers de logs existent et ne sont pas vides, puis affiche un message d'information et une boîte de dialogue pour chaque fichier de log non vide
     info "ℹ️ $(gt 'Affichage des fichiers de logs.')"
+    for f in "${ERRORFILE}" "${DEBUGFILE}" "${UPDATEFILE}"; do
+        if [ -s "$f" ]; then
+            [[ -s $f ]] && LOGFILES+=("$f")
+        fi
+    done
     if ((${#LOGFILES[@]})); then
-        msg="$(gt 'Veuillez vérifier les fichiers de logs suivants :') ${LOGFILES[*]}"
-        info "⚠️ $msg"
-        dialog --title "⚠️ Attention" --msgbox "$msg" 8 70 >/dev/tty 2>&1
+        info "📄 ${LOGFILES[*]} : $(gt "Ces fichiers contiennent des informations importantes sur l'installation. Veuillez le consulter pour plus de détails.")"
+        dialog --title "📄 $(gt "Fichier de log")" --msgbox "$(gt "Ces fichiers contiennent des informations importantes sur l'installation. Veuillez le consulter pour plus de détails.")\n\n${LOGFILES[*]}" 10 70 >/dev/tty 2>&1
     fi
-# Affichage du fichier d'information s'il existe
-    if [ -s "${INFOFILES}" ]; then
-        info "ℹ️ $(gt "Informations sur les fichiers de logs :") ${INFOFILES}"
-        dialog --title "ℹ️ $(gt "Information")" --msgbox "$(gt "Informations sur les fichiers de logs :") ${INFOFILES}" 8 70 >/dev/tty 2>&1
-    fi
-clear
+#clear
 info "$(gt "Fin du script d'installation")"
