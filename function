@@ -963,12 +963,14 @@ function install_packages(){
                 warn "$(gt "Échec de la mise à jour des paquets.")"
             fi
         fi
+        info "$(gt "Installation des extensions PHP requises.")"
         if ! sudo apt-get install -y php-{bcmath,mysql,mbstring,curl,gd,xml,intl,ldap,apcu,opcache,xmlrpc,zip,bz2} | sudo tee -a "${UPDATEFILE}" 2> >(sudo tee -a "${ERRORFILE}" >&2); then
             error "$(gt "Échec de l'installation des extensions PHP requises.")"
             return 1
         else
             info "$(gt "Installation des extensions PHP requises terminée avec succès.")"
         fi
+        info "$(gt "Installation des services requis.")"
         if ! sudo apt-get install -y wget tar apache2 apache2-bin mariadb-server mariadb-client perl php | sudo tee -a "${UPDATEFILE}" 2> >(sudo tee -a "${ERRORFILE}" >&2); then
             error "$(gt "Échec de l'installation des services requis.")"
             return 1
@@ -1005,7 +1007,7 @@ function install_packages(){
             error "$(gt "Échec de la réinitialisation des modules DNF.")"
             return 1
         fi
-        if sudo dnf module install -y php:8.2 \
+        if sudo dnf module install -y php:8.4 \
             | sudo tee -a "${DEBUGFILE}" \
             2> >(sudo tee -a "${ERRORFILE}" >&2); then
             info "$(gt "Installation du module PHP terminée avec succès.")"
@@ -1837,7 +1839,7 @@ EOF
  If you encounter a problem with this script, please report it on GitHub : https://github.com/PapyPoc/glpi_install/issues
 EOF
 	fi
-    export FICHIER_MSG="${file_save}"
+    export file_save
     info " $(gt "Fichier de sauvegarde des mots de passe du serveur GLPI créé avec succès.")"
     debug_end
 }
@@ -1846,7 +1848,6 @@ function display_result() {
     debug_start
     info " $(gt "Affichage des résultats")"
     local MESSAGE="" 
-    file_save=$(find "${INVOKING_HOME}/saved_credentials" -type f -name "${FICHIER_MSG}_${DB_NAME}.txt" | head -n 1)
 	if [[ -f "${file_save}" ]]; then
         while IFS= read -r ligne; do
             MESSAGE+="${ligne}\n"
