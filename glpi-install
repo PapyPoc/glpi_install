@@ -75,6 +75,7 @@
         exit 1
     fi
 # Afficher le fichier de sauvegarde des mots de passe
+    info -e "\n$(gt "Fichier de sauvegarde des mots de passe :") ${file_save}\n"
     if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
         info "⚠️ $(gt "Affichage des fichiers de logs")"
         display_result
