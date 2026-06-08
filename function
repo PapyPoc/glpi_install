@@ -1644,7 +1644,8 @@ EOF
     debug_end
 }
 # Fonction pour générer un hash de mot de passe compatible avec PHP
-php_password_hash() {
+function php_password_hash() {
+    debug_start
     local password="$1"
     if ! command -v php >/dev/null 2>&1; then
         warn "$(gt "PHP est introuvable, impossible de générer le hash du mot de passe.")"
@@ -1659,6 +1660,7 @@ if ($hash === false) {
 }
 echo $hash, PHP_EOL;
 '
+    debug_end
 }
 # Mise à jour des mot de passe des utilisateurs de GLPI
 function maj_user_glpi(){
@@ -1726,6 +1728,7 @@ UPDATE glpi_configs SET value = '${language_sql}' WHERE context = 'core' AND nam
 UPDATE glpi_configs SET value = '${url_base_sql}' WHERE context = 'core' AND name = 'url_base';
 SQL
     )
+    debug $_sql_user
     if ! MYSQL_PWD="${SQLGLPIPWD}" "${MYSQL_CMD}" \
         -u "${DB_USER}" \
         --database="${DB_NAME}" \
