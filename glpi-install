@@ -61,7 +61,6 @@
             exit 1
         fi
     fi
-    info "Fichier de sauvegarde des mots de passe : ${FICHIER_MSG}_${DB_NAME}.txt"
 # Droit sur le fichier de sauvegarde des mots de passe
     if file_save=$(find "${REP_SCRIPT}/saved_credentials" -type f -name "${FICHIER_MSG}_${DB_NAME}*" | head -n 1); then # Vérifie si le fichier de sauvegarde existe
         info "$(gt "Création du fichier de sauvegarde des mots de passe")"
@@ -79,6 +78,9 @@
     if [ -f "${file_save}" ] || [ -s "${file_save}" ]; then
         info "⚠️ $(gt "Affichage des fichiers de logs")"
         display_result
+    else
+        dialog --title "❗ $(gt "Erreur")" --msgbox "$(gt "Le fichier de sauvegarde des mots de passe est introuvable ou vide :") ${file_save}" 6 60 >/dev/tty 2>&1
+        error "$(gt "Le fichier de sauvegarde des mots de passe est introuvable ou vide :") ${file_save}"
     fi
 # Vérifie et affiche les fichiers de logs non vides
     LOGFILES=()
